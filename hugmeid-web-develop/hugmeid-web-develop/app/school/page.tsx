@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, Search, BookOpen, Plus, Loader2, MapPin, UserRound } from "lucide-react";
+import { 
+  Calendar, Clock, ChevronRight, ChevronLeft, Menu, Search, BookOpen, 
+  Plus, Loader2, MapPin, UserRound, MoreVertical, Video, Edit2, Check 
+} from "lucide-react";
 import { schoolArticles } from "@/lib/data";
 import { siteConfig } from "@/lib/site";
 import type { TimetableClassDto, TimetableDay, TimetableGridDto, TimetableResponse } from "@/lib/timetable-dto";
@@ -35,6 +38,9 @@ export default function SchoolPage() {
   const [classes, setClasses] = useState<TimetableClassDto[]>([]);
   const [loadingTimetable, setLoadingTimetable] = useState(true);
   const [timetableError, setTimetableError] = useState<string | null>(null);
+
+  // 詳細画面内のタブ状態（UIモック用）
+  const [detailTab, setDetailTab] = useState<"info" | "tasks" | "memo">("info");
 
   useEffect(() => {
     let cancelled = false;
@@ -84,42 +90,178 @@ export default function SchoolPage() {
 
   const hasTimetable = classes.length > 0;
 
+  // ===== 授業詳細ビュー =====
   if (view === "detail" && selectedClass) {
     return (
       <div className="w-full max-w-lg mx-auto bg-white min-h-screen pb-20 animate-fade-in">
-        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 bg-white border-b border-gray-100">
-          <button onClick={() => setView("main")} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:bg-gray-50">
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 bg-white/95 backdrop-blur-md border-b border-gray-100">
+          <button onClick={() => setView("main")} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:bg-gray-50 transition-colors">
             <ChevronLeft size={20} className="text-gray-600" />
           </button>
           <h2 className="text-lg font-bold text-gray-800">授業の詳細</h2>
-          <div className="w-10 h-10" />
+          <button className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:bg-gray-50 transition-colors">
+            <MoreVertical size={20} className="text-gray-600" />
+          </button>
         </div>
 
-        <div className="px-5 pt-5 space-y-4">
-          <div className={`rounded-3xl border p-5 ${DAY_ACCENTS[selectedClass.day]}`}>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold bg-white/70 px-3 py-1 rounded-full">{selectedClass.day}曜 {formatClassTime(selectedClass)}</span>
-              <span className="text-[10px] font-bold bg-white/70 px-2 py-1 rounded-full">{selectedClass.isOfficial ? "公式" : "ユーザー編集"}</span>
-            </div>
-            <h1 className="text-xl font-bold leading-snug mb-3">{selectedClass.title}</h1>
-            <div className="space-y-2 text-sm">
-              {selectedClass.instructor ? <p className="flex items-center gap-2"><UserRound size={15} /> {selectedClass.instructor}</p> : null}
-              {selectedClass.room || selectedClass.location ? <p className="flex items-center gap-2"><MapPin size={15} /> {[selectedClass.room, selectedClass.location].filter(Boolean).join(" / ")}</p> : null}
-              {selectedClass.universityName ? <p className="text-xs opacity-70">{selectedClass.universityName} / {selectedClass.academicYear ?? "年度未設定"}年度 第{selectedClass.termNumber ?? "-"}ターム</p> : null}
-            </div>
+        <div className="px-5 pt-4">
+          {/* 授業タイトルと基本情報 */}
+          <span className={`inline-block px-3 py-1 text-[10px] rounded-full font-bold mb-3 border ${DAY_ACCENTS[selectedClass.day]}`}>
+            {selectedClass.sourceType === "official_pdf" ? "公式シラバス" : "追加機能"}
+          </span>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3 leading-snug">{selectedClass.title}</h1>
+          <p className="text-sm text-gray-700 mb-6 font-medium flex flex-wrap gap-x-3 gap-y-1 items-center">
+            <span>{selectedClass.day}曜・{formatClassTime(selectedClass)}</span>
+            <span>{selectedClass.room || selectedClass.location || "教室未定"}</span>
+            <span>{selectedClass.instructor ? `${selectedClass.instructor} 教授` : "担当未定"}</span>
+          </p>
+          
+          {/* タブナビゲーション */}
+          <div className="flex justify-between border-b border-gray-200 mb-6">
+            <button 
+              onClick={() => setDetailTab("info")}
+              className={`pb-3 font-bold text-sm px-4 transition-colors ${detailTab === "info" ? "border-b-2 border-pink-400 text-pink-500" : "text-gray-400 hover:text-gray-600"}`}
+            >
+              基本情報
+            </button>
+            <button 
+              onClick={() => setDetailTab("tasks")}
+              className={`pb-3 font-bold text-sm px-4 transition-colors ${detailTab === "tasks" ? "border-b-2 border-pink-400 text-pink-500" : "text-gray-400 hover:text-gray-600"}`}
+            >
+              課題
+            </button>
+            <button 
+              onClick={() => setDetailTab("memo")}
+              className={`pb-3 font-bold text-sm px-4 transition-colors ${detailTab === "memo" ? "border-b-2 border-pink-400 text-pink-500" : "text-gray-400 hover:text-gray-600"}`}
+            >
+              メモ・通知
+            </button>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2"><BookOpen size={18} className="text-pink-400" /> この授業で次に接続するもの</h3>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              今はdevユーザーがログイン済みの前提で、Supabase上の授業データからマイ時間割を表示しています。Auth接続後に本人ごとの保存、Zoom URL、課題、個人メモ、タグをこの詳細に紐づけます。
-            </p>
-          </div>
+          {/* 基本情報タブ */}
+          {detailTab === "info" && (
+            <div className="animate-fade-in">
+              <h3 className="font-bold text-sm text-gray-800 mb-3">授業情報</h3>
+              <div className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-100">
+                <div className="flex py-2 border-b border-gray-200">
+                  <div className="w-24 text-xs text-gray-500 flex items-center gap-2"><Clock size={14}/> 時間</div>
+                  <div className="text-xs font-medium text-gray-800">{formatClassTime(selectedClass)}</div>
+                </div>
+                <div className="flex py-3 border-b border-gray-200">
+                  <div className="w-24 text-xs text-gray-500 flex items-center gap-2"><Calendar size={14}/> 開講期間</div>
+                  <div className="text-xs font-medium text-gray-800">
+                    {selectedClass.academicYear ? `${selectedClass.academicYear}年度` : "年度未設定"} {selectedClass.termNumber ? `第${selectedClass.termNumber}ターム` : ""}
+                  </div>
+                </div>
+                <div className="flex py-3 border-b border-gray-200">
+                  <div className="w-24 text-xs text-gray-500 flex items-center gap-2"><MapPin size={14}/> 教室</div>
+                  <div className="text-xs font-medium text-gray-800">{selectedClass.room || selectedClass.location || "未設定"}</div>
+                </div>
+                <div className="flex py-3 items-center">
+                  <div className="w-24 text-xs text-gray-500 flex items-center gap-2"><Video size={14}/> Zoom URL</div>
+                  <div className="text-xs font-medium text-blue-500 cursor-pointer hover:underline truncate">zoom.us/j/12345678...</div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 mb-8">
+                <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold hover:bg-blue-100 transition-colors shadow-sm active:scale-95">
+                  <Video size={16}/> Zoomを開く
+                </button>
+                <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors shadow-sm active:scale-95">
+                  <Edit2 size={16}/> URLを編集
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 課題タブ (モックデータ) */}
+          {detailTab === "tasks" && (
+            <div className="animate-fade-in">
+              <h3 className="font-bold text-sm text-gray-800 mb-3">課題</h3>
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-8 space-y-4 shadow-sm">
+                <div className="flex gap-3 pb-4 border-b border-gray-100 opacity-50">
+                  <div className="bg-pink-500 text-white rounded w-5 h-5 flex items-center justify-center shrink-0 mt-0.5"><Check size={14} strokeWidth={3}/></div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800 line-through decoration-gray-500">第1回レポート（心臓生理）</p>
+                    <p className="text-xs text-gray-500 mt-1">提出期限：4月3日　提出済み</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 pb-4 border-b border-gray-100">
+                  <div className="border-2 border-amber-500 bg-amber-50 rounded w-5 h-5 shrink-0 mt-0.5 cursor-pointer hover:bg-amber-100 transition-colors"></div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">第2回レポート（呼吸生理）</p>
+                    <p className="text-xs text-amber-600 font-bold mt-1">提出期限：4月10日（残り3日）</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 pb-4 border-b border-gray-100">
+                  <div className="border-2 border-gray-300 bg-white rounded w-5 h-5 shrink-0 mt-0.5 cursor-pointer hover:bg-gray-50 transition-colors"></div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">中間テスト範囲まとめ</p>
+                    <p className="text-xs text-gray-500 mt-1">提出期限：4月25日</p>
+                  </div>
+                </div>
+                <button className="flex items-center gap-2 text-pink-500 text-sm font-bold py-1 hover:text-pink-600 transition-colors">
+                  <Plus size={16}/> 課題を追加
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* メモ・通知タブ (モックデータ) */}
+          {detailTab === "memo" && (
+            <div className="animate-fade-in">
+              <h3 className="font-bold text-sm text-gray-800 mb-3">メモ</h3>
+              <div className="bg-amber-50/50 rounded-xl p-4 mb-3 border border-amber-100 text-sm text-gray-800 leading-relaxed shadow-sm relative group cursor-pointer">
+                第3回は心臓の電気生理がメイン。試験範囲はp.45-78。<br/>教科書持参必須。
+                <div className="absolute top-2 right-2 p-1.5 bg-white/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Edit2 size={14} className="text-gray-500" />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-8">
+                <span className="px-3 py-1 rounded-full border border-pink-200 bg-pink-50 text-pink-600 text-xs font-bold shadow-sm">試験あり</span>
+                <span className="px-3 py-1 rounded-full border border-purple-200 bg-purple-50 text-purple-600 text-xs font-bold shadow-sm">必修</span>
+                <button className="px-3 py-1 rounded-full border border-gray-200 bg-white text-gray-500 text-xs font-bold hover:bg-gray-50 transition-colors shadow-sm">+ タグ追加</button>
+              </div>
+
+              <h3 className="font-bold text-sm text-gray-800 mb-3">LINE通知</h3>
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-5 shadow-sm">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">授業リマインド</p>
+                    <p className="text-xs text-gray-500 mt-1">30分前に通知</p>
+                  </div>
+                  <div className="w-12 h-6 bg-pink-400 rounded-full flex items-center p-1 justify-end cursor-pointer transition-colors shadow-inner">
+                    <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">課題期限リマインド</p>
+                    <p className="text-xs text-gray-500 mt-1">期限2日前に通知</p>
+                  </div>
+                  <div className="w-12 h-6 bg-pink-400 rounded-full flex items-center p-1 justify-end cursor-pointer transition-colors shadow-inner">
+                    <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">休講・教室変更</p>
+                    <p className="text-xs text-gray-500 mt-1">即時通知</p>
+                  </div>
+                  <div className="w-12 h-6 bg-gray-200 rounded-full flex items-center p-1 justify-start cursor-pointer transition-colors shadow-inner">
+                    <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
+  // ===== メインビュー (以下変更なし) =====
   return (
     <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen animate-fade-in">
       <div className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-4">
@@ -194,6 +336,7 @@ export default function SchoolPage() {
                           onClick={() => {
                             setSelectedClass(cell);
                             setView("detail");
+                            setDetailTab("info"); // タブをリセット
                           }}
                           className={`relative border rounded-md p-1.5 min-h-[76px] flex flex-col text-left hover:opacity-80 transition-opacity ${DAY_ACCENTS[day]}`}
                         >
@@ -247,6 +390,7 @@ export default function SchoolPage() {
                     onClick={() => {
                       setSelectedClass(item);
                       setView("detail");
+                      setDetailTab("info");
                     }}
                     className="w-full text-left bg-white rounded-2xl border border-pink-50 p-4 shadow-sm hover:shadow-md transition-shadow"
                   >
