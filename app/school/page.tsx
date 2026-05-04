@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-// Building2 を追加
 import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, Search, BookOpen, Plus, Loader2, MapPin, UserRound, Building2 } from "lucide-react";
 import { schoolArticles } from "@/lib/data";
 import { siteConfig } from "@/lib/site";
+import { supabaseRestFetch } from "@/lib/supabase/rest";
 import type { TimetableClassDto, TimetableDay, TimetableGridDto, TimetableResponse } from "@/lib/timetable-dto";
 
-const CATEGORIES = ["すべて", ...Array.from(new Set(schoolArticles.map((a) => a.category)))];
 const DAY_ACCENTS: Record<TimetableDay, string> = {
   月: "border-sky-100 bg-sky-50 text-sky-900",
   火: "border-rose-100 bg-rose-50 text-rose-900",
@@ -19,7 +18,7 @@ const DAY_ACCENTS: Record<TimetableDay, string> = {
   日: "border-gray-100 bg-gray-50 text-gray-900",
 };
 
-// 研修病院用のダミーデータを追加
+// 研修病院用のダミーデータ（Supabase取得失敗時や未登録時のフォールバック用）
 const dummyHospitals = [
   {
     id: 1,
@@ -51,7 +50,6 @@ function formatClassTime(item: TimetableClassDto) {
 }
 
 export default function SchoolPage() {
-  // activeTabの型に "hospitals" を追加
   const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles" | "hospitals">("timetable");
   const [view, setView] = useState<"main" | "detail">("main");
   const [selectedClass, setSelectedClass] = useState<TimetableClassDto | null>(null);
@@ -64,45 +62,64 @@ export default function SchoolPage() {
   const [loadingTimetable, setLoadingTimetable] = useState(true);
   const [timetableError, setTimetableError] = useState<string | null>(null);
 
+  // 追加: Supabaseから取得したデータを格納するState
+  const [hospitalsData, setHospitalsData] = useState<any[]>([]);
+  const [articlesData, setArticlesData] = useState<any[]>([]);
+
   useEffect(() => {
     let cancelled = false;
 
-    async function loadTimetable() {
+    async function loadData() {
       setLoadingTimetable(true);
       setTimetableError(null);
       try {
-        const response = await fetch("/api/timetable", { cache: "no-store" });
-        const data = (await response.json()) as TimetableResponse | { ok: false; error?: { message?: string } };
-        if (!response.ok || !data.ok) {
-          throw new Error(data.ok ? "時間割の取得に失敗しました" : data.error?.message ?? "時間割の取得に失敗しました");
-        }
+        // 並列で時間割・研修病院・勉強系記事を一括取得
+        const [ttRes, hospRes, artRes] = await Promise.all([
+          fetch("/api/timetable", { cache: "no-store" }).then(res => res.json()),
+          supabaseRestFetch<any[]>({ path: "hospitals?select=*" }).catch(() => []),
+          supabaseRestFetch<any[]>({ path: "articles?type=eq.school&select=*" }).catch(() => [])
+        ]);
+        
         if (!cancelled) {
-          setDays(data.days);
-          setPeriods(data.periods);
-          setClasses(data.items);
-          setTimetableGrid(data.grid);
+          if (ttRes && ttRes.ok) {
+            setDays(ttRes.days);
+            setPeriods(ttRes.periods);
+            setClasses(ttRes.items);
+            setTimetableGrid(ttRes.grid);
+          } else {
+            setTimetableError(ttRes?.error?.message ?? "時間割の取得に失敗しました");
+          }
+          setHospitalsData(hospRes || []);
+          setArticlesData(artRes || []);
         }
       } catch (error) {
-        if (!cancelled) setTimetableError(error instanceof Error ? error.message : "時間割の取得に失敗しました");
+        if (!cancelled) setTimetableError(error instanceof Error ? error.message : "データの取得に失敗しました");
       } finally {
         if (!cancelled) setLoadingTimetable(false);
       }
     }
 
-    void loadTimetable();
+    void loadData();
     return () => {
       cancelled = true;
     };
   }, []);
 
+  // Supabaseにデータがあればそれを使い、なければダミーデータを使用する
+  const displayArticles = articlesData.length > 0 ? articlesData : schoolArticles;
+  const displayHospitals = hospitalsData.length > 0 ? hospitalsData : dummyHospitals;
+
+  // 動的にカテゴリ一覧を生成
+  const dynamicCategories = useMemo(() => ["すべて", ...Array.from(new Set(displayArticles.map((a) => a.category)))], [displayArticles]);
+
   const filteredArticles = useMemo(() => {
-    return schoolArticles.filter((article) => {
+    return displayArticles.filter((article) => {
       const query = searchQuery.trim().toLowerCase();
       const matchQuery = !query || `${article.title} ${article.excerpt || ""}`.toLowerCase().includes(query);
       const matchCategory = selectedCategory === "すべて" || article.category === selectedCategory;
       return matchQuery && matchCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [displayArticles, searchQuery, selectedCategory]);
 
   const syllabusClasses = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -167,7 +184,6 @@ export default function SchoolPage() {
           <button onClick={() => setActiveTab("timetable")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>時間割</button>
           <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>シラバス</button>
           <button onClick={() => setActiveTab("articles")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "articles" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>勉強系記事</button>
-          {/* 研修病院タブを追加 */}
           <button onClick={() => setActiveTab("hospitals")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "hospitals" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>研修病院</button>
         </div>
       </div>
@@ -305,7 +321,7 @@ export default function SchoolPage() {
             </div>
 
             <div className="flex gap-2 overflow-x-auto px-1 pb-1 hide-scrollbar">
-              {CATEGORIES.map((category) => (
+              {dynamicCategories.map((category) => (
                 <button key={category} onClick={() => setSelectedCategory(category)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${selectedCategory === category ? "bg-gray-800 border-gray-800 text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{category}</button>
               ))}
             </div>
@@ -321,12 +337,12 @@ export default function SchoolPage() {
                 <Link key={article.id} href={`/school/articles/${article.id}`} className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group">
                   <div className="flex gap-4 p-4">
                     <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-gray-100">
-                      {article.image ? <img src={article.image} alt={article.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : null}
+                      {article.image_url || article.image ? <img src={article.image_url || article.image} alt={article.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : null}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-50 text-purple-600 rounded">{article.category}</span>
-                        <span className="text-[10px] text-gray-400">{article.date}</span>
+                        <span className="text-[10px] text-gray-400">{article.publish_date || article.date}</span>
                       </div>
                       <h3 className="font-bold text-gray-800 leading-tight line-clamp-2 group-hover:text-orange-600 transition-colors">{article.title}</h3>
                       {article.excerpt ? <p className="text-xs text-gray-500 mt-2 line-clamp-2">{article.excerpt}</p> : null}
@@ -338,7 +354,7 @@ export default function SchoolPage() {
           </div>
         )}
 
-        {/* 研修病院タブの追加 */}
+        {/* 研修病院タブ */}
         {activeTab === "hospitals" && (
           <div className="space-y-4 animate-fade-in">
             <div className="bg-white rounded-2xl shadow-sm border border-orange-50 p-4">
@@ -361,10 +377,10 @@ export default function SchoolPage() {
             </div>
 
             <div className="space-y-4">
-              {dummyHospitals.map(hospital => (
+              {displayHospitals.map(hospital => (
                 <div key={hospital.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                   <div className="relative h-32 bg-gray-200">
-                    <img src={hospital.image} alt={hospital.name} className="w-full h-full object-cover" />
+                    <img src={hospital.image_url || hospital.image} alt={hospital.name} className="w-full h-full object-cover" />
                     <div className="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded shadow-sm">{hospital.type}</div>
                     <div className="absolute top-3 left-20 bg-white text-orange-500 text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1">★ {hospital.rating}</div>
                     <button className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-500 shadow-sm"><BookOpen size={14} /></button>
@@ -374,14 +390,14 @@ export default function SchoolPage() {
                     <p className="text-xs text-gray-500 flex items-center gap-1 mb-3"><MapPin size={12} className="text-orange-400" /> {hospital.location}</p>
                     
                     <div className="flex flex-wrap gap-1.5 mb-3">
-                      {hospital.tags.map(tag => (
+                      {(hospital.tags || []).map((tag: string) => (
                         <span key={tag} className="text-[10px] font-bold px-2 py-0.5 bg-orange-50 text-orange-600 rounded">{tag}</span>
                       ))}
                     </div>
                     
-                    {hospital.departments.length > 0 && (
+                    {hospital.departments && hospital.departments.length > 0 && (
                       <div className="flex gap-2 text-[10px] text-gray-500 mb-3 border-t border-gray-50 pt-2">
-                        {hospital.departments.map(dept => (
+                        {hospital.departments.map((dept: string) => (
                           <span key={dept} className="bg-gray-100 px-1.5 py-0.5 rounded">{dept}</span>
                         ))}
                       </div>
