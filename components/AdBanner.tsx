@@ -23,9 +23,9 @@ export function AdBanner({ type, campaignId, title, imageUrl, sponsorName }: AdB
     <div className={containerClass}>
       <Link
         href={`/campaign/${campaignId}`}
-        className="block relative w-full rounded-xl overflow-hidden shadow-sm group cursor-pointer border border-pink-100"
+        className="block relative w-full rounded-xl overflow-hidden shadow-sm group cursor-pointer border border-orange-100"
       >
-        <div className={`relative ${heights[type]} bg-gradient-to-r from-pink-50 to-rose-50`}>
+        <div className={`relative ${heights[type]} bg-gradient-to-r from-orange-50 to-rose-50`}>
           <img
             src={imageUrl}
             alt={title}
@@ -34,7 +34,7 @@ export function AdBanner({ type, campaignId, title, imageUrl, sponsorName }: AdB
           <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/30 to-transparent flex items-center px-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="bg-pink-500/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
+                <span className="bg-orange-500/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
                   PR
                 </span>
                 <span className="text-white/90 text-[10px] font-medium">{sponsorName}</span>

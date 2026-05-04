@@ -29,7 +29,7 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
           >
             <X size={20} />
           </button>
-          <div className="w-12 h-12 bg-pink-100 text-pink-500 rounded-full mx-auto flex items-center justify-center mb-3">
+          <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full mx-auto flex items-center justify-center mb-3">
             <span className="font-bold text-xl">H</span>
           </div>
           <h2 className="text-xl font-bold text-gray-800">ログインが必要です</h2>
@@ -38,7 +38,7 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
           </p>
         </div>
 
-        <div className="p-6 bg-pink-50/50">
+        <div className="p-6 bg-orange-50/50">
           <button
             onClick={handleLogin}
             className="w-full flex items-center justify-center gap-3 bg-[#06C755] hover:bg-[#05B34C] text-white py-3.5 px-4 rounded-xl font-semibold shadow-sm transition-all active:scale-[0.98]"

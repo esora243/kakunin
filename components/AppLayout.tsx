@@ -47,15 +47,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </div>
 
       {/* Navigation Header */}
-      <nav className="sticky top-[52px] z-40 bg-white/95 backdrop-blur-md border-b border-pink-100 shadow-sm">
+      <nav className="sticky top-[52px] z-40 bg-white/95 backdrop-blur-md border-b border-orange-100 shadow-sm">
         {/* Logo Section */}
-        <div className="flex items-center justify-center px-4 py-1.5 border-b border-pink-50">
+        <div className="flex items-center justify-center px-4 py-1.5 border-b border-orange-50">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
               Hm
             </div>
             <div className="flex flex-col">
-              <h1 className="text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-400 tracking-tight leading-tight">
+              <h1 className="text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-400 tracking-tight leading-tight">
                 Hugmeid
               </h1>
               <p className="text-[9px] text-gray-500 tracking-wide font-light whitespace-nowrap">
@@ -78,7 +78,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                     key={item.name}
                     onClick={() => handleAuthRequired(item.path)}
                     className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 transition-colors rounded-lg min-w-[60px] ${
-                      isActive ? "text-pink-500 bg-pink-50" : "text-gray-600 hover:text-pink-400 hover:bg-pink-50/50"
+                      isActive ? "text-orange-500 bg-orange-50" : "text-gray-600 hover:text-orange-400 hover:bg-orange-50/50"
                     }`}
                   >
                     <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
@@ -92,7 +92,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   key={item.name}
                   href={item.path}
                   className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 transition-colors rounded-lg min-w-[60px] ${
-                    isActive ? "text-pink-500 bg-pink-50" : "text-gray-600 hover:text-pink-400 hover:bg-pink-50/50"
+                    isActive ? "text-orange-500 bg-orange-50" : "text-gray-600 hover:text-orange-400 hover:bg-orange-50/50"
                   }`}
                 >
                   <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
@@ -105,8 +105,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
           {/* Sponsors Link */}
           <Link
             href="/sponsors"
-            className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 transition-colors rounded-lg hover:bg-pink-50 ml-1 ${
-              pathname === "/sponsors" ? "text-pink-500 bg-pink-50" : "text-gray-600 hover:text-pink-500"
+            className={`flex flex-col items-center justify-center gap-0.5 px-2 py-1 transition-colors rounded-lg hover:bg-orange-50 ml-1 ${
+              pathname === "/sponsors" ? "text-orange-500 bg-orange-50" : "text-gray-600 hover:text-orange-500"
             }`}
           >
             <Building2 size={18} />

@@ -61,7 +61,7 @@ export function JobFilterModal({ isOpen, onClose, filters, onApplyFilters }: Job
             <select
               value={localFilters.salaryMin}
               onChange={(e) => toggleFilter("salaryMin", e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
               <option value="">指定なし</option>
               <option value="1000">1,000円以上</option>
@@ -75,7 +75,7 @@ export function JobFilterModal({ isOpen, onClose, filters, onApplyFilters }: Job
 
         <div className="p-4 border-t border-gray-200 flex gap-3">
           <button onClick={handleReset} className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition-colors">リセット</button>
-          <button onClick={handleApply} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-pink-400 to-pink-500 text-white font-bold shadow-md hover:shadow-lg transition-all">適用する</button>
+          <button onClick={handleApply} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold shadow-md hover:shadow-lg transition-all">適用する</button>
         </div>
       </div>
     </div>
@@ -93,7 +93,7 @@ function FilterSection({ title, items, selected, onToggle }: { title: string; it
             key={item}
             onClick={() => onToggle(item)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selected.includes(item) ? "bg-pink-500 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              selected.includes(item) ? "bg-orange-500 text-white shadow-md" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             {item}

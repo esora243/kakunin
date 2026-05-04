@@ -76,7 +76,7 @@ export default function JobDetailPage() {
   if (loading) {
     return (
       <div className="w-full max-w-lg mx-auto bg-white min-h-screen animate-slide-in-right p-6 flex flex-col items-center justify-center text-center">
-        <Loader2 className="text-pink-300 mb-4 animate-spin" size={40} />
+        <Loader2 className="text-orange-300 mb-4 animate-spin" size={40} />
         <p className="text-sm text-gray-500">求人を読み込んでいます</p>
       </div>
     );
@@ -85,10 +85,10 @@ export default function JobDetailPage() {
   if (!job || loadError) {
     return (
       <div className="w-full max-w-lg mx-auto bg-white min-h-screen animate-slide-in-right p-6 flex flex-col items-center justify-center text-center">
-        <Briefcase className="text-pink-200 mb-4" size={44} />
+        <Briefcase className="text-orange-200 mb-4" size={44} />
         <h2 className="text-xl font-bold text-gray-800 mb-2">求人が見つかりません</h2>
         <p className="text-sm text-gray-500 mb-6">{loadError ?? "この求人は削除されたか、まだ登録されていません。"}</p>
-        <Link href="/jobs" className="bg-pink-500 text-white font-bold py-3 px-6 rounded-full hover:bg-pink-600 transition-colors">
+        <Link href="/jobs" className="bg-orange-500 text-white font-bold py-3 px-6 rounded-full hover:bg-orange-600 transition-colors">
           求人一覧へ戻る
         </Link>
       </div>
@@ -97,7 +97,7 @@ export default function JobDetailPage() {
 
   return (
     <div className="w-full max-w-lg mx-auto bg-white min-h-screen animate-slide-in-right">
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-pink-50 px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-orange-50 px-4 py-3 flex items-center justify-between">
         <button onClick={() => router.back()} className="p-2 -ml-2 text-gray-500 hover:bg-gray-50 rounded-full transition-colors">
           <ArrowLeft size={20} />
         </button>
@@ -113,34 +113,34 @@ export default function JobDetailPage() {
       <div className="p-4 space-y-6 pb-28">
         <div>
           <div className="flex gap-2 mb-3 flex-wrap">
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-pink-100 text-pink-600 rounded">{job.category.name}</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 bg-orange-100 text-orange-600 rounded">{job.category.name}</span>
             <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded">{job.employmentType.name}</span>
             {job.requirements ? <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded">{job.requirements}</span> : null}
           </div>
           <h2 className="text-xl font-bold text-gray-800 leading-snug mb-3">{job.title}</h2>
           <div className="flex items-center gap-2 text-sm text-gray-500 border-b border-gray-100 pb-4">
-            <div className="w-6 h-6 rounded-full bg-pink-50 text-pink-500 flex items-center justify-center font-bold text-xs">{job.companyType ?? "求"}</div>
+            <div className="w-6 h-6 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center font-bold text-xs">{job.companyType ?? "求"}</div>
             <span>{job.companyName ?? "会社名未設定"}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-2">
-          <div className="bg-pink-50/50 p-3 rounded-xl flex items-start gap-3">
-            <JapaneseYen className="text-pink-500 mt-0.5" size={18} />
+          <div className="bg-orange-50/50 p-3 rounded-xl flex items-start gap-3">
+            <JapaneseYen className="text-orange-500 mt-0.5" size={18} />
             <div>
               <div className="text-xs text-gray-500 mb-0.5">給与・報酬</div>
               <div className="text-sm font-bold text-gray-800">{job.salaryDisplay ?? "未設定"}</div>
             </div>
           </div>
-          <div className="bg-pink-50/50 p-3 rounded-xl flex items-start gap-3">
-            <MapPin className="text-pink-500 mt-0.5" size={18} />
+          <div className="bg-orange-50/50 p-3 rounded-xl flex items-start gap-3">
+            <MapPin className="text-orange-500 mt-0.5" size={18} />
             <div>
               <div className="text-xs text-gray-500 mb-0.5">勤務地</div>
               <div className="text-sm font-bold text-gray-800">{job.location ?? "未設定"}</div>
             </div>
           </div>
-          <div className="bg-pink-50/50 p-3 rounded-xl flex items-start gap-3">
-            <Clock className="text-pink-500 mt-0.5" size={18} />
+          <div className="bg-orange-50/50 p-3 rounded-xl flex items-start gap-3">
+            <Clock className="text-orange-500 mt-0.5" size={18} />
             <div>
               <div className="text-xs text-gray-500 mb-0.5">勤務時間</div>
               <div className="text-sm font-bold text-gray-800">{job.schedule ?? "未設定"}</div>
@@ -149,8 +149,8 @@ export default function JobDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-base font-bold text-gray-800 flex items-center gap-2 border-b border-pink-100 pb-2">
-            <span className="w-1.5 h-4 bg-pink-400 rounded-full" />
+          <h3 className="text-base font-bold text-gray-800 flex items-center gap-2 border-b border-orange-100 pb-2">
+            <span className="w-1.5 h-4 bg-orange-400 rounded-full" />
             募集要項
           </h3>
           <div className="text-sm text-gray-600 leading-relaxed space-y-4">
@@ -184,7 +184,7 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-pink-100 p-3 pb-safe z-40 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-orange-100 p-3 pb-safe z-40 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
         <div className="max-w-lg mx-auto flex gap-3">
           <SaveButton saved={isSaved("job", job.id)} onClick={handleSave} />
           <button
