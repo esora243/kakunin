@@ -2,13 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, Search, BookOpen, Plus, Loader2, MapPin, UserRound, Building2, ClipboardList } from "lucide-react";
-import { schoolArticles } from "@/lib/data";
-import { siteConfig } from "@/lib/site";
+import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, BookOpen, Plus, Loader2, Building2, ClipboardList } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
-import type { TimetableClassDto, TimetableDay, TimetableGridDto } from "@/lib/timetable-dto";
 
-// 画像のデザインに合わせたカテゴリアクセントカラー
+// カテゴリごとの配色（画像デザイン準拠）
 const CATEGORY_COLORS: Record<string, string> = {
   形態系: "border-orange-200 text-orange-600 bg-orange-50/30",
   機能系: "border-blue-200 text-blue-600 bg-blue-50/30",
@@ -18,8 +15,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   default: "border-gray-200 text-gray-600 bg-white",
 };
 
-// 科目名から色を推測するヘルパー（DBにカテゴリがない場合のフォールバック）
+// 科目名から色を推測
 function getCategoryColor(title: string) {
+  if (!title) return CATEGORY_COLORS["default"];
   if (title.includes("解剖") || title.includes("組織")) return CATEGORY_COLORS["形態系"];
   if (title.includes("生理") || title.includes("臨床入門")) return CATEGORY_COLORS["機能系"];
   if (title.includes("生化学")) return CATEGORY_COLORS["生化学"];
@@ -27,42 +25,41 @@ function getCategoryColor(title: string) {
   return CATEGORY_COLORS["default"];
 }
 
-const dummyHospitals = [
-  { id: 1, name: "浜松医科大学医学部附属病院", location: "静岡県 浜松市", type: "大学病院", rating: "4.5", tags: ["救急豊富", "指導体制充実"], departments: ["救急科"], capacity: 40, image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=500&q=60" }
-];
-
 export default function SchoolPage() {
   const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles" | "hospitals">("timetable");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("すべて");
+  const [loading, setLoading] = useState(true);
   
-  const [days, setDays] = useState<TimetableDay[]>(["月", "火", "水", "木", "金"]);
-  const [periods, setPeriods] = useState([1, 2, 3, 4, 5, 6]);
-  const [timetableGrid, setTimetableGrid] = useState<TimetableGridDto>({ 月: {}, 火: {}, 水: {}, 木: {}, 金: {}, 土: {}, 日: {} });
-  const [classes, setClasses] = useState<TimetableClassDto[]>([]);
-  
+  // データステート
+  const [timetableGrid, setTimetableGrid] = useState<Record<string, Record<number, any>>>({ 月: {}, 火: {}, 水: {}, 木: {}, 金: {}, 土: {}, 日: {} });
   const [hospitalsData, setHospitalsData] = useState<any[]>([]);
   const [articlesData, setArticlesData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const days = ["月", "火", "水", "木", "金"];
+  const periods = [1, 2, 3, 4, 5, 6];
 
   useEffect(() => {
     let cancelled = false;
     async function loadData() {
       setLoading(true);
       try {
+        // Supabaseから直接データを並列取得
         const [ttRes, hospRes, artRes] = await Promise.all([
-          fetch("/api/timetable", { cache: "no-store" }).then(res => res.json()).catch(() => ({ ok: false })),
+          supabaseRestFetch<any[]>({ path: "timetable_classes?select=*" }).catch(() => []),
           supabaseRestFetch<any[]>({ path: "hospitals?select=*" }).catch(() => []),
           supabaseRestFetch<any[]>({ path: "articles?type=eq.school&select=*" }).catch(() => [])
         ]);
         
         if (!cancelled) {
-          if (ttRes && ttRes.ok) {
-            setDays(ttRes.days);
-            setPeriods(ttRes.periods);
-            setClasses(ttRes.items);
-            setTimetableGrid(ttRes.grid);
+          // 取得した時間割データを曜日と時限(period)でグリッド化
+          const newGrid: Record<string, Record<number, any>> = { 月: {}, 火: {}, 水: {}, 木: {}, 金: {}, 土: {}, 日: {} };
+          if (ttRes && Array.isArray(ttRes)) {
+            ttRes.forEach((c) => {
+              if (c.day && c.period && newGrid[c.day]) {
+                newGrid[c.day][c.period] = c;
+              }
+            });
           }
+          setTimetableGrid(newGrid);
           setHospitalsData(hospRes || []);
           setArticlesData(artRes || []);
         }
@@ -75,13 +72,6 @@ export default function SchoolPage() {
     void loadData();
     return () => { cancelled = true; };
   }, []);
-
-  const displayArticles = articlesData.length > 0 ? articlesData : schoolArticles;
-  const displayHospitals = hospitalsData.length > 0 ? hospitalsData : dummyHospitals;
-  const dynamicCategories = useMemo(() => ["すべて", ...Array.from(new Set(displayArticles.map((a) => a.category)))], [displayArticles]);
-  const filteredArticles = useMemo(() => {
-    return displayArticles.filter((a) => (!searchQuery || a.title.includes(searchQuery)) && (selectedCategory === "すべて" || a.category === selectedCategory));
-  }, [displayArticles, searchQuery, selectedCategory]);
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white min-h-screen">
@@ -113,7 +103,7 @@ export default function SchoolPage() {
 
       <div className="p-6">
         {activeTab === "timetable" && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between px-4">
               <button className="p-2 hover:bg-gray-50 rounded-full"><ChevronLeft size={24} className="text-gray-400" /></button>
               <h3 className="text-lg font-bold text-gray-800">2026年4月 第2週</h3>
@@ -143,19 +133,30 @@ export default function SchoolPage() {
                       <span className="text-[10px] font-normal">限</span>
                     </div>
                     {days.map((day) => {
+                      // Supabaseから取得したデータとマッピング
                       const cell = timetableGrid[day]?.[period];
+                      
                       if (!cell) {
                         return <div key={`${day}-${period}`} className="border border-gray-100 rounded-xl bg-gray-50/50 min-h-[100px]" />;
                       }
+                      
                       const style = getCategoryColor(cell.title);
+                      
                       return (
                         <div key={`${day}-${period}`} className={`relative border-2 rounded-xl p-2.5 min-h-[100px] flex flex-col text-left ${style}`}>
                           <span className="font-bold text-sm leading-tight">{cell.title}</span>
                           {cell.room ? <span className="text-[11px] mt-1 opacity-80">{cell.room}</span> : null}
                           
-                          {/* 仮のアイコン表示（画像再現） */}
+                          {/* 講義の開始・終了時間が登録されている場合の表示（ホバー時や詳細で活用可能） */}
+                          {cell.starts_at && (
+                            <span className="text-[9px] mt-0.5 opacity-60 hidden">
+                              {cell.starts_at.substring(0, 5)} - {cell.ends_at?.substring(0, 5)}
+                            </span>
+                          )}
+
                           <div className="absolute bottom-2 left-2 flex gap-1">
-                            <div className="w-2 h-2 rounded-full bg-blue-500" />
+                            {/* 公式データ(is_official)かどうかの判定などでドット色を制御可能 */}
+                            {cell.is_official && <div className="w-2 h-2 rounded-full bg-blue-500" />}
                             <div className="w-2 h-2 rounded-full bg-orange-500" />
                           </div>
                         </div>
@@ -171,7 +172,7 @@ export default function SchoolPage() {
                   <span className="flex items-center gap-1"><div className="w-3 h-3 border-2 border-green-200 bg-green-50 rounded-sm" /> 生化学</span>
                   <span className="flex items-center gap-1"><div className="w-3 h-3 border-2 border-orange-200 bg-orange-50 rounded-sm" /> 病理</span>
                   <span className="flex items-center gap-1"><div className="w-3 h-3 border-2 border-cyan-200 bg-cyan-50 rounded-sm" /> 臨床</span>
-                  <span className="flex items-center gap-1 ml-4"><div className="w-2.5 h-2.5 bg-blue-500 rounded-full" /> Zoom</span>
+                  <span className="flex items-center gap-1 ml-4"><div className="w-2.5 h-2.5 bg-blue-500 rounded-full" /> 公式・Zoom</span>
                   <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-orange-500 rounded-full" /> 通知</span>
                   <span className="flex items-center gap-1"><div className="w-2.5 h-2.5 bg-amber-800 rounded-full" /> 課題</span>
                 </div>
@@ -180,15 +181,37 @@ export default function SchoolPage() {
           </div>
         )}
 
-        {/* 他のタブコンテンツは既存のまま */}
         {activeTab === "hospitals" && (
-           <div className="space-y-4">
-             {displayHospitals.map(h => (
-               <div key={h.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                 <h4 className="font-bold">{h.name}</h4>
-                 <img src={h.image_url || h.image} alt={h.name} className="w-full h-32 object-cover rounded-lg mt-2" />
-               </div>
-             ))}
+           <div className="space-y-4 animate-fade-in">
+             {hospitalsData.length === 0 && !loading ? (
+                <div className="text-center py-10 text-gray-500">研修病院のデータがありません</div>
+             ) : (
+               hospitalsData.map((h: any) => (
+                 <div key={h.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                   <h4 className="font-bold text-gray-800">{h.name}</h4>
+                   <p className="text-xs text-gray-500 mt-1">{h.location} / {h.type}</p>
+                   {h.image_url && <img src={h.image_url} alt={h.name} className="w-full h-32 object-cover rounded-lg mt-3" />}
+                 </div>
+               ))
+             )}
+           </div>
+        )}
+
+        {activeTab === "articles" && (
+           <div className="space-y-4 animate-fade-in">
+             {articlesData.length === 0 && !loading ? (
+                <div className="text-center py-10 text-gray-500">記事のデータがありません</div>
+             ) : (
+               articlesData.map((a: any) => (
+                 <div key={a.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex gap-4">
+                   <div className="flex-1">
+                     <span className="text-[10px] bg-orange-50 text-orange-600 px-2 py-1 rounded font-bold">{a.category}</span>
+                     <h4 className="font-bold text-gray-800 mt-2 leading-tight">{a.title}</h4>
+                     <p className="text-xs text-gray-500 mt-2 line-clamp-2">{a.excerpt}</p>
+                   </div>
+                 </div>
+               ))
+             )}
            </div>
         )}
       </div>
