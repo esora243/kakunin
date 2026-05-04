@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
-import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, BookOpen, Plus, Loader2, Building2, ClipboardList, Search, ImageIcon } from "lucide-react";
+import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, BookOpen, Plus, Loader2, Building2, ClipboardList, Search, Image as ImageIcon } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
 // カテゴリごとの配色（時間割用）
@@ -24,11 +24,11 @@ function getCategoryColor(title: string) {
   return CATEGORY_COLORS["default"];
 }
 
-// 記事用のカテゴリタブ（画像準拠）
+// 記事用のカテゴリタブ
 const ARTICLE_CATEGORIES = ["すべて", "基礎医学", "国試対策", "臨床・実習", "ツール", "キャリア"];
 
 export default function SchoolPage() {
-  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles" | "hospitals">("articles"); // テスト用に初期タブを記事に変更
+  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles" | "hospitals">("articles");
   const [loading, setLoading] = useState(true);
   
   // データステート
@@ -95,7 +95,6 @@ export default function SchoolPage() {
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white min-h-screen font-sans">
-      {/* ページヘッダー */}
       <div className="px-6 py-6 border-b border-gray-100 sticky top-0 bg-white z-20">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">学校</h2>
@@ -106,7 +105,6 @@ export default function SchoolPage() {
           </div>
         </div>
 
-        {/* メインタブ（画像に合わせた配色） */}
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
           <button onClick={() => setActiveTab("timetable")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
             <Calendar size={16} /> 時間割
@@ -123,13 +121,9 @@ export default function SchoolPage() {
         </div>
       </div>
 
-      <div className="p-4 sm:p-6 bg-[#fffcfc]"> {/* 画像のわずかに温かみのある背景色を再現 */}
-        {/* ========================================================= */}
-        {/* 記事タブ (画像デザイン完全準拠) */}
-        {/* ========================================================= */}
+      <div className="p-4 sm:p-6 bg-[#fffcfc]">
         {activeTab === "articles" && (
           <div className="animate-fade-in">
-            {/* 検索バー */}
             <div className="relative mb-4">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
@@ -143,7 +137,6 @@ export default function SchoolPage() {
               />
             </div>
 
-            {/* カテゴリフィルタータグ */}
             <div className="flex gap-2 mb-6 overflow-x-auto hide-scrollbar pb-2">
               {ARTICLE_CATEGORIES.map((cat) => (
                 <button
@@ -160,7 +153,6 @@ export default function SchoolPage() {
               ))}
             </div>
 
-            {/* 記事リスト */}
             {loading ? (
               <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
             ) : filteredArticles.length === 0 ? (
@@ -173,7 +165,6 @@ export default function SchoolPage() {
                     href={article.content_url || `/articles/${article.id}`}
                     className="flex gap-4 p-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow group"
                   >
-                    {/* 左側のサムネイル画像 */}
                     <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
                       {article.image_url ? (
                         <img src={article.image_url} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -181,8 +172,6 @@ export default function SchoolPage() {
                         <BookOpen className="text-gray-300" size={32} />
                       )}
                     </div>
-
-                    {/* 右側のテキストコンテンツ */}
                     <div className="flex-1 min-w-0 flex flex-col justify-center py-1 pr-2">
                       <div className="flex justify-between items-start mb-1.5">
                         <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
@@ -192,11 +181,9 @@ export default function SchoolPage() {
                           {article.publish_date ? article.publish_date.replace(/-/g, '/') : "2026/04/01"}
                         </span>
                       </div>
-                      
                       <h3 className="font-bold text-gray-800 text-sm leading-snug mb-1.5 group-hover:text-orange-600 transition-colors line-clamp-2">
                         {article.title}
                       </h3>
-                      
                       <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
                         {article.excerpt}
                       </p>
@@ -208,6 +195,73 @@ export default function SchoolPage() {
           </div>
         )}
 
-        {/* ========================================================= */}
-        {/* 時間割タブ (既存コードの維持) */}
-        {/* =
+        {activeTab === "timetable" && (
+          <div className="space-y-6 animate-fade-in bg-white p-4 rounded-2xl border border-gray-100">
+            <div className="flex items-center justify-between px-2 mb-4">
+              <button className="p-2 hover:bg-gray-50 rounded-full"><ChevronLeft size={24} className="text-gray-400" /></button>
+              <h3 className="text-lg font-bold text-gray-800">2026年4月 第2週</h3>
+              <button className="p-2 hover:bg-gray-50 rounded-full"><ChevronRight size={24} className="text-gray-400" /></button>
+            </div>
+            
+            {loading ? (
+              <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
+            ) : (
+              <div>
+                <div className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 mb-4">
+                  <div />
+                  {days.map((day, i) => (
+                    <div key={day} className="text-center flex flex-col items-center">
+                      <span className="text-gray-800 text-lg font-bold">{i + 6}</span>
+                      <div className={`text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center mt-1 ${day === '火' ? 'bg-orange-500 text-white' : 'text-gray-500'}`}>
+                        {day}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {periods.map((period) => (
+                  <div key={period} className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 mb-2">
+                    <div className="flex flex-col items-center justify-center text-xs text-gray-400 font-bold">
+                      <span>{period}</span><span className="text-[10px] font-normal">限</span>
+                    </div>
+                    {days.map((day) => {
+                      const cell = timetableGrid[day]?.[period];
+                      if (!cell) return <div key={`${day}-${period}`} className="border border-gray-100 rounded-xl bg-gray-50/50 min-h-[100px]" />;
+                      const style = getCategoryColor(cell.title);
+                      return (
+                        <div key={`${day}-${period}`} className={`relative border-2 rounded-xl p-2.5 min-h-[100px] flex flex-col text-left ${style}`}>
+                          <span className="font-bold text-sm leading-tight">{cell.title}</span>
+                          {cell.room && <span className="text-[11px] mt-1 opacity-80">{cell.room}</span>}
+                          <div className="absolute bottom-2 left-2 flex gap-1">
+                            {cell.is_official && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                            <div className="w-2 h-2 rounded-full bg-orange-500" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "hospitals" && (
+           <div className="space-y-4 animate-fade-in">
+             {hospitalsData.length === 0 && !loading ? (
+                <div className="text-center py-10 text-gray-500 bg-white rounded-2xl border border-gray-100">研修病院のデータがありません</div>
+             ) : (
+               hospitalsData.map((h: any) => (
+                 <div key={h.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                   <h4 className="font-bold text-gray-800">{h.name}</h4>
+                   <p className="text-xs text-gray-500 mt-1">{h.location} / {h.type}</p>
+                   {h.image_url && <img src={h.image_url} alt={h.name} className="w-full h-32 object-cover rounded-lg mt-3" />}
+                 </div>
+               ))
+             )}
+           </div>
+        )}
+      </div>
+    </div>
+  );
+}
