@@ -1,18 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { User, GraduationCap, MapPin, Mail, ChevronRight, LogOut, HelpCircle, Bell, Edit } from "lucide-react";
+import { User, GraduationCap, MapPin, Mail, ChevronRight, LogOut, HelpCircle, Bell, Edit, Camera, FileText } from "lucide-react";
 import { useAuth } from "@/components/AuthContext";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
-type UserProfile = { gender: string; grade: string; university: string; club: string; specialty: string };
+// ニックネーム、氏名、プロフィール写真のプロパティを追加
+type UserProfile = { 
+  profileImage?: string;
+  nickname?: string;
+  fullName?: string;
+  gender: string; 
+  grade: string; 
+  university: string; 
+  club: string; 
+  specialty: string; 
+};
 
 export default function ProfilePage() {
   const { isLoggedIn, logout, openLoginModal } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [mounted, setMounted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -23,6 +34,21 @@ export default function ProfilePage() {
       // localStorage not available
     }
   }, []);
+
+  // プロフィール写真のアップロード処理（ローカルストレージ保存のモック）
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const updated = { ...profile, profileImage: reader.result as string } as UserProfile;
+        setProfile(updated);
+        localStorage.setItem("userProfile", JSON.stringify(updated));
+        toast.success("プロフィール写真を更新しました");
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   if (!mounted) {
     return <div className="w-full max-w-lg mx-auto p-4 min-h-[60vh]" />;
@@ -45,11 +71,27 @@ export default function ProfilePage() {
     <div className="w-full max-w-lg mx-auto bg-[#FFF9FA] min-h-screen animate-slide-in-bottom pb-20">
       <div className="bg-white px-6 py-8 border-b border-orange-100 shadow-sm relative">
         <div className="flex flex-col items-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-300 to-orange-500 flex items-center justify-center text-white font-bold text-3xl shadow-md border-4 border-white mb-3">
-            {profile?.university?.[0] || "医"}
+          
+          {/* プロフィール写真アップロード部分 */}
+          <div className="relative mb-3 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-300 to-orange-500 flex items-center justify-center text-white font-bold text-3xl shadow-md border-4 border-white overflow-hidden">
+              {profile?.profileImage ? (
+                <img src={profile.profileImage} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                profile?.nickname?.[0] || profile?.fullName?.[0] || profile?.university?.[0] || "医"
+              )}
+            </div>
+            <div className="absolute bottom-0 right-0 bg-white p-1.5 rounded-full shadow-sm border border-gray-100 text-gray-600 hover:text-orange-500 transition-colors">
+              <Camera size={16} />
+            </div>
+            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
           </div>
-          <h2 className="text-xl font-bold text-gray-800">{profile ? `${profile.university} ${profile.grade}` : "医学生"}</h2>
-          <p className="text-xs text-gray-500 mt-1 font-medium bg-orange-50 px-3 py-1 rounded-full border border-orange-100">ID: HMD-123456</p>
+
+          {/* アイコンの下にはニックネーム（なければ氏名）を表示 */}
+          <h2 className="text-xl font-bold text-gray-800">{profile?.nickname || profile?.fullName || "ゲストユーザー"}</h2>
+          <p className="text-sm text-gray-500 mt-1 font-medium">{profile ? `${profile.university} ${profile.grade}` : "医学生"}</p>
+          <p className="text-xs text-gray-400 mt-1.5 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">ID: HMD-123456</p>
+          
           {!profile && (
             <button onClick={() => router.push("/register")} className="mt-4 flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:bg-orange-600 active:scale-95 transition-all">
               <Edit size={14} /> プロフィールを登録する
@@ -69,6 +111,14 @@ export default function ProfilePage() {
           <div className="divide-y divide-gray-50">
             {profile && (
               <>
+                {/* 氏名（本名）の表示を追加 */}
+                <div className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gray-50 text-gray-500 flex items-center justify-center"><FileText size={16} /></div>
+                    <div><p className="text-[10px] text-gray-400 font-bold mb-0.5">氏名</p><p className="text-sm text-gray-800 font-medium">{profile.fullName || "未設定"}</p></div>
+                  </div>
+                  <ChevronRight size={16} className="text-gray-300" />
+                </div>
                 <div className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center"><GraduationCap size={16} /></div>
