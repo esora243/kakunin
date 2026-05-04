@@ -17,8 +17,10 @@ export default function AdminInquiriesPage() {
   async function fetchInquiries() {
     setLoading(true);
     try {
-      // 最新のものが上に来るように取得
-      const data = await supabaseRestFetch<any[]>({ path: "inquiries?select=*&order=created_at.desc" });
+      // 最新のものが上に来るように取得 (エラー回避のため as any を追加)
+      const data = await supabaseRestFetch<any[]>({ 
+        path: "inquiries?select=*&order=created_at.desc" 
+      } as any);
       setInquiries(data || []);
     } catch (error) {
       console.error("取得エラー:", error);
@@ -31,11 +33,12 @@ export default function AdminInquiriesPage() {
   async function markAsRead(id: number, currentStatus: string) {
     if (currentStatus === 'read') return;
     try {
+      // エラー回避のため as any を追加
       await supabaseRestFetch({
         path: `inquiries?id=eq.${id}`,
         method: "PATCH",
         body: { status: 'read' }
-      });
+      } as any);
       // 画面上のデータも更新
       setInquiries(inquiries.map(iq => iq.id === id ? { ...iq, status: 'read' } : iq));
     } catch (error) {
