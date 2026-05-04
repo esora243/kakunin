@@ -1,22 +1,41 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, HelpCircle, Users, Globe, Send, Mail } from "lucide-react";
+import { MessageCircle, HelpCircle, Users, Globe, Send, Loader2 } from "lucide-react";
+import { supabaseRestFetch } from "@/lib/supabase/rest"; // Supabase通信用ユーティリティ
 
 export default function ConnectPage() {
   const [activeTab, setActiveTab] = useState<"contact" | "faq" | "ob" | "community">("contact");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    name: "山田 太郎", // プレースホルダーに合わせる
+    name: "山田 太郎", // プレースホルダーに合わせて初期値設定
     email: "",
     type: "",
     content: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 実際の送信ロジックをここに記述
-    console.log("送信データ:", formData);
-    alert("お問い合わせを受け付けました。");
+    setIsSubmitting(true);
+
+    try {
+      // Supabaseの inquiries テーブルにデータを送信（INSERT）
+      await supabaseRestFetch({
+        path: "inquiries",
+        method: "POST",
+        body: formData
+      });
+      
+      alert("お問い合わせを受け付けました。担当者より2営業日以内にご連絡いたします。");
+      
+      // 成功したらフォームをリセット（お名前だけは残す・空にするかはお好みで）
+      setFormData({ name: "山田 太郎", email: "", type: "", content: "" });
+    } catch (error) {
+      console.error("送信エラー:", error);
+      alert("送信に失敗しました。時間をおいて再度お試しください。");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -152,9 +171,18 @@ export default function ConnectPage() {
 
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-colors mt-8"
+                  disabled={isSubmitting}
+                  className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-bold py-4 rounded-xl transition-colors mt-8"
                 >
-                  <Send size={18} /> 送信する
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" /> 送信中...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={18} /> 送信する
+                    </>
+                  )}
                 </button>
               </div>
             </form>
