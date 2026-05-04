@@ -1,162 +1,171 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-// Search アイコンを追加でインポート
-import { Users, Plane, ExternalLink, Instagram, Twitter, Mail, Newspaper, Search } from "lucide-react";
-import { activityArticles, studentGroups, studyAbroadPrograms } from "@/lib/data";
+import { useState } from "react";
+import { MessageCircle, HelpCircle, Users, Globe, Send, Mail } from "lucide-react";
 
-// 記事のカテゴリ一覧を抽出
-const CATEGORIES = ["すべて", ...Array.from(new Set(activityArticles.map((a) => a.category)))];
+export default function ConnectPage() {
+  const [activeTab, setActiveTab] = useState<"contact" | "faq" | "ob" | "community">("contact");
+  const [formData, setFormData] = useState({
+    name: "山田 太郎", // プレースホルダーに合わせる
+    email: "",
+    type: "",
+    content: ""
+  });
 
-export default function ActivitiesPage() {
-  const [activeTab, setActiveTab] = useState<"groups" | "study-abroad" | "articles">("groups");
-  
-  // 検索・フィルタ用のステートを追加
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("すべて");
-
-  const hasContent = useMemo(
-    () => studentGroups.length > 0 || studyAbroadPrograms.length > 0 || activityArticles.length > 0,
-    [],
-  );
-
-  // 検索クエリとカテゴリで記事をフィルタリング
-  const filteredArticles = useMemo(() => {
-    return activityArticles.filter((article) => {
-      const query = searchQuery.trim().toLowerCase();
-      const matchQuery = !query || `${article.title}`.toLowerCase().includes(query);
-      const matchCategory = selectedCategory === "すべて" || article.category === selectedCategory;
-      return matchQuery && matchCategory;
-    });
-  }, [searchQuery, selectedCategory]);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // 実際の送信ロジックをここに記述
+    console.log("送信データ:", formData);
+    alert("お問い合わせを受け付けました。");
+  };
 
   return (
-    <div className="w-full max-w-lg mx-auto pb-8 animate-slide-in-right">
-      <div className="sticky top-[20px] z-30 bg-white border-b border-orange-100 px-4 py-4">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">課外活動</h2>
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar">
-          <button onClick={() => setActiveTab("groups")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "groups" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>👥 学生団体</button>
-          <button onClick={() => setActiveTab("study-abroad")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "study-abroad" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>✈️ 留学情報</button>
-          <button onClick={() => setActiveTab("articles")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "articles" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📝 記事</button>
+    <div className="w-full max-w-4xl mx-auto bg-white min-h-screen">
+      {/* ページヘッダー */}
+      <div className="px-6 py-6 border-b border-gray-100">
+        <h2 className="text-2xl font-bold text-gray-900 tracking-tight mb-6">繋がり</h2>
+
+        {/* タブナビゲーション */}
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+          <button
+            onClick={() => setActiveTab("contact")}
+            className={`shrink-0 flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all ${
+              activeTab === "contact"
+                ? "bg-orange-500 text-white shadow-md"
+                : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <MessageCircle size={18} fill={activeTab === "contact" ? "white" : "none"} /> お問い合わせ
+          </button>
+          <button
+            onClick={() => setActiveTab("faq")}
+            className={`shrink-0 flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all ${
+              activeTab === "faq"
+                ? "bg-orange-500 text-white shadow-md"
+                : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <HelpCircle size={18} /> FAQ
+          </button>
+          <button
+            onClick={() => setActiveTab("ob")}
+            className={`shrink-0 flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all ${
+              activeTab === "ob"
+                ? "bg-orange-500 text-white shadow-md"
+                : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <Users size={18} /> OBマッチング
+          </button>
+          <button
+            onClick={() => setActiveTab("community")}
+            className={`shrink-0 flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all ${
+              activeTab === "community"
+                ? "bg-orange-500 text-white shadow-md"
+                : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <Globe size={18} /> コミュニティ
+          </button>
         </div>
       </div>
 
-      <div className="px-4 pt-3 space-y-4">
-        {!hasContent && (
-          <div className="bg-white rounded-2xl border border-orange-100 p-8 text-center">
-            <Users className="mx-auto text-orange-200 mb-3" size={40} />
-            <p className="text-gray-700 font-bold mb-2">課外活動データは未登録です</p>
-            <p className="text-sm text-gray-500">studentGroups / studyAbroadPrograms / activityArticles に本番データを追加してください。</p>
+      <div className="p-6">
+        {activeTab === "contact" && (
+          <div className="max-w-2xl mx-auto animate-fade-in">
+            {/* 案内パネル */}
+            <div className="bg-orange-50/50 rounded-2xl p-6 border border-orange-100 mb-8 flex gap-4 items-start">
+              <div className="bg-orange-500 text-white p-3 rounded-xl shrink-0">
+                <MessageCircle size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-1">お問い合わせ</h3>
+                <p className="text-sm text-gray-500 mb-3">お気軽にご連絡ください</p>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  ご質問、ご要望、不具合報告など、どんなことでもお気軽にお問い合わせください。担当者より2営業日以内にご連絡いたします。
+                </p>
+              </div>
+            </div>
+
+            {/* お問い合わせフォーム */}
+            <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-8 border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">お名前 *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="山田 太郎"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">メールアドレス *</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="example@email.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">お問い合わせ種別 *</label>
+                  <div className="relative">
+                    <select
+                      required
+                      value={formData.type}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-gray-600"
+                    >
+                      <option value="" disabled>選択してください</option>
+                      <option value="service">サービスに関するご質問</option>
+                      <option value="bug">不具合の報告</option>
+                      <option value="feature">機能追加のご要望</option>
+                      <option value="other">その他</option>
+                    </select>
+                    {/* カスタム矢印 */}
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">お問い合わせ内容 *</label>
+                  <textarea
+                    required
+                    rows={6}
+                    placeholder="お問い合わせ内容をご記入ください"
+                    value={formData.content}
+                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all resize-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-colors mt-8"
+                >
+                  <Send size={18} /> 送信する
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
-        {/* 学生団体タブ */}
-        {activeTab === "groups" && studentGroups.map((group) => (
-          <Link key={group.id} href={`/activities/groups/${group.id}`} className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group">
-            <div className="relative h-40 bg-gray-100">
-              {group.image ? <img src={group.image} alt={group.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : null}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-              <div className="absolute bottom-3 left-3 right-3">
-                <span className="text-[10px] font-bold bg-orange-500 text-white px-2 py-1 rounded-full">{group.category}</span>
-              </div>
-            </div>
-            <div className="p-4">
-              <h3 className="font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">{group.name}</h3>
-              <p className="text-xs text-gray-600 leading-relaxed mb-3 line-clamp-2">{group.description}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 text-xs text-gray-500"><Users size={14} className="text-orange-400" /><span>{group.members}名</span></div>
-                <div className="flex items-center gap-2">
-                  {group.social.instagram && <div className="text-orange-400"><Instagram size={14} /></div>}
-                  {group.social.twitter && <div className="text-blue-400"><Twitter size={14} /></div>}
-                  {group.social.mail && <div className="text-gray-400"><Mail size={14} /></div>}
-                </div>
-              </div>
-            </div>
-          </Link>
-        ))}
-
-        {/* 留学情報タブ */}
-        {activeTab === "study-abroad" && studyAbroadPrograms.map((program) => (
-          <div key={program.id} className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group">
-            <div className="relative h-32 bg-gray-100">
-              {program.image ? <img src={program.image} alt={program.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : null}
-              <div className="absolute top-3 left-3 bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">{program.country}</div>
-            </div>
-            <div className="p-4">
-              <h3 className="font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">{program.title}</h3>
-              <div className="space-y-1.5 text-xs text-gray-600 mb-3">
-                <div className="flex items-center gap-2"><Plane size={12} className="text-orange-400" /><span>{program.duration}</span></div>
-                <div className="flex items-center gap-2"><Users size={12} className="text-orange-400" /><span>{program.organization}</span></div>
-              </div>
-              <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                <span className="text-[10px] text-red-500 font-bold">締切: {program.deadline}</span>
-                {program.url ? (
-                  <a href={program.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600">詳細 <ExternalLink size={12} /></a>
-                ) : <span className="text-[10px] text-gray-400">URL未設定</span>}
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {/* 記事タブ (検索とフィルタを追加) */}
-        {activeTab === "articles" && (
-          <div className="space-y-4 animate-fade-in">
-            
-            {/* 検索バー */}
-            <div className="relative px-1">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
-              <input 
-                type="text" 
-                placeholder="記事を検索..." 
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)} 
-                className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 sm:text-sm transition-colors" 
-              />
-            </div>
-
-            {/* カテゴリフィルタ */}
-            <div className="flex gap-2 overflow-x-auto px-1 pb-1 hide-scrollbar">
-              {CATEGORIES.map((category) => (
-                <button 
-                  key={category} 
-                  onClick={() => setSelectedCategory(category)} 
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${selectedCategory === category ? "bg-gray-800 border-gray-800 text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-
-            {/* 検索結果が0件の場合 */}
-            {filteredArticles.length === 0 && activityArticles.length > 0 && (
-              <div className="bg-white rounded-2xl border border-orange-100 p-8 text-center mt-4">
-                <Newspaper className="mx-auto text-orange-200 mb-3" size={40} />
-                <p className="font-bold text-gray-800 mb-2">該当する記事がありません</p>
-              </div>
-            )}
-
-            {/* 記事リスト (filteredArticlesを使用) */}
-            {filteredArticles.map((article) => (
-              <a key={article.id} href={article.url || "#"} target={article.url ? "_blank" : undefined} rel={article.url ? "noopener noreferrer" : undefined} className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group">
-                <div className="flex gap-4 p-4">
-                  <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-gray-100">
-                    {article.image ? <img src={article.image} alt={article.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : null}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-50 text-purple-600 rounded">{article.category}</span>
-                      <span className="text-[10px] text-gray-400">{article.date}</span>
-                    </div>
-                    <h3 className="font-bold text-gray-800 leading-tight line-clamp-2 group-hover:text-orange-600 transition-colors">{article.title}</h3>
-                    <div className="mt-3 text-xs text-gray-400 flex items-center gap-1"><Newspaper size={12} /> {article.url ? "外部記事へ" : "URL未設定"}</div>
-                  </div>
-                </div>
-              </a>
-            ))}
-          </div>
+        {/* 他のタブのプレースホルダー */}
+        {activeTab !== "contact" && (
+           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+             <p>現在準備中です</p>
+           </div>
         )}
       </div>
     </div>
