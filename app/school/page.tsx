@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, Search, BookOpen, Plus, Loader2, MapPin, UserRound } from "lucide-react";
+// Building2 を追加
+import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, Search, BookOpen, Plus, Loader2, MapPin, UserRound, Building2 } from "lucide-react";
 import { schoolArticles } from "@/lib/data";
 import { siteConfig } from "@/lib/site";
 import type { TimetableClassDto, TimetableDay, TimetableGridDto, TimetableResponse } from "@/lib/timetable-dto";
@@ -18,13 +19,40 @@ const DAY_ACCENTS: Record<TimetableDay, string> = {
   日: "border-gray-100 bg-gray-50 text-gray-900",
 };
 
+// 研修病院用のダミーデータを追加
+const dummyHospitals = [
+  {
+    id: 1,
+    name: "浜松医科大学医学部附属病院",
+    location: "静岡県 浜松市",
+    type: "大学病院",
+    rating: "4.5",
+    tags: ["救急豊富", "指導体制充実", "研究に積極的"],
+    departments: ["救急科", "総合診療科", "内科", "+2"],
+    capacity: 40,
+    image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=500&q=60"
+  },
+  {
+    id: 2,
+    name: "聖隷浜松病院",
+    location: "静岡県 浜松市",
+    type: "市中病院",
+    rating: "4.7",
+    tags: ["救急搬送多数", "手技が豊富", "給与良好"],
+    departments: [],
+    capacity: 25,
+    image: "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=500&q=60"
+  }
+];
+
 function formatClassTime(item: TimetableClassDto) {
   if (!item.startsAt || !item.endsAt) return `${item.period}限`;
   return `${item.period}限 ${item.startsAt}-${item.endsAt}`;
 }
 
 export default function SchoolPage() {
-  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles">("timetable");
+  // activeTabの型に "hospitals" を追加
+  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles" | "hospitals">("timetable");
   const [view, setView] = useState<"main" | "detail">("main");
   const [selectedClass, setSelectedClass] = useState<TimetableClassDto | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -139,6 +167,8 @@ export default function SchoolPage() {
           <button onClick={() => setActiveTab("timetable")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>時間割</button>
           <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>シラバス</button>
           <button onClick={() => setActiveTab("articles")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "articles" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>勉強系記事</button>
+          {/* 研修病院タブを追加 */}
+          <button onClick={() => setActiveTab("hospitals")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "hospitals" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>研修病院</button>
         </div>
       </div>
 
@@ -307,77 +337,8 @@ export default function SchoolPage() {
             )}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-// 必要なインポートに Building2 (研修病院アイコン用) などを追加
-import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, Search, BookOpen, Plus, Loader2, MapPin, UserRound, Building2 } from "lucide-react";
 
-// ... (既存の import や定数定義)
-
-export default function SchoolPage() {
-  // activeTabの型に "hospitals" を追加し、初期値を変更する場合は変更
-  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles" | "hospitals">("timetable");
-  
-  // ... (既存の state や useEffect など)
-
-  // 研修病院用のダミーデータ（コンポーネント内に追加）
-  const dummyHospitals = [
-    {
-      id: 1,
-      name: "浜松医科大学医学部附属病院",
-      location: "静岡県 浜松市",
-      type: "大学病院",
-      rating: "4.5",
-      tags: ["救急豊富", "指導体制充実", "研究に積極的"],
-      departments: ["救急科", "総合診療科", "内科", "+2"],
-      capacity: 40,
-      image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=500&q=60"
-    },
-    {
-      id: 2,
-      name: "聖隷浜松病院",
-      location: "静岡県 浜松市",
-      type: "市中病院",
-      rating: "4.7",
-      tags: ["救急搬送多数", "手技が豊富", "給与良好"],
-      departments: [],
-      capacity: 25,
-      image: "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=500&q=60"
-    }
-  ];
-
-  // ... (途中省略。既存の view === "detail" の処理など)
-
-  return (
-    <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen animate-fade-in">
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-4">
-        {/* ヘッダー部分 */}
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">学校</h2>
-          </div>
-          <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400"><Plus size={16} /></button>
-            <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"><Menu size={16} /></button>
-            <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"><Clock size={16} /></button>
-          </div>
-        </div>
-
-        {/* タブメニュー（オレンジ色に変更、研修病院を追加） */}
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar">
-          <button onClick={() => setActiveTab("timetable")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📅 時間割</button>
-          <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📋 シラバス</button>
-          <button onClick={() => setActiveTab("articles")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "articles" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📚 勉強系記事</button>
-          <button onClick={() => setActiveTab("hospitals")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "hospitals" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>🏥 研修病院</button>
-        </div>
-      </div>
-
-      <div className="px-3 pt-4">
-        {/* 既存の timetable, syllabus, articles タブのコンテンツは省略・そのまま残す */}
-        
-        {/* 研修病院タブのコンテンツを追加 */}
+        {/* 研修病院タブの追加 */}
         {activeTab === "hospitals" && (
           <div className="space-y-4 animate-fade-in">
             <div className="bg-white rounded-2xl shadow-sm border border-orange-50 p-4">
