@@ -1,119 +1,161 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MessageCircle, HelpCircle, Send, ChevronDown, Mail } from "lucide-react";
-import { toast } from "sonner";
-import { allFaqs, faqCategories } from "@/lib/data";
-import { siteConfig } from "@/lib/site";
+import Link from "next/link";
+// Search アイコンを追加でインポート
+import { Users, Plane, ExternalLink, Instagram, Twitter, Mail, Newspaper, Search } from "lucide-react";
+import { activityArticles, studentGroups, studyAbroadPrograms } from "@/lib/data";
 
-export default function ConnectPage() {
-  const [activeTab, setActiveTab] = useState<"contact" | "faq">("contact");
-  const [formData, setFormData] = useState({ name: "", email: "", category: "", message: "" });
-  const [openFaqId, setOpenFaqId] = useState<number | null>(null);
-  const [faqCategory, setFaqCategory] = useState<string>("すべて");
+// 記事のカテゴリ一覧を抽出
+const CATEGORIES = ["すべて", ...Array.from(new Set(activityArticles.map((a) => a.category)))];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("お問い合わせ内容を受け付けました");
-    setFormData({ name: "", email: "", category: "", message: "" });
-  };
+export default function ActivitiesPage() {
+  const [activeTab, setActiveTab] = useState<"groups" | "study-abroad" | "articles">("groups");
+  
+  // 検索・フィルタ用のステートを追加
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("すべて");
 
-  const categories = useMemo(
-    () => (faqCategories.length > 1 ? faqCategories : ["すべて", ...Array.from(new Set(allFaqs.map((faq) => faq.category)))]),
+  const hasContent = useMemo(
+    () => studentGroups.length > 0 || studyAbroadPrograms.length > 0 || activityArticles.length > 0,
     [],
   );
-  const filteredFaqs = faqCategory === "すべて" ? allFaqs : allFaqs.filter((f) => f.category === faqCategory);
+
+  // 検索クエリとカテゴリで記事をフィルタリング
+  const filteredArticles = useMemo(() => {
+    return activityArticles.filter((article) => {
+      const query = searchQuery.trim().toLowerCase();
+      const matchQuery = !query || `${article.title}`.toLowerCase().includes(query);
+      const matchCategory = selectedCategory === "すべて" || article.category === selectedCategory;
+      return matchQuery && matchCategory;
+    });
+  }, [searchQuery, selectedCategory]);
 
   return (
     <div className="w-full max-w-lg mx-auto pb-8 animate-slide-in-right">
       <div className="sticky top-[20px] z-30 bg-white border-b border-orange-100 px-4 py-4">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">繋がり</h2>
-        <div className="flex gap-2">
-          <button onClick={() => setActiveTab("contact")} className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "contact" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>💬 お問い合わせ</button>
-          <button onClick={() => setActiveTab("faq")} className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "faq" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>❓ FAQ</button>
+        <h2 className="text-xl font-bold text-gray-800 mb-4">課外活動</h2>
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar">
+          <button onClick={() => setActiveTab("groups")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "groups" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>👥 学生団体</button>
+          <button onClick={() => setActiveTab("study-abroad")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "study-abroad" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>✈️ 留学情報</button>
+          <button onClick={() => setActiveTab("articles")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "articles" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📝 記事</button>
         </div>
       </div>
 
-      <div className="px-4 pt-3">
-        {activeTab === "contact" ? (
-          <div className="space-y-4">
-            <div className="bg-gradient-to-br from-orange-50 to-rose-50 rounded-2xl p-6 border border-orange-100">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center shadow-md"><MessageCircle className="text-white" size={24} /></div>
-                <div><h3 className="font-bold text-gray-800">お問い合わせ</h3><p className="text-xs text-gray-500">ご質問・掲載依頼・不具合報告</p></div>
+      <div className="px-4 pt-3 space-y-4">
+        {!hasContent && (
+          <div className="bg-white rounded-2xl border border-orange-100 p-8 text-center">
+            <Users className="mx-auto text-orange-200 mb-3" size={40} />
+            <p className="text-gray-700 font-bold mb-2">課外活動データは未登録です</p>
+            <p className="text-sm text-gray-500">studentGroups / studyAbroadPrograms / activityArticles に本番データを追加してください。</p>
+          </div>
+        )}
+
+        {/* 学生団体タブ */}
+        {activeTab === "groups" && studentGroups.map((group) => (
+          <Link key={group.id} href={`/activities/groups/${group.id}`} className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group">
+            <div className="relative h-40 bg-gray-100">
+              {group.image ? <img src={group.image} alt={group.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : null}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+              <div className="absolute bottom-3 left-3 right-3">
+                <span className="text-[10px] font-bold bg-orange-500 text-white px-2 py-1 rounded-full">{group.category}</span>
               </div>
-              <p className="text-xs text-gray-600 leading-relaxed">フォーム送信時の実処理は未接続です。実運用ではAPI連携または外部フォームURLに差し替えてください。</p>
             </div>
-            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-orange-50 p-6 space-y-5">
-              <div>
-                <label className="text-xs font-bold text-gray-600 mb-2 block">お名前 *</label>
-                <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="山田 太郎" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm" />
+            <div className="p-4">
+              <h3 className="font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">{group.name}</h3>
+              <p className="text-xs text-gray-600 leading-relaxed mb-3 line-clamp-2">{group.description}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-xs text-gray-500"><Users size={14} className="text-orange-400" /><span>{group.members}名</span></div>
+                <div className="flex items-center gap-2">
+                  {group.social.instagram && <div className="text-orange-400"><Instagram size={14} /></div>}
+                  {group.social.twitter && <div className="text-blue-400"><Twitter size={14} /></div>}
+                  {group.social.mail && <div className="text-gray-400"><Mail size={14} /></div>}
+                </div>
               </div>
-              <div>
-                <label className="text-xs font-bold text-gray-600 mb-2 block">メールアドレス *</label>
-                <input type="email" required value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="example@email.com" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm" />
+            </div>
+          </Link>
+        ))}
+
+        {/* 留学情報タブ */}
+        {activeTab === "study-abroad" && studyAbroadPrograms.map((program) => (
+          <div key={program.id} className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group">
+            <div className="relative h-32 bg-gray-100">
+              {program.image ? <img src={program.image} alt={program.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : null}
+              <div className="absolute top-3 left-3 bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">{program.country}</div>
+            </div>
+            <div className="p-4">
+              <h3 className="font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">{program.title}</h3>
+              <div className="space-y-1.5 text-xs text-gray-600 mb-3">
+                <div className="flex items-center gap-2"><Plane size={12} className="text-orange-400" /><span>{program.duration}</span></div>
+                <div className="flex items-center gap-2"><Users size={12} className="text-orange-400" /><span>{program.organization}</span></div>
               </div>
-              <div>
-                <label className="text-xs font-bold text-gray-600 mb-2 block">お問い合わせ種別 *</label>
-                <select required value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm">
-                  <option value="">選択してください</option>
-                  <option value="contact">掲載・提携相談</option>
-                  <option value="question">サービスについての質問</option>
-                  <option value="bug">不具合報告</option>
-                  <option value="request">機能リクエスト</option>
-                  <option value="other">その他</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-600 mb-2 block">お問い合わせ内容 *</label>
-                <textarea required value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} placeholder="お問い合わせ内容をご記入ください" rows={6} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm resize-none" />
-              </div>
-              <button type="submit" className="w-full bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold py-3.5 rounded-xl shadow-md hover:shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95">
-                <Send size={18} /> 送信する
-              </button>
-            </form>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-gray-700 flex items-start gap-3">
-              <Mail className="text-blue-500 shrink-0 mt-0.5" size={18} />
-              <div>
-                <p className="font-bold mb-1">連絡先</p>
-                <p>{siteConfig.contactEmail}</p>
+              <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                <span className="text-[10px] text-red-500 font-bold">締切: {program.deadline}</span>
+                {program.url ? (
+                  <a href={program.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600">詳細 <ExternalLink size={12} /></a>
+                ) : <span className="text-[10px] text-gray-400">URL未設定</span>}
               </div>
             </div>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100 mb-3">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center shadow-md"><HelpCircle className="text-white" size={24} /></div>
-                <div><h3 className="font-bold text-gray-800">よくある質問</h3><p className="text-xs text-gray-500">FAQ</p></div>
+        ))}
+
+        {/* 記事タブ (検索とフィルタを追加) */}
+        {activeTab === "articles" && (
+          <div className="space-y-4 animate-fade-in">
+            
+            {/* 検索バー */}
+            <div className="relative px-1">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
               </div>
-              <p className="text-xs text-gray-600">運用FAQを登録するとここに表示されます。</p>
+              <input 
+                type="text" 
+                placeholder="記事を検索..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 sm:text-sm transition-colors" 
+              />
             </div>
-            <div className="flex overflow-x-auto gap-2 pb-4 hide-scrollbar">
-              {categories.map((cat) => (
-                <button key={cat} onClick={() => setFaqCategory(cat)} className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${faqCategory === cat ? "bg-blue-500 text-white shadow-md" : "bg-white text-gray-600 border border-gray-200 hover:border-blue-300"}`}>{cat}</button>
+
+            {/* カテゴリフィルタ */}
+            <div className="flex gap-2 overflow-x-auto px-1 pb-1 hide-scrollbar">
+              {CATEGORIES.map((category) => (
+                <button 
+                  key={category} 
+                  onClick={() => setSelectedCategory(category)} 
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${selectedCategory === category ? "bg-gray-800 border-gray-800 text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                >
+                  {category}
+                </button>
               ))}
             </div>
-            <div className="space-y-3">
-              {filteredFaqs.length === 0 ? (
-                <div className="bg-white rounded-xl shadow-sm border border-orange-50 p-6 text-center text-sm text-gray-500">FAQはまだ登録されていません。</div>
-              ) : filteredFaqs.map((faq) => (
-                <div key={faq.id} className="bg-white rounded-xl shadow-sm border border-orange-50 overflow-hidden">
-                  <button onClick={() => setOpenFaqId(openFaqId === faq.id ? null : faq.id)} className="w-full p-4 flex items-start justify-between text-left hover:bg-orange-50/50 transition-colors">
-                    <div className="flex-1 pr-3">
-                      <div className="flex items-center gap-2 mb-2"><span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-600 rounded">{faq.category}</span></div>
-                      <div className="flex items-start gap-2"><span className="shrink-0 text-orange-500 font-bold text-sm mt-0.5">Q.</span><span className="text-sm font-bold text-gray-800 leading-snug">{faq.question}</span></div>
+
+            {/* 検索結果が0件の場合 */}
+            {filteredArticles.length === 0 && activityArticles.length > 0 && (
+              <div className="bg-white rounded-2xl border border-orange-100 p-8 text-center mt-4">
+                <Newspaper className="mx-auto text-orange-200 mb-3" size={40} />
+                <p className="font-bold text-gray-800 mb-2">該当する記事がありません</p>
+              </div>
+            )}
+
+            {/* 記事リスト (filteredArticlesを使用) */}
+            {filteredArticles.map((article) => (
+              <a key={article.id} href={article.url || "#"} target={article.url ? "_blank" : undefined} rel={article.url ? "noopener noreferrer" : undefined} className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group">
+                <div className="flex gap-4 p-4">
+                  <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-gray-100">
+                    {article.image ? <img src={article.image} alt={article.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> : null}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-50 text-purple-600 rounded">{article.category}</span>
+                      <span className="text-[10px] text-gray-400">{article.date}</span>
                     </div>
-                    <ChevronDown size={20} className={`text-gray-400 shrink-0 transition-transform ${openFaqId === faq.id ? "rotate-180" : ""}`} />
-                  </button>
-                  {openFaqId === faq.id && (
-                    <div className="px-4 pb-4 pt-0 border-t border-gray-50">
-                      <div className="flex items-start gap-2 bg-orange-50/50 p-3 rounded-lg"><span className="shrink-0 text-blue-500 font-bold text-sm mt-0.5">A.</span><p className="text-sm text-gray-700 leading-relaxed">{faq.answer}</p></div>
-                    </div>
-                  )}
+                    <h3 className="font-bold text-gray-800 leading-tight line-clamp-2 group-hover:text-orange-600 transition-colors">{article.title}</h3>
+                    <div className="mt-3 text-xs text-gray-400 flex items-center gap-1"><Newspaper size={12} /> {article.url ? "外部記事へ" : "URL未設定"}</div>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </a>
+            ))}
           </div>
         )}
       </div>
