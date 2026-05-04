@@ -4,9 +4,13 @@ import { SupabaseConfigError } from "@/lib/supabase/rest";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, { params }: { params: { slugOrId: string } }) {
+// 変更点1: params の型を Promise でラップする
+export async function GET(_request: Request, { params }: { params: Promise<{ slugOrId: string }> }) {
   try {
-    const item = await getJobBySlugOrId(params.slugOrId);
+    // 変更点2: params を await して展開する
+    const resolvedParams = await params;
+    const item = await getJobBySlugOrId(resolvedParams.slugOrId);
+    
     if (!item) {
       return NextResponse.json(
         { ok: false, error: { code: "not_found", message: "求人が見つかりません" } },
