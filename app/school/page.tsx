@@ -311,3 +311,132 @@ export default function SchoolPage() {
     </div>
   );
 }
+// 必要なインポートに Building2 (研修病院アイコン用) などを追加
+import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, Search, BookOpen, Plus, Loader2, MapPin, UserRound, Building2 } from "lucide-react";
+
+// ... (既存の import や定数定義)
+
+export default function SchoolPage() {
+  // activeTabの型に "hospitals" を追加し、初期値を変更する場合は変更
+  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles" | "hospitals">("timetable");
+  
+  // ... (既存の state や useEffect など)
+
+  // 研修病院用のダミーデータ（コンポーネント内に追加）
+  const dummyHospitals = [
+    {
+      id: 1,
+      name: "浜松医科大学医学部附属病院",
+      location: "静岡県 浜松市",
+      type: "大学病院",
+      rating: "4.5",
+      tags: ["救急豊富", "指導体制充実", "研究に積極的"],
+      departments: ["救急科", "総合診療科", "内科", "+2"],
+      capacity: 40,
+      image: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=500&q=60"
+    },
+    {
+      id: 2,
+      name: "聖隷浜松病院",
+      location: "静岡県 浜松市",
+      type: "市中病院",
+      rating: "4.7",
+      tags: ["救急搬送多数", "手技が豊富", "給与良好"],
+      departments: [],
+      capacity: 25,
+      image: "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=500&q=60"
+    }
+  ];
+
+  // ... (途中省略。既存の view === "detail" の処理など)
+
+  return (
+    <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen animate-fade-in">
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-4">
+        {/* ヘッダー部分 */}
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">学校</h2>
+          </div>
+          <div className="flex gap-2">
+            <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-400"><Plus size={16} /></button>
+            <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"><Menu size={16} /></button>
+            <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"><Clock size={16} /></button>
+          </div>
+        </div>
+
+        {/* タブメニュー（オレンジ色に変更、研修病院を追加） */}
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar">
+          <button onClick={() => setActiveTab("timetable")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📅 時間割</button>
+          <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📋 シラバス</button>
+          <button onClick={() => setActiveTab("articles")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "articles" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📚 勉強系記事</button>
+          <button onClick={() => setActiveTab("hospitals")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "hospitals" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>🏥 研修病院</button>
+        </div>
+      </div>
+
+      <div className="px-3 pt-4">
+        {/* 既存の timetable, syllabus, articles タブのコンテンツは省略・そのまま残す */}
+        
+        {/* 研修病院タブのコンテンツを追加 */}
+        {activeTab === "hospitals" && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-sm border border-orange-50 p-4">
+              <h3 className="font-bold text-gray-800 mb-3">研修病院情報</h3>
+              
+              <div className="relative mb-4">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" />
+                </div>
+                <input type="text" placeholder="病院名・地域で検索" className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                <button className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-orange-500 text-white">すべて</button>
+                <button className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white border border-gray-200 text-gray-600">大学病院</button>
+                <button className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white border border-gray-200 text-gray-600">市中病院</button>
+                <button className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white border border-gray-200 text-gray-600">専門病院</button>
+                <button className="shrink-0 px-4 py-1.5 rounded-full text-xs font-bold bg-white border border-gray-200 text-gray-600">地域医療</button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {dummyHospitals.map(hospital => (
+                <div key={hospital.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="relative h-32 bg-gray-200">
+                    <img src={hospital.image} alt={hospital.name} className="w-full h-full object-cover" />
+                    <div className="absolute top-3 left-3 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-1 rounded shadow-sm">{hospital.type}</div>
+                    <div className="absolute top-3 left-20 bg-white text-orange-500 text-[10px] font-bold px-2 py-1 rounded shadow-sm flex items-center gap-1">★ {hospital.rating}</div>
+                    <button className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-gray-500 shadow-sm"><BookOpen size={14} /></button>
+                  </div>
+                  <div className="p-4">
+                    <h4 className="font-bold text-gray-800 text-base mb-1">{hospital.name}</h4>
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mb-3"><MapPin size={12} className="text-orange-400" /> {hospital.location}</p>
+                    
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {hospital.tags.map(tag => (
+                        <span key={tag} className="text-[10px] font-bold px-2 py-0.5 bg-orange-50 text-orange-600 rounded">{tag}</span>
+                      ))}
+                    </div>
+                    
+                    {hospital.departments.length > 0 && (
+                      <div className="flex gap-2 text-[10px] text-gray-500 mb-3 border-t border-gray-50 pt-2">
+                        {hospital.departments.map(dept => (
+                          <span key={dept} className="bg-gray-100 px-1.5 py-0.5 rounded">{dept}</span>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-50 pt-3">
+                      <span className="flex items-center gap-1"><UserRound size={12} /> 研修医: {hospital.capacity}名</span>
+                      <ChevronRight size={16} className="text-orange-500" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
