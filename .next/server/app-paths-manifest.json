@@ -1,7 +1,0 @@
-{
-  "/api/jobs/route": "app/api/jobs/route.js",
-  "/page": "app/page.js",
-  "/jobs/page": "app/jobs/page.js",
-  "/saved/page": "app/saved/page.js",
-  "/profile/page": "app/profile/page.js"
-}

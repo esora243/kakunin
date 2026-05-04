@@ -2,28 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 :root {
-  color-scheme: light;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  min-height: 100%;
-  background: #fff8f4;
-  color: #1f2937;
+  --background: #FFF9FA;
+  --foreground: #1f2937;
 }
 
 body {
-  font-family: Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: 'Noto Sans JP', 'Inter', sans-serif;
 }
 
-* {
-  box-sizing: border-box;
+/* Hide scrollbar */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-
-a {
-  color: inherit;
-  text-decoration: none;
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

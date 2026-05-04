@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
+import { SavedItemsProvider } from "@/components/SavedItemsContext";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ja">
       <body>
         <AuthProvider>
-          <AppLayout>{children}</AppLayout>
+          <SavedItemsProvider>
+            <AppLayout>{children}</AppLayout>
+          </SavedItemsProvider>
         </AuthProvider>
       </body>
     </html>

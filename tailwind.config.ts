@@ -4,27 +4,31 @@ const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./hooks/**/*.{js,ts,jsx,tsx,mdx}",
     "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
-      colors: {
-        brand: {
-          50: "#fff8f4",
-          100: "#ffeedf",
-          200: "#ffd8b0",
-          300: "#ffbd7c",
-          400: "#ff9c47",
-          500: "#ff7e1b",
-          600: "#ea680f",
-          700: "#c2540f",
-          800: "#9a4514",
-          900: "#7c3a14",
+      fontFamily: {
+        sans: ["'Noto Sans JP'", "'Inter'", "sans-serif"],
+      },
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "slide-in-from-bottom": {
+          "0%": { transform: "translateY(8px)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        "slide-in-from-right": {
+          "0%": { transform: "translateX(8px)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
         },
       },
-      boxShadow: {
-        soft: "0 16px 48px rgba(255, 126, 27, 0.12)",
+      animation: {
+        "fade-in": "fade-in 0.3s ease-out",
+        "slide-in-bottom": "slide-in-from-bottom 0.3s ease-out",
+        "slide-in-right": "slide-in-from-right 0.3s ease-out",
       },
     },
   },

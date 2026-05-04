@@ -1,64 +1,101 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, ExternalLink, Lock } from "lucide-react";
+import { Bookmark, Briefcase, Megaphone, Trash2 } from "lucide-react";
 import { useAuth } from "@/components/AuthContext";
-import { useJobBookmarks } from "@/hooks/useJobBookmarks";
+import { useSavedItems } from "@/components/SavedItemsContext";
+import { allCampaigns, allJobs } from "@/lib/data";
 
 export default function SavedPage() {
-  const { isLoggedIn, openLoginModal, hydrated } = useAuth();
-  const { bookmarks, loading } = useJobBookmarks();
-
-  if (!hydrated) {
-    return <div className="rounded-[28px] bg-white p-8 text-sm text-slate-500 shadow-soft ring-1 ring-brand-100">認証状態を確認中...</div>;
-  }
+  const { isLoggedIn, openLoginModal } = useAuth();
+  const { savedItems, hydrated, removeSaved } = useSavedItems();
 
   if (!isLoggedIn) {
     return (
-      <div className="rounded-[32px] bg-white p-10 text-center shadow-soft ring-1 ring-brand-100">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 text-brand-600">
-          <Lock className="h-6 w-6" />
-        </div>
-        <h1 className="mt-4 text-2xl font-bold text-slate-900">保存一覧</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">bookmark は users / bookmarks テーブルに紐づくため、閲覧にはログインが必要です。</p>
-        <button onClick={openLoginModal} className="mt-6 inline-flex rounded-full bg-brand-500 px-5 py-3 text-sm font-semibold text-white shadow-soft">
-          LINEでログイン
-        </button>
+      <div className="w-full max-w-lg mx-auto p-4 flex flex-col items-center justify-center min-h-[60vh]">
+        <Bookmark size={48} className="text-pink-200 mb-4" />
+        <h2 className="text-xl font-bold text-gray-800 mb-2">保存機能</h2>
+        <p className="text-sm text-gray-500 mb-6 text-center">保存した求人やキャンペーンを見るにはログインが必要です</p>
+        <button onClick={openLoginModal} className="bg-pink-500 text-white font-bold py-3 px-8 rounded-full shadow-sm hover:bg-pink-600 transition-colors">ログインする</button>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <section className="rounded-[32px] bg-white p-6 shadow-soft ring-1 ring-brand-100">
-        <h1 className="text-2xl font-bold text-slate-900">保存済み求人</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">/api/bookmarks から自分の保存済みデータを取得しています。</p>
-      </section>
+  const resolvedItems = savedItems
+    .map((entry) => {
+      if (entry.type === "job") {
+        const job = allJobs.find((item) => String(item.id) === entry.id);
+        if (!job) return null;
+        return {
+          key: `job-${entry.id}`,
+          href: `/jobs/${entry.id}`,
+          title: job.title,
+          subtitle: job.company,
+          meta: `${job.location} / ${job.salaryDisplay}`,
+          typeLabel: "求人",
+          type: entry.type,
+          id: entry.id,
+        };
+      }
 
-      <section className="grid gap-4">
-        {loading ? (
-          <div className="rounded-[28px] bg-white p-8 text-sm text-slate-500 shadow-soft ring-1 ring-brand-100">読み込み中...</div>
-        ) : bookmarks.length === 0 ? (
-          <div className="rounded-[28px] bg-white p-8 text-sm text-slate-500 shadow-soft ring-1 ring-brand-100">まだ保存済み求人はありません。</div>
+      const campaign = allCampaigns.find((item) => item.id === entry.id);
+      if (!campaign) return null;
+      return {
+        key: `campaign-${entry.id}`,
+        href: `/campaign/${entry.id}`,
+        title: campaign.title,
+        subtitle: campaign.company,
+        meta: `${campaign.date} / ${campaign.location}`,
+        typeLabel: "キャンペーン",
+        type: entry.type,
+        id: entry.id,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+
+  return (
+    <div className="w-full max-w-lg mx-auto pb-20 animate-fade-in">
+      <div className="sticky top-[110px] z-30 bg-[#FFF9FA]/90 backdrop-blur-md pt-2 pb-3 px-4 border-b border-pink-100">
+        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <Bookmark className="text-pink-500" /> 保存済み
+        </h2>
+      </div>
+      <div className="px-4 pt-6 space-y-4">
+        {!hydrated ? (
+          <div className="text-center text-sm text-gray-500">読み込み中...</div>
+        ) : resolvedItems.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-pink-100 p-8 text-center">
+            <Bookmark className="mx-auto text-pink-200 mb-3" size={40} />
+            <p className="font-bold text-gray-800 mb-2">保存済みアイテムはまだありません</p>
+            <p className="text-sm text-gray-500">求人詳細やキャンペーン詳細から保存すると、ここに一覧表示されます。</p>
+          </div>
         ) : (
-          bookmarks.map((bookmark) => (
-            <article key={bookmark.job_id} className="rounded-[28px] bg-white p-6 shadow-soft ring-1 ring-brand-100">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="inline-flex items-center gap-2 text-sm font-medium text-brand-700"><Bookmark className="h-4 w-4 fill-current" />保存済み</p>
-                  <h2 className="mt-2 text-xl font-semibold text-slate-900">{bookmark.jobs?.title || "削除された求人"}</h2>
-                  <p className="mt-1 text-sm text-slate-500">{bookmark.jobs?.company_name || "-"}</p>
-                  <p className="mt-3 text-sm text-slate-600">{bookmark.jobs?.salary_display || bookmark.jobs?.salary || "給与未設定"}</p>
-                </div>
-                <Link href={`/jobs/${bookmark.job_id}`} className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
-                  詳細へ
-                  <ExternalLink className="h-4 w-4" />
-                </Link>
+          resolvedItems.map((item) => (
+            <div key={item.key} className="bg-white rounded-2xl border border-pink-50 p-4 shadow-sm flex items-start gap-3">
+              <div className="w-11 h-11 rounded-xl bg-pink-50 text-pink-500 flex items-center justify-center shrink-0">
+                {item.type === "job" ? <Briefcase size={20} /> : <Megaphone size={20} />}
               </div>
-            </article>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-pink-100 text-pink-600">{item.typeLabel}</span>
+                </div>
+                <Link href={item.href} className="font-bold text-gray-800 hover:text-pink-600 transition-colors block line-clamp-2">
+                  {item.title}
+                </Link>
+                <p className="text-sm text-gray-500 mt-1">{item.subtitle}</p>
+                <p className="text-xs text-gray-400 mt-1">{item.meta}</p>
+              </div>
+              <button
+                onClick={() => removeSaved(item.type, item.id)}
+                className="text-gray-300 hover:text-red-500 transition-colors"
+                aria-label="保存解除"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
           ))
         )}
-      </section>
+      </div>
     </div>
   );
 }
