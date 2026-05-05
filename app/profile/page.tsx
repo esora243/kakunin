@@ -1,274 +1,259 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { 
-  Calendar, Clock, ChevronRight, ChevronLeft, Menu, Plus, Loader2, Building2, ClipboardList, 
-  MoreVertical, MapPin, GraduationCap // ← GraduationCap をインポートに追加
-} from "lucide-react";
-import { supabaseRestFetch } from "@/lib/supabase/rest";
-import { useAuth } from "@/components/AuthContext";
-import Link from "next/link";
 
-// ---------------------------------------------------------
-// 型定義と定数
-// ---------------------------------------------------------
-type ClassData = {
-  id: number;
-  title: string;
-  instructor?: string;
-  room?: string;
-  location?: string;
-  day: string;
-  period: number;
-  starts_at?: string;
-  ends_at?: string;
-  is_official: boolean;
-  university_name: string;
-  academic_year: number;
-  category?: string; 
-};
 
-const CATEGORY_STYLES: Record<string, { border: string, bg: string, text: string, pill: string }> = {
-  形態系: { border: "border-orange-200", bg: "bg-orange-50/50", text: "text-orange-700", pill: "bg-orange-50 text-orange-600 border-orange-100" },
-  機能系: { border: "border-blue-200", bg: "bg-blue-50/50", text: "text-blue-700", pill: "bg-blue-50 text-blue-600 border-blue-100" },
-  生化学: { border: "border-green-200", bg: "bg-green-50/50", text: "text-green-700", pill: "bg-green-50 text-green-600 border-green-100" },
-  病理: { border: "border-amber-200", bg: "bg-amber-50/50", text: "text-amber-700", pill: "bg-amber-50 text-amber-600 border-amber-100" },
-  臨床: { border: "border-teal-200", bg: "bg-teal-50/50", text: "text-teal-700", pill: "bg-teal-50 text-teal-600 border-teal-100" },
-  default: { border: "border-gray-200", bg: "bg-white", text: "text-gray-700", pill: "bg-gray-100 text-gray-600 border-gray-200" },
-};
+import { useState } from "react";
 
-const DAYS = ["月", "火", "水", "木", "金"];
-const PERIODS = [1, 2, 3, 4, 5, 6];
+import { User, GraduationCap, Building2, Save, Loader2, ChevronDown } from "lucide-react";
 
-// 日付ユーティリティ
-function getWeekDates(baseDate: Date) {
-  const dayOfWeek = baseDate.getDay();
-  const diffToMonday = baseDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-  const monday = new Date(baseDate.setDate(diffToMonday));
-  return Array.from({ length: 5 }).map((_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return d;
+// ※必要に応じて authやsupabaseのフックをインポートしてください
+
+
+
+// --- 選択肢の定義 ---
+
+const UNIVERSITIES = [
+
+  "山口大学",
+
+  "浜松医科大学",
+
+];
+
+
+
+const GRADES = [1, 2, 3, 4, 5, 6];
+
+
+
+export default function ProfileEditPage() {
+
+  const [isSaving, setIsSaving] = useState(false);
+
+ 
+
+  // プロフィールの状態（初期値は仮のものです。実際はDBから取得した値をセットしてください）
+
+  const [profile, setProfile] = useState({
+
+    name: "医学 太郎",
+
+    university: "山口大学",
+
+    faculty: "医学部", // 選択肢を増やさない場合は固定でも可
+
+    grade: 3,
+
   });
-}
-function getWeekOfMonthString(date: Date) {
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const firstDay = new Date(year, month - 1, 1).getDay() || 7;
-  const weekNumber = Math.ceil((date.getDate() + firstDay - 1) / 7);
-  return `${year}年${month}月 第${weekNumber}週`;
-}
 
-export default function SchoolPage() {
-  // ★ 修正ポイント: useAuth から `user` ではなく `isLoggedIn` などの利用可能な状態を取得するように変更するか、
-  // 現時点ではAuthContextの型定義との衝突を避けるため、一旦直接Supabaseや固定値でテストできるようにします。
-  // 今回はテスト表示のため、固定のプロファイルデータを使用するようにフォールバックを設けます。
-  const { isLoggedIn } = useAuth();
-  
-  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus">("timetable");
-  const [loading, setLoading] = useState(true);
-  
-  const [classes, setClasses] = useState<ClassData[]>([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
-  const weekDates = useMemo(() => getWeekDates(new Date(currentDate)), [currentDate]);
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        // ★ 修正ポイント: 本来は `profiles` テーブルから取得しますが、
-        // 現状 `user.id` が使えないため、「浜松医科大学・4年」のデータを直接取得する形で表示をテストします。
-        // プロフィール機能が完全に統合された後に、ここを再度連動させます。
-        
-        const uniName = "浜松医科大学";
-        const acaYear = 4;
 
-        const queryPath = `timetable_classes?university_name=eq.${encodeURIComponent(uniName)}&academic_year=eq.${acaYear}&select=*`;
-        const res = await supabaseRestFetch<ClassData[]>({ path: queryPath });
-        
-        if (res) {
-          setClasses(res);
-        }
-      } catch (error) {
-        console.error("データ取得に失敗しました:", error);
-      } finally {
-        setLoading(false);
-      }
+  const handleSave = async (e: React.FormEvent) => {
+
+    e.preventDefault();
+
+    setIsSaving(true);
+
+   
+
+    try {
+
+      // --- ここにSupabaseへの保存処理を記述 ---
+
+      // 例: await supabaseRestFetch({ path: 'users?id=eq.YOUR_ID', method: 'PATCH', body: profile });
+
+     
+
+      // 疑似的なローディング遅延（テスト用）
+
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      alert("プロフィールを更新しました。");
+
+    } catch (error) {
+
+      console.error("保存エラー:", error);
+
+      alert("エラーが発生しました。");
+
+    } finally {
+
+      setIsSaving(false);
+
     }
-    fetchData();
-  }, [isLoggedIn]);
 
-  const handlePrevWeek = () => {
-    const prev = new Date(currentDate);
-    prev.setDate(prev.getDate() - 7);
-    setCurrentDate(prev);
   };
 
-  const handleNextWeek = () => {
-    const next = new Date(currentDate);
-    next.setDate(next.getDate() + 7);
-    setCurrentDate(next);
-  };
 
-  // ---------------------------------------------------------
-  // 詳細画面
-  // ---------------------------------------------------------
-  const renderDetailView = () => {
-    if (!selectedClass) return null;
-    const style = CATEGORY_STYLES[selectedClass.category || 'default'];
-
-    return (
-      <div className="bg-white min-h-[800px] animate-fade-in pb-20">
-        <div className="flex items-center justify-between px-4 py-4 mb-2">
-          <button onClick={() => setSelectedClass(null)} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
-            <ChevronLeft size={24} />
-          </button>
-          <h2 className="text-base font-bold text-gray-800">授業の詳細</h2>
-          <button className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
-            <MoreVertical size={20} />
-          </button>
-        </div>
-
-        <div className="px-6">
-          <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border mb-4 ${style.pill}`}>
-            {selectedClass.category || "講義"}
-          </div>
-          
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">{selectedClass.title}</h1>
-          <p className="text-sm font-bold text-gray-600 mb-8">
-            {selectedClass.day}・{selectedClass.period}限 {selectedClass.starts_at?.slice(0, 5) || ""} {selectedClass.room || ""} {selectedClass.instructor || ""}
-          </p>
-
-          <div className="flex border-b border-gray-200 mb-6">
-            <button className="flex-1 pb-3 text-sm font-bold text-orange-500 border-b-2 border-orange-500 text-center">基本情報</button>
-            <button className="flex-1 pb-3 text-sm font-bold text-gray-400 hover:text-gray-600 text-center transition-colors">課題</button>
-            <button className="flex-1 pb-3 text-sm font-bold text-gray-400 hover:text-gray-600 text-center transition-colors">メモ・通知</button>
-          </div>
-
-          <h3 className="text-sm font-bold text-gray-800 mb-4">授業情報</h3>
-          <div className="bg-gray-50 rounded-2xl p-5 mb-6 space-y-4 border border-gray-100">
-            <div className="flex items-center gap-4">
-              <Clock size={16} className="text-gray-400" />
-              <span className="text-sm text-gray-700">{selectedClass.starts_at?.slice(0, 5)} - {selectedClass.ends_at?.slice(0, 5)}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <MapPin size={16} className="text-gray-400" />
-              <span className="text-sm text-gray-700">{selectedClass.room || "教室未定"}</span>
-            </div>
-            {selectedClass.location && (
-              <div className="flex items-center gap-4">
-                <Building2 size={16} className="text-gray-400" />
-                <span className="text-sm text-gray-700">{selectedClass.location}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ---------------------------------------------------------
-  // 時間割グリッド
-  // ---------------------------------------------------------
-  const renderTimetableGrid = () => {
-    const today = new Date();
-
-    return (
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm animate-fade-in overflow-x-auto">
-        <div className="flex items-center justify-between mb-6 min-w-[500px]">
-          <button onClick={handlePrevWeek} className="p-2 hover:bg-gray-50 rounded-full transition-colors"><ChevronLeft size={24} className="text-gray-400" /></button>
-          <h3 className="text-lg font-bold text-gray-800">{getWeekOfMonthString(currentDate)}</h3>
-          <button onClick={handleNextWeek} className="p-2 hover:bg-gray-50 rounded-full transition-colors"><ChevronRight size={24} className="text-gray-400" /></button>
-        </div>
-        
-        {loading ? (
-           <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
-        ) : (
-          <div className="min-w-[500px]">
-            <div className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 sm:gap-3 mb-4">
-              <div />
-              {weekDates.map((date, i) => {
-                const isToday = date.toDateString() === today.toDateString();
-                return (
-                  <div key={i} className="text-center flex flex-col items-center">
-                    <span className={`text-base font-bold ${isToday ? 'text-orange-500' : 'text-gray-800'}`}>{date.getDate()}</span>
-                    <div className={`text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center mt-0.5 ${isToday ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500'}`}>
-                      {DAYS[i]}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {PERIODS.map((period) => (
-              <div key={period} className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 sm:gap-3 mb-2 sm:mb-3">
-                <div className="flex flex-col items-center justify-center text-gray-400">
-                  <span className="text-sm font-bold">{period}</span>
-                  <span className="text-[10px] font-bold">限</span>
-                </div>
-                
-                {DAYS.map((day) => {
-                  const cellClass = classes.find(c => c.day === day && c.period === period);
-                  
-                  if (!cellClass) {
-                    return <div key={`${day}-${period}`} className="border border-gray-100 rounded-xl min-h-[90px] sm:min-h-[110px]" />;
-                  }
-
-                  const style = CATEGORY_STYLES[cellClass.category || 'default'];
-
-                  return (
-                    <button 
-                      key={`${day}-${period}`} 
-                      onClick={() => setSelectedClass(cellClass)}
-                      className={`relative border-2 rounded-xl p-2.5 sm:p-3 min-h-[90px] sm:min-h-[110px] flex flex-col text-left transition-transform hover:scale-[1.02] ${style.border} ${style.bg}`}
-                    >
-                      <span className={`font-bold text-[13px] sm:text-sm leading-tight ${style.text}`}>
-                        {cellClass.title}
-                      </span>
-                      {cellClass.room && (
-                        <span className="text-[10px] sm:text-[11px] mt-1 text-gray-400 font-bold">{cellClass.room}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white min-h-screen font-sans">
-      {!selectedClass && (
-        <div className="px-6 py-6 border-b border-gray-100 sticky top-0 bg-white z-20">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">学校</h2>
-            <div className="flex gap-3">
-              <button className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"><Plus size={20} strokeWidth={2} /></button>
-              <button className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"><Menu size={20} strokeWidth={2} /></button>
-              <button className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"><Clock size={20} strokeWidth={2} /></button>
-            </div>
-          </div>
 
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-            <button onClick={() => setActiveTab("timetable")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
-              <Calendar size={16} /> 時間割
-            </button>
-            <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
-              <ClipboardList size={16} /> シラバス
-            </button>
-          </div>
-        </div>
-      )}
+    <div className="w-full max-w-2xl mx-auto bg-white min-h-screen p-6 font-sans">
 
-      <div className={`bg-[#fffcfc] ${!selectedClass ? 'p-4 sm:p-6' : ''}`}>
-        {activeTab === "timetable" && (
-          selectedClass ? renderDetailView() : renderTimetableGrid()
-        )}
+      <div className="mb-8">
+
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+
+          <User className="text-orange-500" /> プロフィール設定
+
+        </h1>
+
+        <p className="text-sm text-gray-500 mt-1">あなたの所属情報を正確に登録してください。この情報をもとに時間割が表示されます。</p>
+
       </div>
+
+
+
+      <form onSubmit={handleSave} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
+
+       
+
+        {/* 名前入力 (テキスト) */}
+
+        <div>
+
+          <label className="block text-sm font-bold text-gray-700 mb-2">お名前</label>
+
+          <input
+
+            type="text"
+
+            required
+
+            value={profile.name}
+
+            onChange={(e) => setProfile({...profile, name: e.target.value})}
+
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-gray-800 font-medium"
+
+            placeholder="山田 太郎"
+
+          />
+
+        </div>
+
+
+
+        {/* 大学選択 (セレクトボックス) */}
+
+        <div>
+
+          <label className="block text-sm font-bold text-gray-700 mb-2">大学名 <span className="text-orange-500 text-xs font-normal">※必須</span></label>
+
+          <div className="relative">
+
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+
+              <Building2 className="h-5 w-5 text-gray-400" />
+
+            </div>
+
+            <select
+
+              required
+
+              value={profile.university}
+
+              onChange={(e) => setProfile({...profile, university: e.target.value})}
+
+              className="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-gray-800 font-bold"
+
+            >
+
+              <option value="" disabled>選択してください</option>
+
+              {UNIVERSITIES.map(uni => (
+
+                <option key={uni} value={uni}>{uni}</option>
+
+              ))}
+
+            </select>
+
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+
+              <ChevronDown size={16} />
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        {/* 学年選択 (セレクトボックス) */}
+
+        <div>
+
+          <label className="block text-sm font-bold text-gray-700 mb-2">学年 <span className="text-orange-500 text-xs font-normal">※必須</span></label>
+
+          <div className="relative">
+
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+
+              <GraduationCap className="h-5 w-5 text-gray-400" />
+
+            </div>
+
+            <select
+
+              required
+
+              value={profile.grade}
+
+              onChange={(e) => setProfile({...profile, grade: parseInt(e.target.value)})}
+
+              className="w-full pl-11 pr-10 py-3 rounded-xl border border-gray-200 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-gray-800 font-bold"
+
+            >
+
+              <option value="" disabled>選択してください</option>
+
+              {GRADES.map(g => (
+
+                <option key={g} value={g}>{g}年生</option>
+
+              ))}
+
+            </select>
+
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+
+              <ChevronDown size={16} />
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        {/* 保存ボタン */}
+
+        <button
+
+          type="submit"
+
+          disabled={isSaving}
+
+          className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-bold py-3.5 rounded-xl transition-colors mt-8 shadow-sm"
+
+        >
+
+          {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+
+          {isSaving ? "保存中..." : "プロフィールを保存"}
+
+        </button>
+
+
+
+      </form>
+
     </div>
+
   );
+
 }
