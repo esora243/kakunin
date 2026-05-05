@@ -2,264 +2,371 @@
 
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
-import { Calendar, Clock, ChevronRight, ChevronLeft, Menu, BookOpen, Plus, Loader2, Building2, ClipboardList, Search, Image as ImageIcon } from "lucide-react";
+import { 
+  Calendar, Clock, ChevronRight, ChevronLeft, Menu, BookOpen, Plus, Loader2, Building2, ClipboardList, 
+  Search, Image as ImageIcon, MoreVertical, MapPin, Video, Edit2, CheckSquare, Square 
+} from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
-// カテゴリごとの配色（時間割用）
-const CATEGORY_COLORS: Record<string, string> = {
-  形態系: "border-orange-200 text-orange-600 bg-orange-50/30",
-  機能系: "border-blue-200 text-blue-600 bg-blue-50/30",
-  生化学: "border-green-200 text-green-600 bg-green-50/30",
-  病理: "border-orange-200 text-orange-600 bg-orange-50/30",
-  臨床: "border-cyan-200 text-cyan-600 bg-cyan-50/30",
-  default: "border-gray-200 text-gray-600 bg-white",
+// ---------------------------------------------------------
+// 型定義
+// ---------------------------------------------------------
+type ClassTask = {
+  id: string;
+  title: string;
+  deadline: string;
+  completed: boolean;
+  days_left?: number;
 };
 
-function getCategoryColor(title: string) {
-  if (!title) return CATEGORY_COLORS["default"];
-  if (title.includes("解剖") || title.includes("組織")) return CATEGORY_COLORS["形態系"];
-  if (title.includes("生理") || title.includes("臨床入門")) return CATEGORY_COLORS["機能系"];
-  if (title.includes("生化学")) return CATEGORY_COLORS["生化学"];
-  if (title.includes("病理")) return CATEGORY_COLORS["病理"];
-  return CATEGORY_COLORS["default"];
+type ClassData = {
+  id: string;
+  title: string;
+  category: string;
+  day: string; 
+  periods: number[]; 
+  room: string;
+  professor?: string;
+  timeDisplay?: string;
+  term?: string;
+  zoomUrl?: string;
+  hasZoom?: boolean;
+  hasNotice?: boolean;
+  hasTask?: boolean;
+  tasks?: ClassTask[];
+};
+
+// 色の定義
+const CATEGORY_STYLES: Record<string, { border: string, bg: string, text: string, pill: string }> = {
+  形態系: { border: "border-orange-200", bg: "bg-orange-50/50", text: "text-orange-700", pill: "bg-orange-50 text-orange-600 border-orange-100" },
+  機能系: { border: "border-blue-200", bg: "bg-blue-50/50", text: "text-blue-700", pill: "bg-blue-50 text-blue-600 border-blue-100" },
+  生化学: { border: "border-green-200", bg: "bg-green-50/50", text: "text-green-700", pill: "bg-green-50 text-green-600 border-green-100" },
+  病理: { border: "border-amber-200", bg: "bg-amber-50/50", text: "text-amber-700", pill: "bg-amber-50 text-amber-600 border-amber-100" },
+  臨床: { border: "border-teal-200", bg: "bg-teal-50/50", text: "text-teal-700", pill: "bg-teal-50 text-teal-600 border-teal-100" },
+  default: { border: "border-gray-200", bg: "bg-white", text: "text-gray-700", pill: "bg-gray-100 text-gray-600 border-gray-200" },
+};
+
+const DAYS = ["月", "火", "水", "木", "金"];
+const PERIODS = [1, 2, 3, 4, 5, 6];
+
+// 日付計算ユーティリティ
+function getWeekDates(baseDate: Date) {
+  const dayOfWeek = baseDate.getDay();
+  const diffToMonday = baseDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+  const monday = new Date(baseDate.setDate(diffToMonday));
+  
+  return Array.from({ length: 5 }).map((_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
 }
 
-// 記事用のカテゴリタブ
-const ARTICLE_CATEGORIES = ["すべて", "基礎医学", "国試対策", "臨床・実習", "ツール", "キャリア"];
+function getWeekOfMonthString(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const firstDay = new Date(year, month - 1, 1).getDay() || 7;
+  const weekNumber = Math.ceil((date.getDate() + firstDay - 1) / 7);
+  return `${year}年${month}月 第${weekNumber}週`;
+}
 
 export default function SchoolPage() {
-  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles" | "hospitals">("articles");
+  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles" | "hospitals">("timetable");
   const [loading, setLoading] = useState(true);
   
-  // データステート
-  const [timetableGrid, setTimetableGrid] = useState<Record<string, Record<number, any>>>({ 月: {}, 火: {}, 水: {}, 木: {}, 金: {}, 土: {}, 日: {} });
-  const [hospitalsData, setHospitalsData] = useState<any[]>([]);
-  const [articlesData, setArticlesData] = useState<any[]>([]);
+  // ユーザープロフィールの状態（将来的にログイン情報から取得）
+  const [userProfile] = useState({
+    university: '山口大学',
+    faculty: '医学部',
+    grade: 3
+  });
 
-  // 記事検索・フィルター用ステート
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeArticleCategory, setActiveArticleCategory] = useState("すべて");
+  // 時間割用ステート
+  const [classes, setClasses] = useState<ClassData[]>([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
+  const weekDates = useMemo(() => getWeekDates(new Date(currentDate)), [currentDate]);
 
-  const days = ["月", "火", "水", "木", "金"];
-  const periods = [1, 2, 3, 4, 5, 6];
-
+  // DBから時間割データを取得
   useEffect(() => {
     let cancelled = false;
-    async function loadData() {
+    async function fetchClasses() {
       setLoading(true);
       try {
-        const [ttRes, hospRes, artRes] = await Promise.all([
-          supabaseRestFetch<any[]>({ path: "timetable_classes?select=*" }).catch(() => []),
-          supabaseRestFetch<any[]>({ path: "hospitals?select=*" }).catch(() => []),
-          supabaseRestFetch<any[]>({ path: "articles?type=eq.school&select=*" }).catch(() => [])
-        ]);
+        // 学校名と学年でフィルタリングし、リレーションで class_tasks も一緒に取得
+        const queryPath = `timetable_classes?university=eq.${encodeURIComponent(userProfile.university)}&grade=eq.${userProfile.grade}&select=*,tasks:class_tasks(*)`;
+        const res = await supabaseRestFetch<any[]>({ path: queryPath });
         
-        if (!cancelled) {
-          const newGrid: Record<string, Record<number, any>> = { 月: {}, 火: {}, 水: {}, 木: {}, 金: {}, 土: {}, 日: {} };
-          if (ttRes && Array.isArray(ttRes)) {
-            ttRes.forEach((c) => {
-              if (c.day && c.period && newGrid[c.day]) {
-                newGrid[c.day][c.period] = c;
-              }
-            });
-          }
-          setTimetableGrid(newGrid);
-          setHospitalsData(hospRes || []);
-          setArticlesData(artRes || []);
+        if (!cancelled && res && Array.isArray(res)) {
+          // DBのデータをアプリ用の型にマッピング
+          const formattedClasses = res.map(c => ({
+            id: c.id,
+            title: c.title,
+            category: c.category || 'default',
+            day: c.day,
+            periods: c.periods || [],
+            room: c.room || '',
+            professor: c.professor,
+            timeDisplay: c.time_display,
+            term: c.term,
+            zoomUrl: c.zoom_url,
+            hasZoom: !!c.zoom_url,
+            hasNotice: c.has_notice,
+            hasTask: c.tasks && c.tasks.length > 0,
+            tasks: c.tasks || []
+          }));
+          setClasses(formattedClasses);
         }
       } catch (error) {
-        console.error("データ取得エラー:", error);
+        console.error("時間割の取得に失敗しました:", error);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    void loadData();
+    fetchClasses();
     return () => { cancelled = true; };
-  }, []);
+  }, [userProfile]);
 
-  // 記事のフィルタリングロジック
-  const filteredArticles = useMemo(() => {
-    return articlesData.filter((article) => {
-      const matchesCategory = 
-        activeArticleCategory === "すべて" || 
-        article.category === activeArticleCategory;
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = 
-        !query || 
-        article.title?.toLowerCase().includes(query) ||
-        article.excerpt?.toLowerCase().includes(query);
-      
-      return matchesCategory && matchesSearch;
-    });
-  }, [articlesData, searchQuery, activeArticleCategory]);
+  const handlePrevWeek = () => {
+    const prev = new Date(currentDate);
+    prev.setDate(prev.getDate() - 7);
+    setCurrentDate(prev);
+  };
 
-  return (
-    <div className="w-full max-w-4xl mx-auto bg-white min-h-screen font-sans">
-      <div className="px-6 py-6 border-b border-gray-100 sticky top-0 bg-white z-20">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">学校</h2>
-          <div className="flex gap-3">
-            <button className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"><Plus size={20} strokeWidth={2} /></button>
-            <button className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"><Menu size={20} strokeWidth={2} /></button>
-            <button className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"><Clock size={20} strokeWidth={2} /></button>
+  const handleNextWeek = () => {
+    const next = new Date(currentDate);
+    next.setDate(next.getDate() + 7);
+    setCurrentDate(next);
+  };
+
+  // 詳細画面コンポーネント
+  const renderDetailView = () => {
+    if (!selectedClass) return null;
+    const style = CATEGORY_STYLES[selectedClass.category] || CATEGORY_STYLES.default;
+
+    return (
+      <div className="bg-white min-h-[800px] animate-fade-in pb-20">
+        <div className="flex items-center justify-between px-4 py-4 mb-2">
+          <button onClick={() => setSelectedClass(null)} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+            <ChevronLeft size={24} />
+          </button>
+          <h2 className="text-base font-bold text-gray-800">授業の詳細</h2>
+          <button className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+            <MoreVertical size={20} />
+          </button>
+        </div>
+
+        <div className="px-6">
+          <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border mb-4 ${style.pill}`}>
+            {selectedClass.category}
           </div>
-        </div>
+          
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">{selectedClass.title}</h1>
+          <p className="text-sm font-bold text-gray-600 mb-8">
+            {selectedClass.day}・{selectedClass.periods.join("〜")}限 {selectedClass.timeDisplay || "時間未設定"} {selectedClass.room} {selectedClass.professor || ""}
+          </p>
 
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-          <button onClick={() => setActiveTab("timetable")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
-            <Calendar size={16} /> 時間割
-          </button>
-          <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
-            <ClipboardList size={16} /> シラバス
-          </button>
-          <button onClick={() => setActiveTab("articles")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "articles" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
-            <BookOpen size={16} fill={activeTab === "articles" ? "white" : "none"} /> 勉強系記事
-          </button>
-          <button onClick={() => setActiveTab("hospitals")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "hospitals" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
-            <Building2 size={16} /> 研修病院
-          </button>
-        </div>
-      </div>
+          <div className="flex border-b border-gray-200 mb-6">
+            <button className="flex-1 pb-3 text-sm font-bold text-orange-500 border-b-2 border-orange-500 text-center">基本情報</button>
+            <button className="flex-1 pb-3 text-sm font-bold text-gray-400 hover:text-gray-600 text-center transition-colors">課題</button>
+            <button className="flex-1 pb-3 text-sm font-bold text-gray-400 hover:text-gray-600 text-center transition-colors">メモ・通知</button>
+          </div>
 
-      <div className="p-4 sm:p-6 bg-[#fffcfc]">
-        {activeTab === "articles" && (
-          <div className="animate-fade-in">
-            <div className="relative mb-4">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="記事を検索..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium placeholder:text-gray-400"
-              />
+          <h3 className="text-sm font-bold text-gray-800 mb-4">授業情報</h3>
+          <div className="bg-gray-50 rounded-2xl p-5 mb-6 space-y-4 border border-gray-100">
+            <div className="flex items-center gap-4">
+              <Clock size={16} className="text-gray-400" />
+              <span className="text-sm text-gray-700">{selectedClass.timeDisplay || "時間未設定"}</span>
             </div>
-
-            <div className="flex gap-2 mb-6 overflow-x-auto hide-scrollbar pb-2">
-              {ARTICLE_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveArticleCategory(cat)}
-                  className={`shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all border ${
-                    activeArticleCategory === cat
-                      ? "bg-gray-800 text-white border-gray-800"
-                      : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div className="flex items-center gap-4">
+              <Calendar size={16} className="text-gray-400" />
+              <span className="text-sm text-gray-700">{selectedClass.term || "前期"}</span>
             </div>
-
-            {loading ? (
-              <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
-            ) : filteredArticles.length === 0 ? (
-              <div className="text-center py-20 text-gray-400 font-bold bg-white rounded-2xl border border-gray-100">記事が見つかりません</div>
-            ) : (
-              <div className="space-y-4">
-                {filteredArticles.map((article: any) => (
-                  <Link 
-                    key={article.id} 
-                    href={article.content_url || `/articles/${article.id}`}
-                    className="flex gap-4 p-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow group"
-                  >
-                    <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
-                      {article.image_url ? (
-                        <img src={article.image_url} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                      ) : (
-                        <BookOpen className="text-gray-300" size={32} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col justify-center py-1 pr-2">
-                      <div className="flex justify-between items-start mb-1.5">
-                        <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
-                          {article.category || "その他"}
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap ml-2">
-                          {article.publish_date ? article.publish_date.replace(/-/g, '/') : "2026/04/01"}
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-gray-800 text-sm leading-snug mb-1.5 group-hover:text-orange-600 transition-colors line-clamp-2">
-                        {article.title}
-                      </h3>
-                      <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                        {article.excerpt}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
+            <div className="flex items-center gap-4">
+              <MapPin size={16} className="text-gray-400" />
+              <span className="text-sm text-gray-700">{selectedClass.room}</span>
+            </div>
+            {selectedClass.zoomUrl && (
+              <div className="flex items-center gap-4">
+                <Video size={16} className="text-gray-400" />
+                <a href={`https://${selectedClass.zoomUrl}`} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline">
+                  {selectedClass.zoomUrl}
+                </a>
               </div>
             )}
           </div>
-        )}
 
-        {activeTab === "timetable" && (
-          <div className="space-y-6 animate-fade-in bg-white p-4 rounded-2xl border border-gray-100">
-            <div className="flex items-center justify-between px-2 mb-4">
-              <button className="p-2 hover:bg-gray-50 rounded-full"><ChevronLeft size={24} className="text-gray-400" /></button>
-              <h3 className="text-lg font-bold text-gray-800">2026年4月 第2週</h3>
-              <button className="p-2 hover:bg-gray-50 rounded-full"><ChevronRight size={24} className="text-gray-400" /></button>
+          {selectedClass.zoomUrl && (
+            <div className="flex gap-3 mb-10">
+              <button className="flex-1 py-3.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors">
+                <Video size={18} /> Zoomを開く
+              </button>
+              <button className="flex-1 py-3.5 bg-white text-gray-600 border border-gray-200 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
+                <Edit2 size={18} /> URLを編集
+              </button>
             </div>
-            
-            {loading ? (
-              <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
-            ) : (
-              <div>
-                <div className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 mb-4">
-                  <div />
-                  {days.map((day, i) => (
-                    <div key={day} className="text-center flex flex-col items-center">
-                      <span className="text-gray-800 text-lg font-bold">{i + 6}</span>
-                      <div className={`text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center mt-1 ${day === '火' ? 'bg-orange-500 text-white' : 'text-gray-500'}`}>
-                        {day}
+          )}
+
+          <h3 className="text-sm font-bold text-gray-800 mb-4">課題</h3>
+          <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+            {selectedClass.tasks && selectedClass.tasks.length > 0 ? (
+              <div className="space-y-4">
+                {selectedClass.tasks.map((task) => (
+                  <div key={task.id} className={`flex items-start gap-3 pb-4 ${task !== selectedClass.tasks![selectedClass.tasks!.length-1] ? 'border-b border-gray-200/60' : ''}`}>
+                    <button className="mt-0.5">
+                      {task.completed ? <CheckSquare className="text-orange-300" size={20} /> : <Square className="text-orange-500" size={20} />}
+                    </button>
+                    <div>
+                      <h4 className={`text-sm font-bold mb-1 ${task.completed ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{task.title}</h4>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs ${task.completed ? 'text-gray-400' : 'text-gray-500'}`}>提出期限 : {task.deadline}</span>
+                        {task.completed ? (
+                          <span className="text-xs text-gray-400">提出済み</span>
+                        ) : task.days_left && (
+                          <span className="text-xs text-orange-500 font-bold">（残り{task.days_left}日）</span>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                {periods.map((period) => (
-                  <div key={period} className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 mb-2">
-                    <div className="flex flex-col items-center justify-center text-xs text-gray-400 font-bold">
-                      <span>{period}</span><span className="text-[10px] font-normal">限</span>
-                    </div>
-                    {days.map((day) => {
-                      const cell = timetableGrid[day]?.[period];
-                      if (!cell) return <div key={`${day}-${period}`} className="border border-gray-100 rounded-xl bg-gray-50/50 min-h-[100px]" />;
-                      const style = getCategoryColor(cell.title);
-                      return (
-                        <div key={`${day}-${period}`} className={`relative border-2 rounded-xl p-2.5 min-h-[100px] flex flex-col text-left ${style}`}>
-                          <span className="font-bold text-sm leading-tight">{cell.title}</span>
-                          {cell.room && <span className="text-[11px] mt-1 opacity-80">{cell.room}</span>}
-                          <div className="absolute bottom-2 left-2 flex gap-1">
-                            {cell.is_official && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-                            <div className="w-2 h-2 rounded-full bg-orange-500" />
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">課題はありません</p>
             )}
+            
+            <button className="flex items-center gap-2 text-orange-500 font-bold text-sm mt-4 hover:text-orange-600 transition-colors">
+              <Plus size={18} /> 課題を追加
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 時間割グリッド画面
+  const renderTimetableGrid = () => {
+    const today = new Date();
+
+    return (
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm animate-fade-in overflow-x-auto">
+        <div className="flex items-center justify-between mb-6 min-w-[500px]">
+          <button onClick={handlePrevWeek} className="p-2 hover:bg-gray-50 rounded-full transition-colors"><ChevronLeft size={24} className="text-gray-400" /></button>
+          <h3 className="text-lg font-bold text-gray-800">{getWeekOfMonthString(currentDate)}</h3>
+          <button onClick={handleNextWeek} className="p-2 hover:bg-gray-50 rounded-full transition-colors"><ChevronRight size={24} className="text-gray-400" /></button>
+        </div>
+        
+        {loading ? (
+           <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
+        ) : (
+          <div className="min-w-[500px]">
+            <div className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 sm:gap-3 mb-4">
+              <div />
+              {weekDates.map((date, i) => {
+                const isToday = date.toDateString() === today.toDateString();
+                return (
+                  <div key={i} className="text-center flex flex-col items-center">
+                    <span className={`text-base font-bold ${isToday ? 'text-orange-500' : 'text-gray-800'}`}>{date.getDate()}</span>
+                    <div className={`text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center mt-0.5 ${isToday ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500'}`}>
+                      {DAYS[i]}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {PERIODS.map((period) => (
+              <div key={period} className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 sm:gap-3 mb-2 sm:mb-3">
+                <div className="flex flex-col items-center justify-center text-gray-400">
+                  <span className="text-sm font-bold">{period}</span>
+                  <span className="text-[10px] font-bold">限</span>
+                </div>
+                
+                {DAYS.map((day) => {
+                  const cellClass = classes.find(c => c.day === day && c.periods.includes(period));
+                  const isContinuation = cellClass && cellClass.periods[0] !== period;
+                  
+                  if (!cellClass) {
+                    return <div key={`${day}-${period}`} className="border border-gray-100 rounded-xl min-h-[90px] sm:min-h-[110px]" />;
+                  }
+
+                  const style = CATEGORY_STYLES[cellClass.category] || CATEGORY_STYLES.default;
+
+                  return (
+                    <button 
+                      key={`${day}-${period}`} 
+                      onClick={() => setSelectedClass(cellClass)}
+                      className={`relative border-2 rounded-xl p-2.5 sm:p-3 min-h-[90px] sm:min-h-[110px] flex flex-col text-left transition-transform hover:scale-[1.02] ${style.border} ${style.bg} ${isContinuation ? 'border-t-0 rounded-t-none opacity-80' : ''}`}
+                    >
+                      <span className={`font-bold text-[13px] sm:text-sm leading-tight ${style.text}`}>
+                        {isContinuation ? "(続き)" : cellClass.title}
+                      </span>
+                      {!isContinuation && cellClass.room && (
+                        <span className="text-[10px] sm:text-[11px] mt-1 text-gray-400 font-bold">{cellClass.room}</span>
+                      )}
+                      
+                      {!isContinuation && (
+                        <div className="absolute bottom-2 left-2.5 flex gap-1.5">
+                          {cellClass.hasZoom && <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm" />}
+                          {cellClass.hasNotice && <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm" />}
+                          {cellClass.hasTask && <div className="w-2.5 h-2.5 rounded-full bg-amber-700 shadow-sm" />}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5 mt-8 pt-6 border-t border-gray-50">
+              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-orange-200 fill-orange-50" /> 形態系</div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-blue-200 fill-blue-50" /> 機能系</div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-green-200 fill-green-50" /> 生化学</div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-amber-200 fill-amber-50" /> 病理</div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-teal-200 fill-teal-50" /> 臨床</div>
+              <div className="w-px h-3 bg-gray-300 mx-1 hidden sm:block"></div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600"><div className="w-2 h-2 rounded-full bg-blue-500" /> Zoom</div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600"><div className="w-2 h-2 rounded-full bg-orange-500" /> 通知</div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600"><div className="w-2 h-2 rounded-full bg-amber-700" /> 課題</div>
+            </div>
           </div>
         )}
+      </div>
+    );
+  };
 
-        {activeTab === "hospitals" && (
-           <div className="space-y-4 animate-fade-in">
-             {hospitalsData.length === 0 && !loading ? (
-                <div className="text-center py-10 text-gray-500 bg-white rounded-2xl border border-gray-100">研修病院のデータがありません</div>
-             ) : (
-               hospitalsData.map((h: any) => (
-                 <div key={h.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                   <h4 className="font-bold text-gray-800">{h.name}</h4>
-                   <p className="text-xs text-gray-500 mt-1">{h.location} / {h.type}</p>
-                   {h.image_url && <img src={h.image_url} alt={h.name} className="w-full h-32 object-cover rounded-lg mt-3" />}
-                 </div>
-               ))
-             )}
-           </div>
+  return (
+    <div className="w-full max-w-4xl mx-auto bg-white min-h-screen font-sans">
+      {!selectedClass && (
+        <div className="px-6 py-6 border-b border-gray-100 sticky top-0 bg-white z-20">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">学校</h2>
+            <div className="flex gap-3">
+              <button className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"><Plus size={20} strokeWidth={2} /></button>
+              <button className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"><Menu size={20} strokeWidth={2} /></button>
+              <button className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"><Clock size={20} strokeWidth={2} /></button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+            <button onClick={() => setActiveTab("timetable")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
+              <Calendar size={16} /> 時間割
+            </button>
+            <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
+              <ClipboardList size={16} /> シラバス
+            </button>
+            <button onClick={() => setActiveTab("articles")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "articles" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
+              <BookOpen size={16} fill={activeTab === "articles" ? "white" : "none"} /> 勉強系記事
+            </button>
+            <button onClick={() => setActiveTab("hospitals")} className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${activeTab === "hospitals" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
+              <Building2 size={16} /> 研修病院
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={`bg-[#fffcfc] ${!selectedClass ? 'p-4 sm:p-6' : ''}`}>
+        {activeTab === "timetable" && (
+          selectedClass ? renderDetailView() : renderTimetableGrid()
         )}
       </div>
     </div>
