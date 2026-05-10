@@ -2,27 +2,21 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Calendar,
-  Tag,
-  Share2,
-  ExternalLink,
-} from "lucide-react";
-import { schoolArticles } from "@/lib/data";
+import { ArrowLeft, Calendar, Tag, Share2, ExternalLink } from "lucide-react";
+import { activityArticles, schoolArticles } from "@/lib/data";
 
 /**
- * 学校記事(勉強系) 詳細ページ
- * - Hugmeid mock の SchoolArticleDetail.tsx 準拠:
- *   - sticky 上部ヘッダー(orange-100 border)
- *   - ヒーロー画像
- *   - カテゴリ pill (blue-50) + 日付
- *   - 本文 + 元記事への外部リンク導線
+ * 統合 記事詳細ページ
+ * - /articles/[id] : 学校 + 課外活動 の両 records をローカルから取得して描画。
+ * - Hugmeid mock の SchoolArticleDetail / Activities article の見た目を踏襲。
  */
-export default function SchoolArticleDetailPage() {
+export default function ArticleDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const article = schoolArticles.find((item) => item.id === Number(params.id));
+  const id = Number(params.id);
+  const article =
+    schoolArticles.find((item) => item.id === id) ||
+    activityArticles.find((item) => item.id === id);
 
   if (!article) {
     return (
@@ -33,10 +27,10 @@ export default function SchoolArticleDetailPage() {
             この記事は未登録、または削除されています。
           </p>
           <Link
-            href="/school"
+            href="/articles"
             className="bg-orange-500 text-white font-bold px-6 py-3 rounded-full"
           >
-            学校ページへ戻る
+            記事一覧へ戻る
           </Link>
         </div>
       </div>
@@ -48,7 +42,7 @@ export default function SchoolArticleDetailPage() {
       <div className="w-full max-w-lg mx-auto">
         <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-100 px-4 py-3 flex items-center gap-3 shadow-sm">
           <button
-            onClick={() => router.push("/school")}
+            onClick={() => router.push("/articles")}
             className="text-gray-600 hover:text-orange-500"
             aria-label="戻る"
           >
@@ -63,17 +57,13 @@ export default function SchoolArticleDetailPage() {
         <div className="animate-fade-in">
           <div className="w-full h-64 bg-gray-100">
             {article.image ? (
-              <img
-                src={article.image}
-                alt={article.title}
-                className="w-full h-full object-cover"
-              />
+              <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
             ) : null}
           </div>
 
           <div className="px-4 py-6 border-b border-orange-50">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full flex items-center gap-1">
+              <span className="text-xs font-bold px-2.5 py-1 bg-purple-50 text-purple-600 rounded-full flex items-center gap-1">
                 <Tag size={12} />
                 {article.category}
               </span>
@@ -82,9 +72,7 @@ export default function SchoolArticleDetailPage() {
                 {article.date}
               </span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 leading-tight">
-              {article.title}
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-800 leading-tight">{article.title}</h1>
           </div>
 
           <div className="px-4 py-6">
@@ -103,7 +91,7 @@ export default function SchoolArticleDetailPage() {
               </a>
             ) : (
               <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-sm text-gray-600">
-                外部記事URLは未設定です。schoolArticles に url を追加すると導線を設置できます。
+                外部記事URLは未設定です。記事データに url を追加すると導線を設置できます。
               </div>
             )}
           </div>

@@ -3,6 +3,13 @@
 import { X } from "lucide-react";
 import { siteConfig } from "@/lib/site";
 
+/**
+ * LoginModal
+ * - Hugmeid mock のデザイン準拠:
+ *   1) 上部白パネル + オレンジリング H ロゴ
+ *   2) 下部 orange-50/50 パネル + LINE 緑 (#06C755) CTA
+ * - LINE LIFF / LINE OAuth のリンクを設定可能(siteConfig.lineLoginUrl)。
+ */
 type LoginModalProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -25,16 +32,19 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
         <div className="relative pt-6 pb-4 px-6 text-center border-b border-gray-100">
           <button
             onClick={onClose}
+            aria-label="閉じる"
             className="absolute top-4 right-4 p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
           >
             <X size={20} />
           </button>
-          <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full mx-auto flex items-center justify-center mb-3">
+
+          {/* グラデーションHロゴ (Hugmeid mock 準拠) */}
+          <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-3 bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-sm">
             <span className="font-bold text-xl">H</span>
           </div>
           <h2 className="text-xl font-bold text-gray-800">ログインが必要です</h2>
           <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-            保存機能や応募、詳細なコンテンツの閲覧にはログインが必要です。
+            保存機能や応募、詳細なコンテンツの閲覧にはLINE連携ログインが必要です。
           </p>
         </div>
 
@@ -51,12 +61,14 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
 
           {!siteConfig.lineLoginUrl && (
             <p className="text-xs text-center text-amber-600 mt-3">
-              現在はデモログインとして動作します。実運用時は .env に LINE ログイン URL を設定してください。
+              現在はデモログインとして動作します。実運用時は <code>NEXT_PUBLIC_LINE_LOGIN_URL</code> を設定してください。
             </p>
           )}
 
           <p className="text-xs text-center text-gray-400 mt-4">
-            登録することで、利用規約とプライバシーポリシーに<br />同意したものとみなされます。
+            登録することで、利用規約とプライバシーポリシーに
+            <br />
+            同意したものとみなされます。
           </p>
         </div>
       </div>

@@ -2,6 +2,12 @@
 
 import { BookmarkCheck, BookmarkPlus } from "lucide-react";
 
+/**
+ * SaveButton
+ * - Hugmeid mock のオレンジ基調デザイン:
+ *   通常は orange-50 + orange-500 アイコン、保存済みは orange-500 塗り潰し。
+ * - compact モードはカード右上のフローティング配置(求人カード等)。
+ */
 type SaveButtonProps = {
   saved: boolean;
   onClick: () => void;
@@ -13,10 +19,16 @@ export function SaveButton({ saved, onClick, compact = false }: SaveButtonProps)
     return (
       <button
         onClick={onClick}
-        className={`absolute top-4 right-4 transition-colors active:scale-90 ${saved ? "text-orange-500" : "text-gray-300 hover:text-orange-500"}`}
+        className={`absolute top-4 right-4 transition-colors active:scale-90 ${
+          saved ? "text-orange-500" : "text-gray-300 hover:text-orange-500"
+        }`}
         aria-label={saved ? "保存済みから外す" : "保存する"}
       >
-        {saved ? <BookmarkCheck size={22} strokeWidth={1.8} /> : <BookmarkPlus size={22} strokeWidth={1.5} />}
+        {saved ? (
+          <BookmarkCheck size={22} strokeWidth={1.8} />
+        ) : (
+          <BookmarkPlus size={22} strokeWidth={1.5} />
+        )}
       </button>
     );
   }
@@ -31,7 +43,11 @@ export function SaveButton({ saved, onClick, compact = false }: SaveButtonProps)
       }`}
       aria-label={saved ? "保存済みから外す" : "保存する"}
     >
-      {saved ? <BookmarkCheck size={20} className="mb-0.5" /> : <BookmarkPlus size={20} className="mb-0.5" />}
+      {saved ? (
+        <BookmarkCheck size={20} className="mb-0.5" />
+      ) : (
+        <BookmarkPlus size={20} className="mb-0.5" />
+      )}
       <span className="text-[10px] font-bold">{saved ? "保存済み" : "保存"}</span>
     </button>
   );

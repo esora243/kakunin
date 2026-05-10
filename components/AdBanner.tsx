@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 
-type AdBannerProps = {
+/**
+ * AdBanner
+ * - 汎用広告バナー (header / footer / infeed)。
+ * - Hugmeid mock のデザインに合わせ、orange-50 のグラデーション背景と
+ *   PRバッジ / スポンサー名 / タイトルの3要素オーバーレイを採用。
+ * - infeed は max-w-lg 中央寄せでフィード途中に挿入する想定。
+ */
+export type AdBannerProps = {
   type: "header" | "footer" | "infeed";
   campaignId: string;
   title: string;
@@ -10,13 +17,13 @@ type AdBannerProps = {
   sponsorName: string;
 };
 
-export function AdBanner({ type, campaignId, title, imageUrl, sponsorName }: AdBannerProps) {
-  const heights = {
-    header: "h-20",
-    footer: "h-20",
-    infeed: "h-32",
-  };
+const HEIGHT_MAP: Record<AdBannerProps["type"], string> = {
+  header: "h-20",
+  footer: "h-20",
+  infeed: "h-32",
+};
 
+export function AdBanner({ type, campaignId, title, imageUrl, sponsorName }: AdBannerProps) {
   const containerClass = type === "infeed" ? "w-full max-w-lg mx-auto px-4" : "w-full";
 
   return (
@@ -25,7 +32,7 @@ export function AdBanner({ type, campaignId, title, imageUrl, sponsorName }: AdB
         href={`/campaign/${campaignId}`}
         className="block relative w-full rounded-xl overflow-hidden shadow-sm group cursor-pointer border border-orange-100"
       >
-        <div className={`relative ${heights[type]} bg-gradient-to-r from-orange-50 to-rose-50`}>
+        <div className={`relative ${HEIGHT_MAP[type]} bg-gradient-to-r from-orange-50 to-orange-50`}>
           <img
             src={imageUrl}
             alt={title}
