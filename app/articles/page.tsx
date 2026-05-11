@@ -2,22 +2,31 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Loader2, Newspaper } from "lucide-react";
+import { Search, Loader2, Newspaper, Image as ImageIcon } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 import { schoolArticles, activityArticles } from "@/lib/data";
 import { FloatingBanner } from "@/components/FloatingBanner";
 
+// 記事データの型定義（Supabaseのスキーマとローカルデータの両方をカバー）
+type ArticleItem = {
+  id: string | number;
+  type?: string;
+  title: string;
+  category?: string;
+  excerpt?: string;
+  content?: string;
+  image?: string;
+  image_url?: string;
+  date?: string;
+  publish_date?: string;
+  url?: string;
+};
+
 /**
- * 記事一覧ページ (新規 - Hugmeid mock の Articles.tsx 準拠)
- * - Hugmeid mock のグローバルナビ"記事"を kakunin に追加。
- * - 学校(school) / 課外活動(activity) の記事を統合表示できるよう、
- *   articles テーブル(type=school or activity) を fetch し、
- *   見つからなければ ローカルの schoolArticles + activityArticles をフォールバック。
- * - 検索バー + カテゴリチップ(濃いグレー) + 横長カードリスト。
- * - フィードトップに FloatingBanner を表示。
+ * 記事一覧ページ
  */
 export default function ArticlesPage() {
-  const [allArticles, setAllArticles] = useState<any[]>([]);
+  const [allArticles, setAllArticles] = useState<ArticleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("すべて");
@@ -27,7 +36,7 @@ export default function ArticlesPage() {
     async function fetchArticles() {
       setLoading(true);
       try {
-        const data = await supabaseRestFetch<any[]>({
+        const data = await supabaseRestFetch<ArticleItem[]>({
           path: "articles?select=*",
         });
         if (!cancelled) setAllArticles(data || []);
@@ -47,22 +56,25 @@ export default function ArticlesPage() {
   // フォールバック: ローカルの記事(schoolArticles + activityArticles) を統合
   const displayArticles = useMemo(() => {
     if (allArticles.length > 0) return allArticles;
-    return [...schoolArticles, ...activityArticles];
+    // ローカルデータの型を ArticleItem に合わせる
+    return [...schoolArticles, ...activityArticles] as ArticleItem[];
   }, [allArticles]);
 
+  // カテゴリ一覧を動的に生成
   const categories = useMemo(
     () => [
       "すべて",
       ...Array.from(
-        new Set(displayArticles.map((a: any) => a.category).filter(Boolean)),
+        new Set(displayArticles.map((a) => a.category).filter(Boolean)),
       ),
     ],
     [displayArticles],
   );
 
+  // 検索とカテゴリによる絞り込み
   const filteredArticles = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return displayArticles.filter((article: any) => {
+    return displayArticles.filter((article) => {
       const title = (article.title || "").toLowerCase();
       const excerpt = (article.excerpt || "").toLowerCase();
       const matchQuery = !q || title.includes(q) || excerpt.includes(q);
@@ -73,10 +85,10 @@ export default function ArticlesPage() {
   }, [displayArticles, searchQuery, selectedCategory]);
 
   // 記事 type に応じて遷移先を切り替え
-  const getArticleHref = (article: any) => {
+  const getArticleHref = (article: ArticleItem) => {
     if (article.type === "activity") return `/articles/${article.id}`;
     if (article.type === "school") return `/school/articles/${article.id}`;
-    // フォールバック - school 記事として扱う
+    // フォールバック
     return `/articles/${article.id}`;
   };
 
@@ -103,7 +115,7 @@ export default function ArticlesPage() {
           {categories.map((category) => (
             <button
               key={category}
-              onClick={() => setSelectedCategory(category)}
+              onClick={() => setSelectedCategory(category as string)}
               className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
                 selectedCategory === category
                   ? "bg-gray-800 border-gray-800 text-white"
@@ -153,35 +165,49 @@ export default function ArticlesPage() {
             )}
           </div>
         ) : (
-          filteredArticles.map((article: any) => (
-            <Link
-              key={`${article.type || "x"}-${article.id}`}
-              href={getArticleHref(article)}
-              className="block bg-white rounded-xl shadow-sm border border-orange-50 overflow-hidden flex hover:shadow-md transition-shadow"
-            >
-              <img
-                src={article.image_url || article.image}
-                alt={article.title}
-                className="w-28 h-28 object-cover shrink-0 bg-orange-50"
-              />
-              <div className="p-3 flex flex-col justify-center min-w-0 flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-orange-500 font-bold px-1.5 py-0.5 bg-orange-50 rounded-sm">
-                    {article.category}
-                  </span>
-                  <span className="text-[10px] text-gray-400">
-                    {(article.publish_date || article.date || "").replace(/-/g, "/")}
-                  </span>
+          filteredArticles.map((article) => {
+            const imageUrl = article.image_url || article.image;
+            const dateStr = article.publish_date || article.date || "";
+            const formattedDate = dateStr ? dateStr.replace(/-/g, "/") : "";
+
+            return (
+              <Link
+                key={`${article.type || "default"}-${article.id}`}
+                href={getArticleHref(article)}
+                className="block bg-white rounded-xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow"
+              >
+                <div className="flex">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={article.title}
+                      className="w-28 h-28 object-cover shrink-0 bg-orange-50"
+                    />
+                  ) : (
+                    <div className="w-28 h-28 shrink-0 bg-gray-100 flex flex-col items-center justify-center text-gray-300">
+                      <ImageIcon size={24} />
+                    </div>
+                  )}
+                  <div className="p-3 flex flex-col justify-center min-w-0 flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-orange-500 font-bold px-1.5 py-0.5 bg-orange-50 rounded-sm truncate max-w-[60%]">
+                        {article.category || "未分類"}
+                      </span>
+                      <span className="text-[10px] text-gray-400 shrink-0">
+                        {formattedDate}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-gray-800 line-clamp-2 mb-1 leading-tight">
+                      {article.title}
+                    </h4>
+                    <p className="text-xs text-gray-500 line-clamp-2 leading-tight">
+                      {article.excerpt || "本文がありません"}
+                    </p>
+                  </div>
                 </div>
-                <h4 className="text-sm font-bold text-gray-800 line-clamp-2 mb-1 leading-tight">
-                  {article.title}
-                </h4>
-                <p className="text-xs text-gray-500 line-clamp-2 leading-tight">
-                  {article.excerpt}
-                </p>
-              </div>
-            </Link>
-          ))
+              </Link>
+            );
+          })
         )}
       </div>
     </div>
