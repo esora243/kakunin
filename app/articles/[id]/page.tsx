@@ -17,6 +17,7 @@ export default function ArticleDetailPage() {
   useEffect(() => {
     async function fetchArticle() {
       try {
+        // Supabaseから記事IDを使ってデータを取得する
         const data = await supabaseRestFetch<any[]>({
           path: `articles?id=eq.${id}&select=*`,
         });
@@ -46,6 +47,9 @@ export default function ArticleDetailPage() {
       <div className="min-h-screen bg-white pb-20 flex items-center justify-center">
         <div className="text-center px-6">
           <h2 className="text-xl font-bold text-gray-800 mb-2">記事が見つかりません</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            この記事は未登録、または削除されています。
+          </p>
           <button onClick={() => router.back()} className="bg-orange-500 text-white font-bold px-6 py-3 rounded-full">
             戻る
           </button>
