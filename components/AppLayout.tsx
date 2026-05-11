@@ -84,7 +84,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="flex flex-col">
               <h1 className="text-base md:text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-400 tracking-tight leading-tight">
-                HugNavi
+                Hugmeid
               </h1>
               <p className="text-[9px] md:text-[10px] text-gray-500 tracking-wide font-light whitespace-nowrap">
                 6万人の医学生で創る縁

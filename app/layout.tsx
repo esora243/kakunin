@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
@@ -8,9 +8,8 @@ import { siteConfig } from "@/lib/site";
 /**
  * RootLayout
  * - Hugmeid mock の "Noto Sans JP" / "Inter" フォント、bg-[#FFF9FA] を全体に適用。
- * - AuthProvider / SavedItemsProvider / AppLayout を一括適用し、
- *   全ページで LINE LIFF ログイン・保存機能・ヘッダーナビを共有。
- * - meta はサイト名/説明 + OGP(og:image はスポンサー用に拡張可能)。
+ * - AuthProvider / SavedItemsProvider / AppLayout を一括適用。
+ * - Next.js 16 仕様に合わせ themeColor は viewport export に移動。
  */
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.siteUrl),
@@ -27,7 +26,13 @@ export const metadata: Metadata = {
     locale: "ja_JP",
     type: "website",
   },
-  themeColor: "#F97316", // ブランド orange-500
+};
+
+// Next.js 16: themeColor / colorScheme / viewport は generateViewport / viewport export で指定する
+export const viewport: Viewport = {
+  themeColor: "#F97316", // ブランド orange-500 (Hugmeid mock)
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

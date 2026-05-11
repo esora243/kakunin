@@ -1,13 +1,14 @@
+/* =========================================================
+   Hugmeid (HagNavi) デザインシステム
+   - Hugmeid mock の color palette / typography / animation を踏襲
+   - Next.js 16 / Turbopack の仕様により @import は他ルールより前に配置すること
+   ========================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
-/* =========================================================
-   Hugmeid (HagNavi) デザインシステム
-   - Hugmeid mock の color palette / typography / animation を踏襲
-   ========================================================= */
 :root {
   /* 全体背景：オレンジがかった淡いピンク */
   --background: #FFF9FA;

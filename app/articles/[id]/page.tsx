@@ -2,45 +2,21 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Tag, Share2, ExternalLink, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { supabaseRestFetch } from "@/lib/supabase/rest";
+import { ArrowLeft, Calendar, Tag, Share2, ExternalLink } from "lucide-react";
+import { activityArticles, schoolArticles } from "@/lib/data";
 
+/**
+ * 統合 記事詳細ページ
+ * - /articles/[id] : 学校 + 課外活動 の両 records をローカルから取得して描画。
+ * - Hugmeid mock の SchoolArticleDetail / Activities article の見た目を踏襲。
+ */
 export default function ArticleDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = Number(params.id);
-  
-  const [article, setArticle] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchArticle() {
-      try {
-        // Supabaseから記事IDを使ってデータを取得する
-        const data = await supabaseRestFetch<any[]>({
-          path: `articles?id=eq.${id}&select=*`,
-        });
-        if (data && data.length > 0) {
-          setArticle(data[0]);
-        }
-      } catch (error) {
-        console.error("記事取得エラー:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    if (id) fetchArticle();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="animate-spin text-orange-500" size={32} />
-      </div>
-    );
-  }
+  const article =
+    schoolArticles.find((item) => item.id === id) ||
+    activityArticles.find((item) => item.id === id);
 
   if (!article) {
     return (
@@ -50,9 +26,12 @@ export default function ArticleDetailPage() {
           <p className="text-sm text-gray-500 mb-6">
             この記事は未登録、または削除されています。
           </p>
-          <button onClick={() => router.back()} className="bg-orange-500 text-white font-bold px-6 py-3 rounded-full">
-            戻る
-          </button>
+          <Link
+            href="/articles"
+            className="bg-orange-500 text-white font-bold px-6 py-3 rounded-full"
+          >
+            記事一覧へ戻る
+          </Link>
         </div>
       </div>
     );
@@ -62,7 +41,11 @@ export default function ArticleDetailPage() {
     <div className="min-h-screen bg-white pb-20">
       <div className="w-full max-w-lg mx-auto">
         <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-100 px-4 py-3 flex items-center gap-3 shadow-sm">
-          <button onClick={() => router.back()} className="text-gray-600 hover:text-orange-500" aria-label="戻る">
+          <button
+            onClick={() => router.push("/articles")}
+            className="text-gray-600 hover:text-orange-500"
+            aria-label="戻る"
+          >
             <ArrowLeft size={24} />
           </button>
           <h1 className="text-base font-bold text-gray-800 flex-1 truncate">記事詳細</h1>
@@ -73,8 +56,8 @@ export default function ArticleDetailPage() {
 
         <div className="animate-fade-in">
           <div className="w-full h-64 bg-gray-100">
-            {article.image_url ? (
-              <img src={article.image_url} alt={article.title} className="w-full h-full object-cover" />
+            {article.image ? (
+              <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
             ) : null}
           </div>
 
@@ -86,26 +69,31 @@ export default function ArticleDetailPage() {
               </span>
               <span className="text-xs text-gray-400 flex items-center gap-1">
                 <Calendar size={12} />
-                {article.publish_date}
+                {article.date}
               </span>
             </div>
             <h1 className="text-2xl font-bold text-gray-800 leading-tight">{article.title}</h1>
           </div>
 
           <div className="px-4 py-6">
-            <p className="text-sm text-gray-700 leading-relaxed mb-4 whitespace-pre-wrap">
-              {article.excerpt}
+            <p className="text-sm text-gray-700 leading-relaxed mb-4">
+              {article.excerpt ||
+                "詳細本文は未登録です。運用時は記事CMSや外部URLと連携してください。"}
             </p>
-            {article.content_url ? (
+            {article.url ? (
               <a
-                href={article.content_url}
+                href={article.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-orange-500 text-white px-5 py-3 rounded-full font-bold text-sm shadow-sm hover:bg-orange-600 transition-colors"
               >
                 元記事を開く <ExternalLink size={16} />
               </a>
-            ) : null}
+            ) : (
+              <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-sm text-gray-600">
+                外部記事URLは未設定です。記事データに url を追加すると導線を設置できます。
+              </div>
+            )}
           </div>
         </div>
       </div>
