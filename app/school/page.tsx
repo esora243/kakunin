@@ -20,14 +20,13 @@ import {
   Edit2,
   CheckSquare,
   Square,
-  CalendarDays,
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 import { FloatingBanner } from "@/components/FloatingBanner";
 import { siteConfig } from "@/lib/site";
 
 // =============================================================
-// 型定義 (要件定義書 / 技術スタック書 DB スキーマ準拠)
+// 型定義
 // =============================================================
 type ClassTask = {
   id: string;
