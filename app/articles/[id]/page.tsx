@@ -4,15 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Calendar, Tag, Share2, ExternalLink, Loader2 } from "lucide-react";
-import { activityArticles, schoolArticles } from "@/lib/data";
+import { schoolArticles } from "@/lib/data";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
-/**
- * 統合 記事詳細ページ
- * - /articles/[id] : Supabaseの articles テーブルからデータを取得。
- * - 見つからない場合は、ローカルの schoolArticles + activityArticles をフォールバック。
- */
-export default function ArticleDetailPage() {
+export default function SchoolArticleDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = Number(params.id);
@@ -26,7 +21,7 @@ export default function ArticleDetailPage() {
     async function fetchArticle() {
       setLoading(true);
       try {
-        // 1. Supabaseから該当IDの記事を取得
+        // Supabaseから該当IDの記事を取得
         const data = await supabaseRestFetch<any[]>({
           path: `articles?id=eq.${id}&select=*`,
         });
@@ -35,20 +30,15 @@ export default function ArticleDetailPage() {
           if (data && data.length > 0) {
             setArticle(data[0]);
           } else {
-            // 2. Supabaseに見つからない場合はローカルデータから探す（フォールバック）
-            const localArticle =
-              schoolArticles.find((item) => item.id === id) ||
-              activityArticles.find((item) => item.id === id);
+            // 見つからない場合はローカルデータをフォールバック
+            const localArticle = schoolArticles.find((item) => item.id === id);
             setArticle(localArticle || null);
           }
         }
       } catch (error) {
         console.error("記事詳細取得エラー:", error);
         if (!cancelled) {
-          // エラー時もローカルデータをフォールバックとして設定
-          const localArticle =
-            schoolArticles.find((item) => item.id === id) ||
-            activityArticles.find((item) => item.id === id);
+          const localArticle = schoolArticles.find((item) => item.id === id);
           setArticle(localArticle || null);
         }
       } finally {
@@ -84,17 +74,17 @@ export default function ArticleDetailPage() {
             この記事は未登録、または削除されています。
           </p>
           <Link
-            href="/articles"
+            href="/school"
             className="bg-orange-500 text-white font-bold px-6 py-3 rounded-full hover:bg-orange-600 transition-colors"
           >
-            記事一覧へ戻る
+            学校ページへ戻る
           </Link>
         </div>
       </div>
     );
   }
 
-  // Supabaseとローカルデータのプロパティ名の違いを吸収
+  // プロパティ名の違いを吸収
   const imageUrl = article.image_url || article.image;
   const publishDate = (article.publish_date || article.date || "").replace(/-/g, "/");
   const content = article.content || article.excerpt || "詳細本文は未登録です。";
@@ -105,13 +95,13 @@ export default function ArticleDetailPage() {
         {/* ヘッダー */}
         <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-100 px-4 py-3 flex items-center gap-3 shadow-sm">
           <button
-            onClick={() => router.push("/articles")}
+            onClick={() => router.push("/school")}
             className="text-gray-600 hover:text-orange-500 transition-colors"
             aria-label="戻る"
           >
             <ArrowLeft size={24} />
           </button>
-          <h1 className="text-base font-bold text-gray-800 flex-1 truncate">記事詳細</h1>
+          <h1 className="text-base font-bold text-gray-800 flex-1 truncate">学校記事詳細</h1>
           <button className="text-gray-400 hover:text-orange-500 transition-colors" aria-label="共有">
             <Share2 size={20} />
           </button>
@@ -137,7 +127,7 @@ export default function ArticleDetailPage() {
           <div className="px-4 py-6 border-b border-orange-50">
             <div className="flex items-center gap-2 mb-3">
               {article.category && (
-                <span className="text-xs font-bold px-2.5 py-1 bg-purple-50 text-purple-600 rounded-full flex items-center gap-1">
+                <span className="text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full flex items-center gap-1">
                   <Tag size={12} />
                   {article.category}
                 </span>
@@ -167,11 +157,11 @@ export default function ArticleDetailPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center w-full sm:w-auto gap-2 bg-orange-500 text-white px-6 py-3 rounded-full font-bold text-sm shadow-sm hover:bg-orange-600 transition-colors"
               >
-                元記事を開く <ExternalLink size={16} />
+                詳細を開く <ExternalLink size={16} />
               </a>
             ) : (
               <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-sm text-gray-600">
-                外部記事URLは未設定です。記事データに url を追加すると導線を設置できます。
+                外部URLは未設定です。
               </div>
             )}
           </div>
