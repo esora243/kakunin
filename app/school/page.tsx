@@ -108,10 +108,11 @@ export default function SchoolPage() {
   const [loading, setLoading] = useState(true);
 
   // 将来的にログイン情報から取得する想定の所属情報
+  // 特定の大学に依存しないよう、初期値を空にしておきます
   const [userProfile] = useState({
-    university: "山口大学",
-    faculty: "医学部",
-    grade: 3,
+    university: "",
+    faculty: "",
+    grade: null as number | null,
   });
 
   // 時間割データ
@@ -132,20 +133,28 @@ export default function SchoolPage() {
     async function fetchClasses() {
       setLoading(true);
       try {
-        const queryPath = `timetable_classes?university=eq.${encodeURIComponent(
-          userProfile.university,
-        )}&grade=eq.${userProfile.grade}&select=*,tasks:class_tasks(*)`;
+        // プロフィール情報が存在する場合のみクエリパラメータを追加
+        let queryPath = `timetable_classes?select=*,tasks:class_tasks(*)`;
+        
+        if (userProfile.university) {
+          queryPath += `&university=eq.${encodeURIComponent(userProfile.university)}`;
+        }
+        if (userProfile.grade) {
+          queryPath += `&grade=eq.${userProfile.grade}`;
+        }
+
         const res = await supabaseRestFetch<any[]>({ path: queryPath });
         if (!cancelled && Array.isArray(res)) {
           setClasses(
             res.map((c) => ({
               id: c.id,
-              title: c.title,
+              // Supabaseのカラム名（title/professor/day/periods）と、CSVのカラム名（subject/teacher/day_of_week/period）の両方を許容する
+              title: c.title || c.subject || "",
               category: c.category || "default",
-              day: c.day,
-              periods: c.periods || [],
+              day: c.day || c.day_of_week || "",
+              periods: Array.isArray(c.periods) ? c.periods : c.period ? [c.period] : [],
               room: c.room || "",
-              professor: c.professor,
+              professor: c.professor || c.teacher || "",
               timeDisplay: c.time_display,
               term: c.term,
               zoomUrl: c.zoom_url,
