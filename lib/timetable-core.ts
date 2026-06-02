@@ -2,7 +2,9 @@ import type { TimetableClassDto, TimetableDay, TimetableGridDto } from "./timeta
 
 export const TIMETABLE_DAYS: TimetableDay[] = ["月", "火", "水", "木", "金"];
 export const DAY_ORDER = new Map<TimetableDay, number>(TIMETABLE_DAYS.map((day, index) => [day, index]));
-export const PERIODS = [1, 2, 3, 4, 5, 6];
+
+// 修正: "special"枠として扱う「7」を追加
+export const PERIODS = [1, 2, 3, 4, 5, 6, 7];
 
 export function sortTimetableClasses(items: TimetableClassDto[]) {
   return [...items].sort((a, b) => {
