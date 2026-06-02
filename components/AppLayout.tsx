@@ -14,6 +14,7 @@ import { useAuth } from "./AuthContext";
 import { LoginModal } from "./LoginModal";
 import { Toaster, toast } from "sonner";
 import type { ReactNode } from "react";
+
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -33,7 +34,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     }
   };
 
-  // Hugmeid mock の navItems を踏襲(求人は学校/マイページから導線)
+  // OBマッチング、コミュニティタブは削除済み
   const navItems = [
     { name: "学校", path: "/school", icon: GraduationCap },
     { name: "課外活動", path: "/activities", icon: Users },
@@ -50,32 +51,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <Toaster position="top-center" />
 
       {/* ============================================================
-          ナビゲーションヘッダー (Hugmeid mock 準拠の2段構造)
-          上段: ロゴ(グラデーション) + サブコピー
-          下段: 5アイコン中央 + 右端スポンサー
+          ナビゲーションヘッダー (ロゴ削除済み)
          ============================================================ */}
       <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-orange-100 shadow-sm">
-        {/* === 上段: ロゴ === */}
-        <div className="flex items-center justify-center px-4 py-2 border-b border-orange-50">
-          <Link
-            href="/"
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-          >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">
-              Hm
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-base md:text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-400 tracking-tight leading-tight">
-                Hugmeid
-              </h1>
-              <p className="text-[9px] md:text-[10px] text-gray-500 tracking-wide font-light whitespace-nowrap">
-                6万人の医学生で創る縁
-              </p>
-            </div>
-          </Link>
-        </div>
-
-        {/* === 下段: ナビゲーション (sm以上) === */}
+        {/* === ナビゲーション (sm以上) === */}
         <div className="hidden sm:flex items-center justify-between px-2 py-1">
           <div className="flex items-center gap-0.5 flex-1 justify-center">
             {navItems.map((item) => {
@@ -135,8 +114,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </span>
           </Link>
         </div>
-
-        {/* === 下段(モバイル時): ロゴだけにし、ナビはボトムへ === */}
       </nav>
 
       {/* ============================================================

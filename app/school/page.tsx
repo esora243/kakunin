@@ -9,54 +9,41 @@ import {
   ChevronLeft,
   Menu,
   BookOpen,
-  Plus,
   Loader2,
   Building2,
   ClipboardList,
   Search,
   MoreVertical,
   MapPin,
-  Video,
   Edit2,
-  CheckSquare,
   Square,
   CalendarDays,
+  X,
+  Save
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 import { FloatingBanner } from "@/components/FloatingBanner";
 import { siteConfig } from "@/lib/site";
 
 // =============================================================
-// 型定義 (要件定義書 / 技術スタック書 DB スキーマ準拠)
+// 型定義 (アップロードされた CSV カラムに完全準拠)
 // =============================================================
-type ClassTask = {
-  id: string;
-  title: string;
-  deadline: string;
-  completed: boolean;
-  days_left?: number;
-};
-
 type ClassData = {
   id: string;
-  title: string;
-  category: string;
-  day: string;
-  date?: string; // CSVからの特定日付(YYYY-MM-DD)
-  periods: number[];
-  room: string;
-  professor?: string;
-  timeDisplay?: string;
-  term?: string;
-  zoomUrl?: string;
-  hasZoom?: boolean;
-  hasNotice?: boolean;
-  hasTask?: boolean;
-  tasks?: ClassTask[];
+  title: string;       // CSV: subject
+  category: string;    // 表示用カラーカテゴリ
+  day: string;         // CSV: day_of_week
+  date: string;        // CSV: date
+  period: string;      // CSV: period ("1"〜"6" または "special")
+  room: string;        // CSV: room
+  professor: string;   // CSV: teacher
+  timeStart: string;   // CSV: time_start
+  timeEnd: string;     // CSV: time_end
+  timeDisplay: string; // フロント表示用
 };
 
 // =============================================================
-// 教科カテゴリの色定義
+// 教科カテゴリの色定義 (授業名から自動判定するロジック付き)
 // =============================================================
 const CATEGORY_STYLES: Record<
   string,
@@ -65,13 +52,23 @@ const CATEGORY_STYLES: Record<
   形態系: { border: "border-orange-200", bg: "bg-orange-50", text: "text-orange-700", pill: "bg-orange-50 text-orange-600 border-orange-100" },
   機能系: { border: "border-blue-200", bg: "bg-blue-50", text: "text-blue-700", pill: "bg-blue-50 text-blue-600 border-blue-100" },
   生化学: { border: "border-emerald-200", bg: "bg-emerald-50", text: "text-emerald-700", pill: "bg-emerald-50 text-emerald-600 border-emerald-100" },
-  病理: { border: "border-orange-200", bg: "bg-orange-50", text: "text-orange-700", pill: "bg-orange-50 text-orange-600 border-orange-100" },
+  病理: { border: "border-rose-200", bg: "bg-rose-50", text: "text-rose-700", pill: "bg-rose-50 text-rose-600 border-rose-100" },
   臨床: { border: "border-teal-200", bg: "bg-teal-50", text: "text-teal-700", pill: "bg-teal-50 text-teal-600 border-teal-100" },
-  default: { border: "border-gray-200", bg: "bg-gray-50/30", text: "text-gray-700", pill: "bg-gray-100 text-gray-600 border-gray-200" },
+  default: { border: "border-gray-200", bg: "bg-gray-50/50", text: "text-gray-700", pill: "bg-gray-100 text-gray-600 border-gray-200" },
 };
 
+function autoDetectCategory(subject: string): string {
+  if (subject.includes("病理")) return "病理";
+  if (subject.includes("薬理") || subject.includes("生理")) return "機能系";
+  if (subject.includes("解剖")) return "形態系";
+  if (subject.includes("生化学")) return "生化学";
+  if (subject.includes("臨床") || subject.includes("PBL") || subject.includes("内科学") || subject.includes("外科学")) return "臨床";
+  return "default";
+}
+
 const DAYS = ["月", "火", "水", "木", "金"];
-const PERIODS = [1, 2, 3, 4, 5, 6];
+// 1〜6限に加え、CSVに含まれる "special" 枠を行として定義
+const ROW_PERIODS = ["1", "2", "3", "4", "5", "6", "special"];
 
 // =============================================================
 // 日付ユーティリティ
@@ -107,64 +104,51 @@ function formatYYYYMMDD(d: Date) {
 // 学校ページ メインコンポーネント
 // =============================================================
 export default function SchoolPage() {
-  const [activeTab, setActiveTab] = useState<
-    "timetable" | "syllabus" | "articles" | "hospitals" | "exam"
-  >("timetable");
-
+  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles">("timetable");
   const [loading, setLoading] = useState(true);
-
-  // ユーザーの所属情報（特定大学に依存させない）
-  const [userProfile] = useState({
-    university: "",
-    faculty: "",
-    grade: null as number | null,
-  });
-
   const [classes, setClasses] = useState<ClassData[]>([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // 初期表示をCSVデータが存在する2026年4月に設定（テストがすぐ行えるようにしています）
+  const [currentDate, setCurrentDate] = useState(new Date("2026-04-13"));
+  
+  // 詳細表示・編集用のState
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<ClassData>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  
   const weekDates = useMemo(() => getWeekDates(new Date(currentDate)), [currentDate]);
 
-  // 勉強系記事用の状態
-  const [articles, setArticles] = useState<any[]>([]);
-  const [articleSearch, setArticleSearch] = useState("");
-  const [articleCategory, setArticleCategory] = useState("すべて");
-  const [articlesLoading, setArticlesLoading] = useState(false);
-
-  // 時間割をDBから取得
+  // 初期データ取得 (DBからそのまま全データをロード)
   useEffect(() => {
     let cancelled = false;
     async function fetchClasses() {
       setLoading(true);
       try {
-        let queryPath = `timetable_classes?select=*,tasks:class_tasks(*)`;
-        if (userProfile.university) {
-          queryPath += `&university=eq.${encodeURIComponent(userProfile.university)}`;
-        }
-        if (userProfile.grade) {
-          queryPath += `&grade=eq.${userProfile.grade}`;
-        }
-
-        const res = await supabaseRestFetch<any[]>({ path: queryPath });
+        const res = await supabaseRestFetch<any[]>({ path: `timetable_classes?select=*` });
+        
         if (!cancelled && Array.isArray(res)) {
           setClasses(
-            res.map((c) => ({
-              id: c.id,
-              title: c.title || c.subject || "",
-              category: c.category || "default",
-              day: c.day || c.day_of_week || "",
-              date: c.date ? c.date.split("T")[0] : "", // YYYY-MM-DD形式にする
-              periods: Array.isArray(c.periods) ? c.periods : c.period ? [c.period] : [],
-              room: c.room || "",
-              professor: c.professor || c.teacher || "",
-              timeDisplay: c.time_display,
-              term: c.term,
-              zoomUrl: c.zoom_url,
-              hasZoom: !!c.zoom_url,
-              hasNotice: c.has_notice,
-              hasTask: c.tasks && c.tasks.length > 0,
-              tasks: c.tasks || [],
-            })),
+            res.map((c) => {
+              // 時刻表記の末尾の秒をカット (例: "08:50:00" -> "08:50")
+              const startTime = c.time_start ? c.time_start.substring(0, 5) : "";
+              const endTime = c.time_end ? c.time_end.substring(0, 5) : "";
+              const timeDisplay = startTime && endTime ? `${startTime} - ${endTime}` : startTime || endTime || "時間未設定";
+
+              return {
+                id: c.id,
+                title: c.subject || "",
+                category: autoDetectCategory(c.subject || ""),
+                day: c.day_of_week || "",
+                date: c.date ? c.date.split("T")[0] : "",
+                period: String(c.period || ""),
+                room: c.room || "",
+                professor: c.teacher || "",
+                timeStart: startTime,
+                timeEnd: endTime,
+                timeDisplay: timeDisplay,
+              };
+            })
           );
         }
       } catch (error) {
@@ -177,48 +161,8 @@ export default function SchoolPage() {
     return () => {
       cancelled = true;
     };
-  }, [userProfile]);
+  }, []);
 
-  // 記事データの取得
-  useEffect(() => {
-    if (activeTab !== "articles") return;
-    let cancelled = false;
-    async function fetchArticles() {
-      setArticlesLoading(true);
-      try {
-        const data = await supabaseRestFetch<any[]>({
-          path: "articles?type=eq.school&select=*",
-        });
-        if (!cancelled) setArticles(data || []);
-      } catch {
-        if (!cancelled) setArticles([]);
-      } finally {
-        if (!cancelled) setArticlesLoading(false);
-      }
-    }
-    fetchArticles();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab]);
-
-  const articleCategories = useMemo(
-    () => ["すべて", ...Array.from(new Set(articles.map((a) => a.category).filter(Boolean)))],
-    [articles],
-  );
-
-  const filteredArticles = useMemo(() => {
-    const q = articleSearch.trim().toLowerCase();
-    return articles.filter((a) => {
-      const title = (a.title || "").toLowerCase();
-      const excerpt = (a.excerpt || "").toLowerCase();
-      const matchQuery = !q || title.includes(q) || excerpt.includes(q);
-      const matchCategory = articleCategory === "すべて" || a.category === articleCategory;
-      return matchQuery && matchCategory;
-    });
-  }, [articles, articleSearch, articleCategory]);
-
-  // 日付の操作
   const handlePrevWeek = () => {
     const prev = new Date(currentDate);
     prev.setDate(prev.getDate() - 7);
@@ -238,8 +182,53 @@ export default function SchoolPage() {
       setCurrentDate(new Date(Number(y), Number(m) - 1, Number(d)));
     }
   };
+
   // ============================================================
-  // 授業詳細ビュー(タップ時)
+  // 詳細ページの保存処理 (CSV/DB カラム名に完全準拠した PATCH)
+  // ============================================================
+  const handleSaveClass = async () => {
+    if (!selectedClass) return;
+    setIsSaving(true);
+    
+    try {
+      await supabaseRestFetch<any>({
+        path: `timetable_classes?id=eq.${selectedClass.id}`,
+        method: "PATCH",
+        body: {
+          subject: editForm.title,
+          room: editForm.room,
+          teacher: editForm.professor,
+          time_start: editForm.timeStart ? `${editForm.timeStart}:00` : null,
+          time_end: editForm.timeEnd ? `${editForm.timeEnd}:00` : null,
+          period: editForm.period,
+        },
+      });
+
+      const updatedClass: ClassData = {
+        ...selectedClass,
+        title: editForm.title || "",
+        room: editForm.room || "",
+        professor: editForm.professor || "",
+        period: editForm.period || "1",
+        timeStart: editForm.timeStart || "",
+        timeEnd: editForm.timeEnd || "",
+        timeDisplay: editForm.timeStart && editForm.timeEnd ? `${editForm.timeStart} - ${editForm.timeEnd}` : "時間未設定",
+        category: autoDetectCategory(editForm.title || ""),
+      };
+
+      setClasses((prev) => prev.map((c) => (c.id === updatedClass.id ? updatedClass : c)));
+      setSelectedClass(updatedClass);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("更新エラー:", error);
+      alert("保存に失敗しました。通信環境や入力形式を確認してください。");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ============================================================
+  // 授業詳細ビュー (閲覧 / 編集モード)
   // ============================================================
   const renderDetailView = () => {
     if (!selectedClass) return null;
@@ -247,137 +236,197 @@ export default function SchoolPage() {
 
     return (
       <div className="bg-white min-h-[800px] animate-fade-in pb-20">
-        <div className="flex items-center justify-between px-4 py-4 mb-2">
+        <div className="flex items-center justify-between px-4 py-4 mb-2 border-b border-gray-100">
           <button
-            onClick={() => setSelectedClass(null)}
+            onClick={() => {
+              if (isEditing) {
+                if(confirm("編集を破棄して戻りますか？")) setIsEditing(false);
+              } else {
+                setSelectedClass(null);
+              }
+            }}
             className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
           >
-            <ChevronLeft size={24} />
+            {isEditing ? <X size={24} /> : <ChevronLeft size={24} />}
           </button>
-          <h2 className="text-base font-bold text-gray-800">授業の詳細</h2>
-          <button className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
-            <MoreVertical size={20} />
-          </button>
+          
+          <h2 className="text-base font-bold text-gray-800">
+            {isEditing ? "授業の編集" : "授業の詳細"}
+          </h2>
+          
+          {!isEditing ? (
+            <button 
+              onClick={() => {
+                setEditForm({ ...selectedClass });
+                setIsEditing(true);
+              }}
+              className="w-10 h-10 flex items-center justify-center rounded-full border border-orange-200 text-orange-500 hover:bg-orange-50 transition-colors"
+            >
+              <Edit2 size={18} />
+            </button>
+          ) : (
+            <div className="w-10 h-10"></div>
+          )}
         </div>
 
-        <div className="px-6">
-          <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border mb-4 ${style.pill}`}>
-            {selectedClass.category}
-          </div>
-
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">{selectedClass.title}</h1>
-          <p className="text-sm font-bold text-gray-600 mb-8">
-            {selectedClass.date ? selectedClass.date.replace(/-/g, "/") : selectedClass.day}・{selectedClass.periods.join("〜")}限{" "}
-            {selectedClass.timeDisplay || "時間未設定"} {selectedClass.room}{" "}
-            {selectedClass.professor || ""}
-          </p>
-
-          <div className="flex border-b border-gray-200 mb-6">
-            <button className="flex-1 pb-3 text-sm font-bold text-orange-500 border-b-2 border-orange-500 text-center">基本情報</button>
-            <button className="flex-1 pb-3 text-sm font-bold text-gray-400 hover:text-gray-600 text-center transition-colors">課題</button>
-            <button className="flex-1 pb-3 text-sm font-bold text-gray-400 hover:text-gray-600 text-center transition-colors">メモ・通知</button>
-          </div>
-
-          <h3 className="text-sm font-bold text-gray-800 mb-4">授業情報</h3>
-          <div className="bg-gray-50 rounded-2xl p-5 mb-6 space-y-4 border border-gray-100">
-            <div className="flex items-center gap-4">
-              <Clock size={16} className="text-gray-400" />
-              <span className="text-sm text-gray-700">{selectedClass.timeDisplay || "時間未設定"}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <MapPin size={16} className="text-gray-400" />
-              <span className="text-sm text-gray-700">{selectedClass.room}</span>
-            </div>
-            {selectedClass.zoomUrl && (
-              <div className="flex items-center gap-4">
-                <Video size={16} className="text-gray-400" />
-                <a href={`https://${selectedClass.zoomUrl}`} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline">
-                  {selectedClass.zoomUrl}
-                </a>
+        <div className="px-6 pt-4">
+          {isEditing ? (
+            /* ========== 編集モード ========== */
+            <div className="space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5">授業名 / 科目名 (subject)</label>
+                <input
+                  type="text"
+                  value={editForm.title || ""}
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-bold"
+                />
               </div>
-            )}
-          </div>
 
-          {selectedClass.zoomUrl && (
-            <div className="flex gap-3 mb-10">
-              <button className="flex-1 py-3.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors">
-                <Video size={18} /> Zoomを開く
-              </button>
-              <button className="flex-1 py-3.5 bg-white text-gray-600 border border-gray-200 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors">
-                <Edit2 size={18} /> URLを編集
-              </button>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">開始時間 (time_start)</label>
+                  <input
+                    type="time"
+                    value={editForm.timeStart || ""}
+                    onChange={(e) => setEditForm({ ...editForm, timeStart: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">終了時間 (time_end)</label>
+                  <input
+                    type="time"
+                    value={editForm.timeEnd || ""}
+                    onChange={(e) => setEditForm({ ...editForm, timeEnd: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">教室 (room)</label>
+                  <input
+                    type="text"
+                    value={editForm.room || ""}
+                    onChange={(e) => setEditForm({ ...editForm, room: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">時限枠 (period)</label>
+                  <select
+                    value={editForm.period || "1"}
+                    onChange={(e) => setEditForm({ ...editForm, period: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-bold"
+                  >
+                    <option value="1">1限</option>
+                    <option value="2">2限</option>
+                    <option value="3">3限</option>
+                    <option value="4">4限</option>
+                    <option value="5">5限</option>
+                    <option value="6">6限</option>
+                    <option value="special">special (特殊枠)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5">担当教員 (teacher)</label>
+                <input
+                  type="text"
+                  value={editForm.professor || ""}
+                  onChange={(e) => setEditForm({ ...editForm, professor: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-bold"
+                />
+              </div>
+
+              <div className="pt-6 flex gap-3">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleSaveClass}
+                  disabled={isSaving}
+                  className="flex-1 py-3.5 bg-orange-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                  {isSaving ? "保存中..." : "保存する"}
+                </button>
+              </div>
             </div>
+          ) : (
+            /* ========== 閲覧モード ========== */
+            <>
+              <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border mb-4 ${style.pill}`}>
+                {selectedClass.category === "default" ? "一般講義" : selectedClass.category}
+              </div>
+
+              <h1 className="text-2xl font-bold text-gray-900 mb-3">{selectedClass.title}</h1>
+              <p className="text-sm font-bold text-gray-600 mb-8">
+                {selectedClass.date.replace(/-/g, "/")} ({selectedClass.day}) ・ {selectedClass.period === "special" ? "特別枠" : `${selectedClass.period}限`}
+              </p>
+
+              <h3 className="text-sm font-bold text-gray-800 mb-4">授業情報</h3>
+              <div className="bg-gray-50 rounded-2xl p-5 mb-6 space-y-4 border border-gray-100">
+                <div className="flex items-center gap-4">
+                  <Clock size={16} className="text-gray-400" />
+                  <span className="text-sm text-gray-700 font-medium">{selectedClass.timeDisplay}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <MapPin size={16} className="text-gray-400" />
+                  <span className="text-sm text-gray-700 font-medium">{selectedClass.room || "場所未設定"}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <BookOpen size={16} className="text-gray-400" />
+                  <span className="text-sm text-gray-700 font-medium">{selectedClass.professor || "教員未設定"}</span>
+                </div>
+              </div>
+            </>
           )}
-
-          <h3 className="text-sm font-bold text-gray-800 mb-4">課題</h3>
-          <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
-            {selectedClass.tasks && selectedClass.tasks.length > 0 ? (
-              <div className="space-y-4">
-                {selectedClass.tasks.map((task, idx) => (
-                  <div key={task.id} className={`flex items-start gap-3 pb-4 ${idx !== selectedClass.tasks!.length - 1 ? "border-b border-gray-200/60" : ""}`}>
-                    <button className="mt-0.5">
-                      {task.completed ? <CheckSquare className="text-orange-300" size={20} /> : <Square className="text-orange-500" size={20} />}
-                    </button>
-                    <div>
-                      <h4 className={`text-sm font-bold mb-1 ${task.completed ? "text-gray-400 line-through" : "text-gray-800"}`}>{task.title}</h4>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-xs ${task.completed ? "text-gray-400" : "text-gray-500"}`}>提出期限 : {task.deadline}</span>
-                        {task.completed ? (
-                          <span className="text-xs text-gray-400">提出済み</span>
-                        ) : task.days_left ? (
-                          <span className="text-xs text-orange-500 font-bold">（残り{task.days_left}日）</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 text-center py-4">課題はありません</p>
-            )}
-            <button className="flex items-center gap-2 text-orange-500 font-bold text-sm mt-4 hover:text-orange-600 transition-colors">
-              <Plus size={18} /> 課題を追加
-            </button>
-          </div>
         </div>
       </div>
     );
   };
 
   // ============================================================
-  // 時間割グリッド
+  // 時間割グリッド (完全にDBのデータのみに依存する表示)
   // ============================================================
   const renderTimetableGrid = () => {
     const todayStr = formatYYYYMMDD(new Date());
 
     return (
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-orange-50 shadow-sm animate-fade-in overflow-x-auto">
-        <div className="flex items-center justify-between mb-6 min-w-[500px]">
-          <button onClick={handlePrevWeek} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-            <ChevronLeft size={24} className="text-gray-400" />
+      <div className="bg-white p-2 sm:p-6 rounded-xl sm:rounded-2xl border border-orange-50 shadow-sm animate-fade-in w-full">
+        {/* 上部操作パネル */}
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <button onClick={handlePrevWeek} className="p-1 sm:p-2 hover:bg-gray-50 rounded-full transition-colors">
+            <ChevronLeft size={20} className="text-gray-400 sm:w-6 sm:h-6" />
           </button>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
             <div className="relative group flex items-center cursor-pointer">
-              {/* 非表示のネイティブDatePicker（全体を覆う） */}
               <input
                 type="date"
                 value={formatYYYYMMDD(currentDate)}
                 onChange={handleDateChange}
                 className="absolute inset-0 opacity-0 cursor-pointer w-full z-10"
               />
-              <h3 className="text-lg font-bold text-gray-800 group-hover:text-orange-500 transition-colors flex items-center gap-2">
+              <h3 className="text-sm sm:text-lg font-bold text-gray-800 group-hover:text-orange-500 transition-colors flex items-center gap-1 sm:gap-2">
                 {getWeekOfMonthString(currentDate)}
-                <CalendarDays size={18} className="text-gray-400 group-hover:text-orange-500" />
+                <CalendarDays size={16} className="text-gray-400 group-hover:text-orange-500 sm:w-[18px] sm:h-[18px]" />
               </h3>
             </div>
-            <button onClick={handleToday} className="z-20 text-[10px] font-bold px-2.5 py-1 bg-orange-50 text-orange-600 border border-orange-100 rounded-full hover:bg-orange-100 transition-colors">
+            <button onClick={handleToday} className="z-20 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 bg-orange-50 text-orange-600 border border-orange-100 rounded-full hover:bg-orange-100 transition-colors">
               今週
             </button>
           </div>
 
-          <button onClick={handleNextWeek} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-            <ChevronRight size={24} className="text-gray-400" />
+          <button onClick={handleNextWeek} className="p-1 sm:p-2 hover:bg-gray-50 rounded-full transition-colors">
+            <ChevronRight size={20} className="text-gray-400 sm:w-6 sm:h-6" />
           </button>
         </div>
 
@@ -386,18 +435,19 @@ export default function SchoolPage() {
             <Loader2 className="animate-spin text-orange-500" size={40} />
           </div>
         ) : (
-          <div className="min-w-[500px]">
-            <div className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 sm:gap-3 mb-4">
+          <div className="w-full">
+            {/* 曜日ヘッダー */}
+            <div className="grid grid-cols-[18px_repeat(5,1fr)] sm:grid-cols-[28px_repeat(5,1fr)] gap-0.5 sm:gap-2 mb-2">
               <div />
               {weekDates.map((date, i) => {
                 const targetDateStr = formatYYYYMMDD(date);
                 const isToday = targetDateStr === todayStr;
                 return (
                   <div key={i} className="text-center flex flex-col items-center">
-                    <span className={`text-base font-bold ${isToday ? "text-orange-500" : "text-gray-800"}`}>
+                    <span className={`text-[10px] sm:text-base font-bold ${isToday ? "text-orange-500" : "text-gray-800"}`}>
                       {date.getDate()}
                     </span>
-                    <div className={`text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center mt-0.5 ${isToday ? "bg-orange-500 text-white shadow-sm" : "text-gray-500"}`}>
+                    <div className={`text-[9px] sm:text-xs font-bold w-4 h-4 sm:w-7 sm:h-7 rounded-full flex items-center justify-center mt-0.5 ${isToday ? "bg-orange-500 text-white shadow-sm" : "text-gray-500"}`}>
                       {DAYS[i]}
                     </div>
                   </div>
@@ -405,73 +455,65 @@ export default function SchoolPage() {
               })}
             </div>
 
-            {PERIODS.map((period) => (
-              <div key={period} className="grid grid-cols-[30px_repeat(5,minmax(0,1fr))] gap-2 sm:gap-3 mb-2 sm:mb-3">
-                <div className="flex flex-col items-center justify-center text-gray-400">
-                  <span className="text-sm font-bold">{period}</span>
-                  <span className="text-[10px] font-bold">限</span>
+            {/* コマ行ループ (1〜6限 + special) */}
+            {ROW_PERIODS.map((period) => (
+              <div key={period} className="grid grid-cols-[18px_repeat(5,1fr)] sm:grid-cols-[28px_repeat(5,1fr)] gap-0.5 sm:gap-2 mb-0.5 sm:mb-2">
+                
+                {/* 時限サイドインジケータ */}
+                <div className="flex flex-col items-center justify-center text-gray-400 h-full">
+                  <span className={`font-bold leading-none ${period === "special" ? "text-[8px] sm:text-xs text-orange-500" : "text-[10px] sm:text-sm"}`}>
+                    {period === "special" ? "特" : period}
+                  </span>
                 </div>
 
                 {weekDates.map((targetDate, i) => {
-                  const day = DAYS[i];
                   const targetDateStr = formatYYYYMMDD(targetDate);
 
-                  // 特定日付の一致、または日付未設定で曜日が一致する授業を探す
-                  const cellClass = classes.find((c) => {
-                    const matchPeriod = c.periods.includes(period);
-                    const matchDate = c.date ? c.date === targetDateStr : c.day === day;
-                    return matchPeriod && matchDate;
-                  });
-
-                  const isContinuation = cellClass && cellClass.periods[0] !== period;
+                  // 日付(date)と時限(period)が完全に一致するデータを抽出
+                  const cellClass = classes.find((c) => c.date === targetDateStr && c.period === period);
 
                   if (!cellClass) {
-                    return <div key={`${day}-${period}`} className="border border-gray-100 rounded-xl min-h-[90px] sm:min-h-[110px]" />;
+                    return (
+                      <div
+                        key={`${targetDateStr}-${period}`}
+                        className="border border-gray-100 bg-gray-50/20 rounded sm:rounded-xl min-h-[55px] xs:min-h-[65px] sm:min-h-[100px]"
+                      />
+                    );
                   }
 
                   const style = CATEGORY_STYLES[cellClass.category] || CATEGORY_STYLES.default;
 
                   return (
                     <button
-                      key={`${day}-${period}`}
-                      onClick={() => setSelectedClass(cellClass)}
-                      className={`relative border-2 rounded-xl p-2.5 sm:p-3 min-h-[90px] sm:min-h-[110px] flex flex-col text-left transition-transform hover:scale-[1.02] ${style.border} ${style.bg} ${isContinuation ? "border-t-0 rounded-t-none opacity-80" : ""}`}
+                      key={cellClass.id}
+                      onClick={() => {
+                        setSelectedClass(cellClass);
+                        setIsEditing(false); 
+                      }}
+                      className={`relative border sm:border-2 rounded sm:rounded-xl p-1 sm:p-2.5 min-h-[55px] xs:min-h-[65px] sm:min-h-[100px] flex flex-col text-left transition-transform hover:scale-[1.02] overflow-hidden cursor-pointer ${style.border} ${style.bg}`}
                     >
-                      <span className={`font-bold text-[13px] sm:text-sm leading-tight ${style.text}`}>
-                        {isContinuation ? "(続き)" : cellClass.title}
+                      <span className={`font-bold text-[8.5px] xs:text-[9.5px] sm:text-xs md:text-sm leading-tight line-clamp-3 sm:line-clamp-none break-all ${style.text}`}>
+                        {cellClass.title}
                       </span>
-                      {!isContinuation && cellClass.room && (
-                        <span className="text-[10px] sm:text-[11px] mt-1 text-gray-400 font-bold">{cellClass.room}</span>
-                      )}
-                      {!isContinuation && (
-                        <div className="absolute bottom-2 left-2.5 flex gap-1.5">
-                          {cellClass.hasZoom && <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm" />}
-                          {cellClass.hasNotice && <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-sm" />}
-                          {cellClass.hasTask && <div className="w-2.5 h-2.5 rounded-full bg-amber-700 shadow-sm" />}
-                        </div>
+                      {cellClass.room && (
+                        <span className="hidden sm:block text-[10px] md:text-[11px] mt-1 text-gray-400 font-bold truncate">
+                          {cellClass.room}
+                        </span>
                       )}
                     </button>
                   );
                 })}
               </div>
             ))}
-
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-5 mt-8 pt-6 border-t border-orange-50">
-              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-orange-200 fill-orange-50" /> 形態系</div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-blue-200 fill-blue-50" /> 機能系</div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-emerald-200 fill-emerald-50" /> 生化学</div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-orange-200 fill-orange-50" /> 病理</div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-600"><Square size={12} className="text-teal-200 fill-teal-50" /> 臨床</div>
-            </div>
+            <p className="text-center text-[9px] text-gray-400 mt-3 sm:hidden">
+              ※コマをタップすると詳細確認・編集が可能です
+            </p>
           </div>
         )}
       </div>
     );
   };
 
-  // ============================================================
-  // メイン画面
-  // ============================================================
   return (
     <div className="w-full max-w-4xl mx-auto bg-white min-h-screen font-sans">
       {!selectedClass && (
@@ -480,100 +522,24 @@ export default function SchoolPage() {
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">学校</h2>
             <div className="flex gap-2">
               <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
-                <Plus size={18} strokeWidth={2} />
-              </button>
-              <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
                 <Menu size={18} strokeWidth={2} />
               </button>
             </div>
           </div>
-
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
             <TabButton active={activeTab === "timetable"} onClick={() => setActiveTab("timetable")} icon={<Calendar size={16} />} label="時間割" />
             <TabButton active={activeTab === "syllabus"} onClick={() => setActiveTab("syllabus")} icon={<ClipboardList size={16} />} label="シラバス" />
             <TabButton active={activeTab === "articles"} onClick={() => setActiveTab("articles")} icon={<BookOpen size={16} />} label="勉強系記事" />
-            <TabButton active={activeTab === "hospitals"} onClick={() => setActiveTab("hospitals")} icon={<Building2 size={16} />} label="研修病院" />
-            <TabButton active={activeTab === "exam"} onClick={() => setActiveTab("exam")} icon={<BookOpen size={16} />} label="国試対策" />
           </div>
         </div>
       )}
-
-      {!selectedClass && activeTab !== "syllabus" && (
-        <div className="pt-3">
-          <FloatingBanner campaignId="1" title="2026年度 初期研修説明会 受付中" imageUrl="https://images.unsplash.com/photo-1758691462848-ba1e929da259?auto=format&fit=crop&q=80&w=1080" sponsorName="医療法人伏見会　伏見病院" />
-        </div>
-      )}
-
-      <div className={`bg-[#FFF9FA] ${!selectedClass ? "p-4 sm:p-6" : ""}`}>
+      <div className={`bg-[#FFF9FA] ${!selectedClass ? "p-2 sm:p-6" : ""}`}>
         {activeTab === "timetable" && (selectedClass ? renderDetailView() : renderTimetableGrid())}
-        
-        {/* === シラバス === */}
-        {activeTab === "syllabus" && !selectedClass && (
-          <div className="bg-white rounded-2xl border border-orange-50 shadow-sm p-4 animate-fade-in">
-            <div className="w-full h-[70vh] rounded-xl overflow-hidden border border-gray-200 shadow-sm relative bg-gray-50">
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center z-0">
-                <Calendar className="text-gray-300 mb-2" size={32} />
-                <p className="text-sm text-gray-500 font-bold mb-1">シラバスを読み込んでいます...</p>
-              </div>
-              {siteConfig.syllabusUrl && (
-                <iframe src={siteConfig.syllabusUrl} className="relative z-10 w-full h-full border-none bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* === 勉強系記事 === */}
-        {activeTab === "articles" && !selectedClass && (
-          <div className="space-y-4 animate-fade-in">
-             <div className="relative px-1">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
-              <input type="text" placeholder="記事を検索..." value={articleSearch} onChange={(e) => setArticleSearch(e.target.value)} className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 sm:text-sm" />
-            </div>
-            <div className="flex gap-2 overflow-x-auto px-1 pb-1 hide-scrollbar">
-              {articleCategories.map((category) => (
-                <button key={category} onClick={() => setArticleCategory(category)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${articleCategory === category ? "bg-gray-800 border-gray-800 text-white" : "bg-white border-gray-200 text-gray-600"}`}>
-                  {category}
-                </button>
-              ))}
-            </div>
-            <div className="space-y-3 pb-6">
-              {filteredArticles.map((article) => (
-                <Link key={article.id} href={`/school/articles/${article.id}`} className="block bg-white rounded-xl shadow-sm border border-orange-50 overflow-hidden flex hover:shadow-md">
-                  <img src={article.image_url || article.image} alt="" className="w-28 h-28 object-cover shrink-0 bg-orange-50" />
-                  <div className="p-3 flex flex-col justify-center min-w-0 flex-1">
-                    <h4 className="text-sm font-bold text-gray-800 line-clamp-2">{article.title}</h4>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* === その他プレースホルダ === */}
-        {activeTab === "hospitals" && !selectedClass && (
-          <div className="bg-white rounded-2xl border border-orange-50 shadow-sm p-8 text-center animate-fade-in">
-            <Building2 className="mx-auto text-orange-200 mb-3" size={40} />
-            <p className="font-bold text-gray-800 mb-2">研修病院紹介(Phase 2機能)</p>
-            <p className="text-sm text-gray-500">4年生以上向けに、病院見学マニュアル・病院一覧などを公開予定です。</p>
-          </div>
-        )}
-        {activeTab === "exam" && !selectedClass && (
-          <div className="bg-white rounded-2xl border border-orange-50 shadow-sm p-8 text-center animate-fade-in">
-            <BookOpen className="mx-auto text-orange-200 mb-3" size={40} />
-            <p className="font-bold text-gray-800 mb-2">国試対策(Phase 2機能)</p>
-            <p className="text-sm text-gray-500">CBT/国試対策の一問一答や過去問データを準備中です。</p>
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
-// =============================================================
-// タブピルボタン
-// =============================================================
 function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; }) {
   return (
     <button onClick={onClick} className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${active ? "bg-orange-500 text-white shadow-md" : "bg-white text-gray-600 border border-gray-200 hover:bg-orange-50"}`}>
