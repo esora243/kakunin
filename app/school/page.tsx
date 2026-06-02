@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation"; // ページ遷移用に追加
 import {
   Calendar, Clock, ChevronRight, ChevronLeft, Menu, BookOpen, Loader2,
-  CalendarDays, X, Save, Edit2, MapPin, ClipboardList, Search, FileText, ChevronRightCircle
+  CalendarDays, X, Save, Edit2, MapPin, ClipboardList, ExternalLink
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
@@ -66,11 +67,11 @@ function formatYYYYMMDD(d: Date) {
 }
 
 export default function SchoolPage() {
-  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles">("timetable");
+  const router = useRouter(); // ページ遷移用ルーター
+  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus">("timetable");
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassData[]>([]);
   
-  // CSVデータの開始週を初期表示に設定
   const [currentDate, setCurrentDate] = useState(new Date("2026-04-13T00:00:00"));
   const weekDates = useMemo(() => getWeekDates(new Date(currentDate)), [currentDate]);
   
@@ -79,12 +80,10 @@ export default function SchoolPage() {
   const [editForm, setEditForm] = useState<Partial<ClassData>>({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // APIを介さず、Supabaseから直接全データを取得
   const fetchClasses = async () => {
     setLoading(true);
     try {
       const res = await supabaseRestFetch<any>({ path: "timetable_classes?select=*" });
-      
       let rawData: any[] = [];
       if (Array.isArray(res)) {
         rawData = res;
@@ -290,81 +289,46 @@ export default function SchoolPage() {
   };
 
   // ============================================================
-  // シラバス ビュー
+  // シラバス ビュー (外部iframe埋め込み)
   // ============================================================
-  const renderSyllabus = () => (
-    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm animate-fade-in w-full min-h-[600px]">
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-          <ClipboardList size={20} />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-gray-800">シラバス検索</h2>
-          <p className="text-xs text-gray-500 font-medium">講義の目的や評価基準を確認できます</p>
-        </div>
-      </div>
-      <div className="relative mb-6">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input type="text" placeholder="科目名や教員名で検索..." className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-100" />
-      </div>
-      <div className="space-y-3">
-        {[
-          { title: "臨床医学総論", professor: "臨床大 教員チーム", term: "第1〜第2クォーター" },
-          { title: "病理学（各論）", professor: "岩下", term: "第1クォーター" },
-          { title: "呼吸器内科学", professor: "穗積 / 中島", term: "第2クォーター" }
-        ].map((s, i) => (
-          <div key={i} className="p-4 border border-gray-100 rounded-xl hover:border-blue-200 hover:bg-blue-50/30 transition-colors cursor-pointer group flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-gray-800 mb-1">{s.title}</h3>
-              <div className="flex items-center gap-3 text-xs font-medium text-gray-500">
-                <span className="flex items-center gap-1"><BookOpen size={12} /> {s.professor}</span>
-                <span className="flex items-center gap-1"><CalendarDays size={12} /> {s.term}</span>
-              </div>
-            </div>
-            <ChevronRightCircle size={20} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  const renderSyllabus = () => {
+    const syllabusUrl = "https://lcu.hama-med.ac.jp/lcu-web/SC_06001B00_21";
 
-  // ============================================================
-  // 勉強系記事 ビュー
-  // ============================================================
-  const renderArticles = () => (
-    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm animate-fade-in w-full min-h-[600px]">
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-        <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-          <FileText size={20} />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-gray-800">勉強系記事・資料</h2>
-          <p className="text-xs text-gray-500 font-medium">講義のまとめや試験対策資料</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {[
-          { title: "病理学（各論） 定期試験まとめ", date: "2026-05-15", tags: ["病理", "試験対策"] },
-          { title: "呼吸器内科学 重要疾患フローチャート", date: "2026-05-20", tags: ["臨床", "まとめ"] },
-          { title: "CBT対策に向けた基礎医学復習", date: "2026-04-10", tags: ["CBT", "基礎医学"] },
-          { title: "PBL（臨床I）グループ学習の進め方", date: "2026-04-05", tags: ["PBL", "ガイド"] }
-        ].map((article, i) => (
-          <div key={i} className="p-4 border border-gray-100 rounded-xl hover:border-emerald-200 hover:shadow-sm transition-all cursor-pointer group">
-            <div className="flex gap-2 mb-2">
-              {article.tags.map(tag => (
-                <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">{tag}</span>
-              ))}
+    return (
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm animate-fade-in w-full min-h-[800px] flex flex-col">
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+              <ClipboardList size={20} />
             </div>
-            <h3 className="font-bold text-gray-800 mb-3 text-sm group-hover:text-emerald-600 transition-colors line-clamp-2">{article.title}</h3>
-            <div className="flex items-center justify-between text-xs font-medium text-gray-400">
-              <span>{article.date}</span>
-              <span className="flex items-center gap-1 group-hover:text-emerald-500"><File size={12} /> 読む</span>
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">シラバス検索</h2>
             </div>
           </div>
-        ))}
+          {/* iframeがブロックされた時のための代替リンク */}
+          <a
+            href={syllabusUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors"
+          >
+            <ExternalLink size={14} />
+            別タブで開く
+          </a>
+        </div>
+        
+        {/* 大学のシステムによってはX-Frame-Optionsでブロックされる可能性があります */}
+        <div className="w-full flex-1 min-h-[700px] bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
+          <iframe
+            src={syllabusUrl}
+            className="w-full h-full border-none"
+            title="シラバス"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+          />
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white min-h-screen font-sans">
@@ -377,14 +341,19 @@ export default function SchoolPage() {
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
             <TabButton active={activeTab === "timetable"} onClick={() => setActiveTab("timetable")} icon={<Calendar size={16} />} label="時間割" />
             <TabButton active={activeTab === "syllabus"} onClick={() => setActiveTab("syllabus")} icon={<ClipboardList size={16} />} label="シラバス" />
-            <TabButton active={activeTab === "articles"} onClick={() => setActiveTab("articles")} icon={<BookOpen size={16} />} label="勉強系記事" />
+            {/* 勉強系記事タブをクリックすると、ルーターを使って別ページへ遷移します */}
+            <TabButton 
+              active={false} 
+              onClick={() => router.push("/articles?tab=study")} 
+              icon={<BookOpen size={16} />} 
+              label="勉強系記事" 
+            />
           </div>
         </div>
       )}
       <div className={`bg-[#FFF9FA] ${!selectedClass && activeTab === "timetable" ? "p-2 sm:p-6" : "p-4 sm:p-6"}`}>
         {activeTab === "timetable" && (selectedClass ? renderDetailView() : renderTimetableGrid())}
         {activeTab === "syllabus" && renderSyllabus()}
-        {activeTab === "articles" && renderArticles()}
       </div>
     </div>
   );
