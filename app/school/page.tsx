@@ -483,25 +483,29 @@ export default function SchoolPage() {
           </div>
         )}
 
-        {/* ================= シラバスタブ ================= */}
+{/* ================= シラバスタブ ================= */}
         {activeTab === "syllabus" && (
-          <div className="space-y-4 animate-in fade-in">
-            <div className="w-full h-[70vh] rounded-xl overflow-hidden border border-gray-200 shadow-sm relative bg-gray-50">
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center z-0">
-                <Calendar className="text-gray-300 mb-2" size={32} />
-                <p className="text-sm text-gray-500 font-bold mb-1">シラバスを読み込んでいます...</p>
-                <p className="text-xs text-gray-400">表示されない場合は、<a href="https://lcu.hama-med.ac.jp/lcu-web/SC_06001B00_21" target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">こちらからブラウザで開いて</a>ください。</p>
+          <div className="space-y-4 animate-in fade-in duration-300">
+            <div className="bg-white p-8 sm:p-12 rounded-2xl border border-gray-100 shadow-sm text-center">
+              <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-5">
+                <ClipboardList size={36} strokeWidth={2} />
               </div>
-              <iframe
-                src="https://lcu.hama-med.ac.jp/lcu-web/SC_06001B00_21"
-                title="大学シラバス"
-                className="relative z-10 w-full h-full border-none bg-white"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-              />
+              <h3 className="text-xl font-bold text-gray-900 mb-3">公式シラバスシステム</h3>
+              <p className="text-sm text-gray-500 mb-8 leading-relaxed font-medium">
+                大学のセキュリティ設定により、アプリ内での直接表示が制限されています。<br className="hidden sm:block" />
+                以下のボタンから、安全なブラウザの別タブでシラバスを開いてください。
+              </p>
+              <a
+                href="https://lcu.hama-med.ac.jp/lcu-web/SC_06001B00_21"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#4e72ba] text-white rounded-xl font-bold shadow-sm hover:bg-blue-700 transition-colors w-full sm:w-auto text-sm"
+              >
+                シラバスシステムを開く <ExternalLink size={18} />
+              </a>
             </div>
           </div>
         )}
-
         {/* ================= 勉強系記事タブ ================= */}
         {activeTab === "articles" && (
           <div className="space-y-4 animate-in fade-in duration-300">
