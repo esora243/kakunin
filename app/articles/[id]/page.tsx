@@ -5,13 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Megaphone } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
-// TSのエラーを強制的に無視して article.json を読み込む
-// @ts-ignore
-import articleData from "@/lib/article.json";
-
 export default function ArticleDetailPage() {
   const params = useParams();
-  const id = params.id ? Number(params.id) : null;
+  const id = params.id as string;
   const router = useRouter();
 
   const [article, setArticle] = useState<any>(null);
@@ -24,9 +20,9 @@ export default function ArticleDetailPage() {
     async function fetchData() {
       setLoading(true);
       try {
-        // 1. 記事取得 (article.json から直接取得。文字列・数値の型ズレを吸収)
-        const foundArticle = articleData.find((item: any) => String(item.id) === String(id));
-        setArticle(foundArticle || null);
+        // 1. JSONファイルは使わず、Supabaseの「articles」テーブルから直接取得
+        const articleData = await supabaseRestFetch<any[]>({ path: `articles?id=eq.${id}` });
+        setArticle(articleData?.[0] || null);
 
         // 2. 広告取得 (sponsorsテーブルの最初の1件)
         try {
