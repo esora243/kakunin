@@ -14,24 +14,6 @@ import { useAuth } from "./AuthContext";
 import { LoginModal } from "./LoginModal";
 import { Toaster, toast } from "sonner";
 import type { ReactNode } from "react";
-
-/**
- * AppLayout
- * - Hugmeid mock のヘッダーデザインを完全反映:
- *   1) 全体背景: bg-[#FFF9FA]
- *   2) ロゴ: orange-400→orange-500 のグラデーション + サブコピー「6万人の医学生で創る縁」
- *   3) ナビ: 学校 / 課外活動 / 記事 / 繋がり / マイページ + 右端 スポンサー
- *      ※ 求人(jobs) は要件定義書/画面遷移書に基づき "学校" タブ配下のサブタブから
- *        独立した /jobs ルートとしてアクセス可能だが、トップナビからは除外し、
- *        Hugmeid mock のナビ構成を採用。
- *   4) Active 状態: text-orange-500 + bg-orange-50 のピル形状
- *   5) モバイル時はボトムナビ(同じ5項目)を表示
- *
- * - 機能保持:
- *   - LINE LIFF を想定したログイン (LoginModal)
- *   - 認証必要なナビ(マイページ)はモーダル誘導
- *   - sonner Toaster 維持
- */
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
