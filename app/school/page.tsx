@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Calendar,
   Clock,
@@ -24,21 +24,25 @@ import {
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
 // =============================================================
-// 型定義 (共通の TimetableClassDto 構造に完全準拠)
+// 型定義 (新データベース/CSV カラム名に完全準拠)
 // =============================================================
 type ClassData = {
   id: string;
-  title: string;       // 授業名
-  category: string;    // 色分け用
-  day: string;         // 曜日 ("月"〜"金")
-  period: number;      // 時限 (1〜6, または 7=特別枠)
-  room: string;        // 教室
-  professor: string;   // 担当教員
-  timeDisplay: string; // 表示用時刻
-  startsAt: string;
-  endsAt: string;
+  title: string;       // DB: subject
+  category: string;    // 自動色判定カテゴリ
+  day: string;         // DB: day_of_week
+  date: string;        // DB: date
+  period: string;      // DB: period ("1"〜"6" または "special")
+  room: string;        // DB: room
+  professor: string;   // DB: teacher
+  timeStart: string;   // DB: time_start
+  timeEnd: string;     // DB: time_end
+  timeDisplay: string; // 表示用フォーマット
 };
 
+// =============================================================
+// 教科カテゴリの色定義 (授業名から自動判定)
+// =============================================================
 const CATEGORY_STYLES: Record<
   string,
   { border: string; bg: string; text: string; pill: string }
@@ -56,74 +60,122 @@ function autoDetectCategory(subject: string): string {
   if (subject.includes("薬理") || subject.includes("生理")) return "機能系";
   if (subject.includes("解剖")) return "形態系";
   if (subject.includes("生化学")) return "生化学";
-  if (subject.includes("臨床") || subject.includes("PBL") || subject.includes("試験") || subject.includes("討論")) return "臨床";
+  if (subject.includes("臨床") || subject.includes("PBL") || subject.includes("試験") || subject.includes("討論") || subject.includes("講義")) return "臨床";
   return "default";
 }
 
-const DAYS = ["月", "火", "水", "木", "金"] as const;
-const PERIODS = [1, 2, 3, 4, 5, 6, 7] as const; // 7はSpecial(特)枠
+const DAYS = ["月", "火", "水", "木", "金"];
+const ROW_PERIODS = ["1", "2", "3", "4", "5", "6", "special"];
 
+// =============================================================
+// 日付ユーティリティ
+// =============================================================
+function getWeekDates(baseDate: Date) {
+  const d = new Date(baseDate);
+  const dayOfWeek = d.getDay();
+  const diffToMonday = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diffToMonday));
+  return Array.from({ length: 5 }).map((_, i) => {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    return dd;
+  });
+}
+
+function getWeekOfMonthString(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const firstDay = new Date(year, month - 1, 1).getDay() || 7;
+  const weekNumber = Math.ceil((date.getDate() + firstDay - 1) / 7);
+  return `${year}年${month}月 第${weekNumber}週`;
+}
+
+function formatYYYYMMDD(d: Date) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// =============================================================
+// 学校ページ メインコンポーネント
+// =============================================================
 export default function SchoolPage() {
   const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles">("timetable");
   const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState<ClassData[]>([]);
   
-  // 専用APIから最適化されたグリッドデータを保持
-  const [timetableGrid, setTimetableGrid] = useState<Record<string, Record<number, ClassData>>>({});
+  // 初期表示をCSVデータが大量に存在する「2026年4月13日の週」に固定
+  const [currentDate, setCurrentDate] = useState(new Date("2026-04-13"));
   
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ClassData>>({});
   const [isSaving, setIsSaving] = useState(false);
+  
+  const weekDates = useMemo(() => getWeekDates(new Date(currentDate)), [currentDate]);
 
-  // ============================================================
-  // キャッシュを強制回避して専用APIルートからデータを取り直す関数
-  // ============================================================
-  const fetchTimetableData = useCallback(async () => {
+  // 新データテーブル構造から時間割を全取得 (キャッシュ強制回避版)
+  const fetchClasses = useCallback(async () => {
     setLoading(true);
     try {
-      // ランダムなクエリパラメータを付与してブラウザ・Vercelの304キャッシュを強制突破
-      const response = await fetch(`/api/timetable?nocache=${Date.now()}`, {
-        cache: "no-store",
-        headers: { "Pragma": "no-cache", "Cache-Control": "no-cache" }
+      const res = await supabaseRestFetch<any[]>({ 
+        path: `timetable_classes?select=*&nocache=${Date.now()}` 
       });
-      const data = await response.json();
       
-      if (data.ok && data.grid) {
-        // APIから返ってきた各講義データにフロント用の色分けを施す
-        const processedGrid: any = {};
-        DAYS.forEach(day => {
-          processedGrid[day] = {};
-          PERIODS.forEach(p => {
-            const item = data.grid[day]?.[p];
-            if (item) {
-              processedGrid[day][p] = {
-                id: item.id,
-                title: item.title,
-                category: autoDetectCategory(item.title),
-                day: item.day,
-                period: item.period,
-                room: item.room || "",
-                professor: item.instructor || "",
-                startsAt: item.startsAt || "",
-                endsAt: item.endsAt || "",
-                timeDisplay: item.startsAt && item.endsAt ? `${item.startsAt} - ${item.endsAt}` : "時間未設定"
-              };
-            }
-          });
-        });
-        setTimetableGrid(processedGrid);
+      if (Array.isArray(res)) {
+        setClasses(
+          res.map((c) => {
+            const startTime = c.time_start ? c.time_start.substring(0, 5) : "";
+            const endTime = c.time_end ? c.time_end.substring(0, 5) : "";
+            const timeDisplay = startTime && endTime ? `${startTime} - ${endTime}` : startTime || endTime || "時間未設定";
+
+            return {
+              id: c.id,
+              title: c.subject || "（科目名なし）",
+              category: autoDetectCategory(c.subject || ""),
+              day: c.day_of_week || "",
+              date: c.date ? c.date.split("T")[0] : "",
+              period: String(c.period || ""),
+              room: c.room || "",
+              professor: c.teacher || "",
+              timeStart: startTime,
+              timeEnd: endTime,
+              timeDisplay: timeDisplay,
+            };
+          })
+        );
       }
     } catch (error) {
-      console.error("時間割API取得エラー:", error);
+      console.error("時間割取得エラー:", error);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // 初回ロード
   useEffect(() => {
-    fetchTimetableData();
-  }, [fetchTimetableData]);
+    fetchClasses();
+  }, [fetchClasses]);
+
+  const handlePrevWeek = () => {
+    const prev = new Date(currentDate);
+    prev.setDate(prev.getDate() - 7);
+    setCurrentDate(prev);
+  };
+  const handleNextWeek = () => {
+    const next = new Date(currentDate);
+    next.setDate(next.getDate() + 7);
+    setCurrentDate(next);
+  };
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.value) {
+      const [y, m, d] = e.target.value.split("-");
+      setCurrentDate(new Date(Number(y), Number(m) - 1, Number(d)));
+    }
+  };
 
   // ============================================================
   // 詳細ページの編集保存処理 (PATCH)
@@ -133,7 +185,6 @@ export default function SchoolPage() {
     setIsSaving(true);
     
     try {
-      // データベースのカラムに準拠したPATCH処理
       await supabaseRestFetch<any>({
         path: `timetable_classes?id=eq.${selectedClass.id}`,
         method: "PATCH",
@@ -141,30 +192,32 @@ export default function SchoolPage() {
           subject: editForm.title,
           room: editForm.room,
           teacher: editForm.professor,
-          time_start: editForm.startsAt ? `${editForm.startsAt}:00` : null,
-          time_end: editForm.endsAt ? `${editForm.endsAt}:00` : null,
+          time_start: editForm.timeStart ? `${editForm.timeStart}:00` : null,
+          time_end: editForm.timeEnd ? `${editForm.timeEnd}:00` : null,
+          period: editForm.period,
         },
       });
 
-      // 保存が成功したら、即座にAPI経由で最新のDBをクリーン再取得（キャッシュの完全破棄）
-      await fetchTimetableData();
-      
-      // 詳細モーダルの表示情報も更新して編集モードを閉じる
-      setSelectedClass((prev) => prev ? {
-        ...prev,
+      // 保存が成功したら、即座にクリーンなデータをDBから強制再取得
+      await fetchClasses();
+
+      const updatedClass: ClassData = {
+        ...selectedClass,
         title: editForm.title || "",
         room: editForm.room || "",
         professor: editForm.professor || "",
-        startsAt: editForm.startsAt || "",
-        endsAt: editForm.endsAt || "",
-        timeDisplay: editForm.startsAt && editForm.endsAt ? `${editForm.startsAt} - ${editForm.endsAt}` : "時間未設定",
+        period: editForm.period || "1",
+        timeStart: editForm.timeStart || "",
+        timeEnd: editForm.timeEnd || "",
+        timeDisplay: editForm.timeStart && editForm.timeEnd ? `${editForm.timeStart} - ${editForm.timeEnd}` : "時間未設定",
         category: autoDetectCategory(editForm.title || ""),
-      } : null);
-      
+      };
+
+      setSelectedClass(updatedClass);
       setIsEditing(false);
     } catch (error) {
       console.error("更新エラー:", error);
-      alert("データの保存に失敗しました。");
+      alert("保存に失敗しました。");
     } finally {
       setIsSaving(false);
     }
@@ -207,16 +260,24 @@ export default function SchoolPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1.5">開始時間</label>
-                  <input type="time" value={editForm.startsAt || ""} onChange={(e) => setEditForm({ ...editForm, startsAt: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
+                  <input type="time" value={editForm.timeStart || ""} onChange={(e) => setEditForm({ ...editForm, timeStart: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1.5">終了時間</label>
-                  <input type="time" value={editForm.endsAt || ""} onChange={(e) => setEditForm({ ...editForm, endsAt: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
+                  <input type="time" value={editForm.timeEnd || ""} onChange={(e) => setEditForm({ ...editForm, timeEnd: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">教室 (room)</label>
-                <input type="text" value={editForm.room || ""} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">教室 (room)</label>
+                  <input type="text" value={editForm.room || ""} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">時限枠 (period)</label>
+                  <select value={editForm.period || "1"} onChange={(e) => setEditForm({ ...editForm, period: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold">
+                    {ROW_PERIODS.map(p => <option key={p} value={p}>{p === "special" ? "特別枠" : `${p}限`}</option>)}
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1.5">担当教員 (teacher)</label>
@@ -237,7 +298,7 @@ export default function SchoolPage() {
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-3">{selectedClass.title}</h1>
               <p className="text-sm font-bold text-gray-600 mb-8">
-                {selectedClass.day}曜日 ・ {selectedClass.period === 7 ? "特別枠(特)" : `${selectedClass.period}限`}
+                {selectedClass.date.replace(/-/g, "/")} ({selectedClass.day}) ・ {selectedClass.period === "special" ? "特別枠" : `${selectedClass.period}限`}
               </p>
               <h3 className="text-sm font-bold text-gray-800 mb-4">授業情報</h3>
               <div className="bg-gray-50 rounded-2xl p-5 mb-6 space-y-4 border border-gray-100">
@@ -253,69 +314,73 @@ export default function SchoolPage() {
   };
 
   // ============================================================
-  // 時間割グリッド (完全にAPI同期・スマホ特化型)
+  // 時間割グリッド (スマホ幅一瞥特化型)
   // ============================================================
   const renderTimetableGrid = () => {
+    const todayStr = formatYYYYMMDD(new Date());
+
     return (
       <div className="bg-white p-1.5 sm:p-6 rounded-xl sm:rounded-2xl border border-orange-50 shadow-sm animate-fade-in w-full">
-        <div className="flex items-center justify-between mb-4 px-1">
-          <h3 className="text-sm sm:text-base font-bold text-gray-700 flex items-center gap-2">
-            <CalendarDays size={18} className="text-orange-500" />
-            配信中の一括時間割データ
-          </h3>
-          <button onClick={fetchTimetableData} className="text-[10px] font-bold px-3 py-1 bg-orange-50 text-orange-600 border border-orange-100 rounded-full active:scale-95 transition-transform">
-            同期リフレッシュ
-          </button>
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={handlePrevWeek} className="p-1 hover:bg-gray-50 rounded-full"><ChevronLeft size={20} className="text-gray-400" /></button>
+          <div className="flex flex-col sm:flex-row items-center gap-1">
+            <div className="relative group flex items-center cursor-pointer">
+              <input type="date" value={formatYYYYMMDD(currentDate)} onChange={handleDateChange} className="absolute inset-0 opacity-0 cursor-pointer w-full z-10" />
+              <h3 className="text-sm sm:text-lg font-bold text-gray-800 flex items-center gap-1">
+                {getWeekOfMonthString(currentDate)}<CalendarDays size={16} className="text-gray-400" />
+              </h3>
+            </div>
+            <button onClick={handleToday} className="text-[9px] font-bold px-3 py-0.5 bg-orange-50 text-orange-600 border border-orange-100 rounded-full active:scale-95 transition-transform">今週</button>
+          </div>
+          <button onClick={handleNextWeek} className="p-1 hover:bg-gray-50 rounded-full"><ChevronRight size={20} className="text-gray-400" /></button>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="animate-spin text-orange-500" size={40} />
+        <div className="w-full">
+          <div className="grid grid-cols-[18px_repeat(5,1fr)] sm:grid-cols-[28px_repeat(5,1fr)] gap-0.5 sm:gap-2 mb-2">
+            <div />
+            {weekDates.map((date, i) => {
+              const targetDateStr = formatYYYYMMDD(date);
+              const isToday = targetDateStr === todayStr;
+              return (
+                <div key={i} className="text-center flex flex-col items-center">
+                  <span className={`text-[10px] sm:text-base font-bold ${isToday ? "text-orange-500" : "text-gray-800"}`}>{date.getDate()}</span>
+                  <div className={`text-[9px] sm:text-xs font-bold w-4 h-4 sm:w-7 sm:h-7 rounded-full flex items-center justify-center mt-0.5 ${isToday ? "bg-orange-500 text-white" : "text-gray-500"}`}>{DAYS[i]}</div>
+                </div>
+              );
+            })}
           </div>
-        ) : (
-          <div className="w-full">
-            {/* 曜日ヘッダー */}
-            <div className="grid grid-cols-[18px_repeat(5,1fr)] sm:grid-cols-[28px_repeat(5,1fr)] gap-0.5 sm:gap-2 mb-2">
-              <div />
-              {DAYS.map((day) => (
-                <div key={day} className="text-center flex flex-col items-center">
-                  <div className="text-[10px] sm:text-xs font-bold w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600">{day}</div>
-                </div>
-              ))}
-            </div>
 
-            {/* コマ行ループ (1〜6限 + special=7) */}
-            {PERIODS.map((period) => (
-              <div key={period} className="grid grid-cols-[18px_repeat(5,1fr)] sm:grid-cols-[28px_repeat(5,1fr)] gap-0.5 sm:gap-2 mb-0.5 sm:mb-2">
-                <div className="flex flex-col items-center justify-center text-gray-400 h-full">
-                  <span className={`font-bold leading-none ${period === 7 ? "text-[8px] sm:text-xs text-orange-500" : "text-[10px] sm:text-sm"}`}>
-                    {period === 7 ? "特" : period}
-                  </span>
-                </div>
-
-                {DAYS.map((day) => {
-                  const cellClass = timetableGrid[day]?.[period];
-
-                  if (!cellClass) {
-                    return <div key={`${day}-${period}`} className="border border-gray-100 bg-gray-50/10 rounded min-h-[52px] xs:min-h-[62px] sm:min-h-[100px]" />;
-                  }
-
-                  const style = CATEGORY_STYLES[cellClass.category] || CATEGORY_STYLES.default;
-                  return (
-                    <button
-                      key={cellClass.id}
-                      onClick={() => { setSelectedClass(cellClass); setIsEditing(false); }}
-                      className={`relative border rounded sm:rounded-xl p-0.5 sm:p-2.5 min-h-[52px] xs:min-h-[62px] sm:min-h-[100px] flex flex-col text-left transition-transform hover:scale-[1.02] overflow-hidden ${style.border} ${style.bg}`}
-                    >
-                      <span className={`font-bold text-[8px] xs:text-[9px] sm:text-xs md:text-sm leading-tight line-clamp-3 break-all ${style.text}`}>{cellClass.title}</span>
-                      {cellClass.room && <span className="hidden sm:block text-[10px] text-gray-400 font-bold truncate mt-1">{cellClass.room}</span>}
-                    </button>
-                  );
-                })}
+          {ROW_PERIODS.map((period) => (
+            <div key={period} className="grid grid-cols-[18px_repeat(5,1fr)] sm:grid-cols-[28px_repeat(5,1fr)] gap-0.5 sm:gap-2 mb-0.5 sm:mb-2">
+              <div className="flex flex-col items-center justify-center text-gray-400 h-full">
+                <span className={`font-bold leading-none ${period === "special" ? "text-[8px] sm:text-xs text-orange-500" : "text-[10px] sm:text-sm"}`}>{period === "special" ? "特" : period}</span>
               </div>
-            ))}
-          </div>
-        )}
+
+              {weekDates.map((targetDate) => {
+                const targetDateStr = formatYYYYMMDD(targetDate);
+                
+                // 特定の日付（date）と時限（period）が100%合致するレコードを抽出
+                const cellClass = classes.find((c) => c.date === targetDateStr && c.period === period);
+
+                if (!cellClass) {
+                  return <div key={`${targetDateStr}-${period}`} className="border border-gray-100 bg-gray-50/10 rounded min-h-[52px] xs:min-h-[62px] sm:min-h-[100px]" />;
+                }
+
+                const style = CATEGORY_STYLES[cellClass.category] || CATEGORY_STYLES.default;
+                return (
+                  <button
+                    key={cellClass.id}
+                    onClick={() => { setSelectedClass(cellClass); setIsEditing(false); }}
+                    className={`relative border rounded sm:rounded-xl p-0.5 sm:p-2.5 min-h-[52px] xs:min-h-[62px] sm:min-h-[100px] flex flex-col text-left transition-transform hover:scale-[1.02] overflow-hidden ${style.border} ${style.bg}`}
+                  >
+                    <span className={`font-bold text-[8px] xs:text-[9px] sm:text-xs md:text-sm leading-tight line-clamp-3 break-all ${style.text}`}>{cellClass.title}</span>
+                    {cellClass.room && <span className="hidden sm:block text-[10px] text-gray-400 font-bold truncate mt-1">{cellClass.room}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
@@ -326,7 +391,9 @@ export default function SchoolPage() {
         <div className="px-4 sm:px-6 py-5 border-b border-orange-50 sticky top-0 bg-white z-20">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">学校</h2>
-            <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500"><Menu size={18} /></button>
+            <button onClick={fetchClasses} className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 active:scale-95 transition-transform">
+              <Menu size={18} />
+            </button>
           </div>
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
             <TabButton active={activeTab === "timetable"} onClick={() => setActiveTab("timetable")} icon={<Calendar size={16} />} label="時間割" />
