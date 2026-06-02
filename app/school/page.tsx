@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Calendar, Clock, ChevronRight, ChevronLeft, Menu, BookOpen, Loader2,
   X, Save, Edit2, MapPin, ClipboardList, ExternalLink, Video, Check,
-  Search, ArrowLeft, Tag, Share2, Plus, MoreVertical
+  Search, ArrowLeft, Tag, Share2, Plus, MoreVertical, Trash2
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
@@ -116,7 +116,7 @@ export default function SchoolPage() {
   const [view, setView] = useState<"main" | "classDetail" | "articleDetail">("main");
   const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles">("timetable");
   
-  // DBデータ状態 (モックは一切使用しません)
+  // DBデータ状態
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [tasks, setTasks] = useState<TaskData[]>([]);
@@ -129,6 +129,13 @@ export default function SchoolPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("すべて");
 
+  // === 編集・追加用の状態 ===
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<ClassData>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTaskForm, setNewTaskForm] = useState({ title: "", deadline: "" });
+
   // 日付管理
   const [currentDate, setCurrentDate] = useState(new Date("2026-04-13T00:00:00"));
   const weekDates = useMemo(() => getWeekDates(new Date(currentDate)), [currentDate]);
@@ -137,28 +144,28 @@ export default function SchoolPage() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      // 1. 時間割の取得
+      // 時間割
       let rawClasses: any[] = [];
       try {
         const classRes = await supabaseRestFetch<any>({ path: "timetable_classes?select=*" });
         rawClasses = Array.isArray(classRes) ? classRes : (classRes?.data || []);
       } catch (e) { console.error("時間割エラー:", e); }
 
-      // 2. 課題の取得
+      // 課題
       let rawTasks: any[] = [];
       try {
         const taskRes = await supabaseRestFetch<any>({ path: "class_tasks?select=*" });
         rawTasks = Array.isArray(taskRes) ? taskRes : (taskRes?.data || []);
       } catch (e) { console.error("課題エラー:", e); }
 
-      // 3. 記事の取得
+      // 記事
       let rawArticles: any[] = [];
       try {
         const artRes = await supabaseRestFetch<any>({ path: "articles?select=*" });
         rawArticles = Array.isArray(artRes) ? artRes : (artRes?.data || []);
       } catch (e) { console.error("記事エラー:", e); }
 
-      // 4. キャンペーン（バナー）の取得
+      // キャンペーン
       let rawCampaigns: any[] = [];
       try {
         const campRes = await supabaseRestFetch<any>({ path: "campaigns?select=*" });
@@ -192,7 +199,7 @@ export default function SchoolPage() {
         id: String(t.id),
         classId: String(t.class_id),
         title: t.title || "無題の課題",
-        deadline: t.deadline || "期限なし",
+        deadline: t.deadline || "",
         completed: !!t.completed
       })));
 
@@ -233,12 +240,133 @@ export default function SchoolPage() {
   }, [searchQuery, selectedCategory, articles]);
 
 
+  // === 編集アクション（時間割の保存） ===
+  const handleSaveClass = async () => {
+    if (!selectedClass) return;
+    setIsSaving(true);
+    try {
+      // 時間のフォーマットをHH:MM:SSに補正して保存
+      const formatTime = (timeStr?: string) => timeStr ? (timeStr.length === 5 ? `${timeStr}:00` : timeStr) : null;
+      
+      await supabaseRestFetch<any>({
+        path: `timetable_classes?id=eq.${selectedClass.id}`,
+        method: "PATCH",
+        body: {
+          subject: editForm.title,
+          room: editForm.room,
+          teacher: editForm.professor,
+          time_start: formatTime(editForm.timeStart),
+          time_end: formatTime(editForm.timeEnd),
+          period: editForm.period,
+        },
+      });
+      await fetchAllData();
+      
+      // 更新後のデータで選択中のクラスも書き換える
+      setSelectedClass(prev => prev ? { ...prev, ...editForm } as ClassData : null);
+      setIsEditing(false);
+    } catch (error) {
+      alert("保存に失敗しました。");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // === 課題追加アクション ===
+  const handleAddTask = async () => {
+    if (!selectedClass || !newTaskForm.title) return;
+    setIsSaving(true);
+    try {
+      await supabaseRestFetch<any>({
+        path: `class_tasks`,
+        method: "POST",
+        body: {
+          class_id: selectedClass.id,
+          title: newTaskForm.title,
+          deadline: newTaskForm.deadline || null,
+          completed: false
+        },
+      });
+      await fetchAllData();
+      setNewTaskForm({ title: "", deadline: "" });
+      setIsAddingTask(false);
+    } catch (error) {
+      alert("課題の追加に失敗しました。");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // === 課題トグル（完了/未完了） ===
+  const handleToggleTask = async (task: TaskData) => {
+    try {
+      // 画面の即時反映 (Optimistic UI)
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t));
+      
+      await supabaseRestFetch<any>({
+        path: `class_tasks?id=eq.${task.id}`,
+        method: "PATCH",
+        body: { completed: !task.completed },
+      });
+    } catch (error) {
+      // 失敗した場合は元に戻すために再取得
+      fetchAllData();
+    }
+  };
+
+
   // ============================================================
   // 1. 授業詳細ビュー
   // ============================================================
   if (view === "classDetail" && selectedClass) {
     const classTasks = tasks.filter(t => t.classId === selectedClass.id);
 
+    // 編集モードの画面
+    if (isEditing) {
+      return (
+        <div className="w-full max-w-lg mx-auto bg-white min-h-screen pb-20 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 bg-white/90 backdrop-blur-md border-b border-gray-100">
+            <button onClick={() => setIsEditing(false)} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:bg-gray-50">
+              <X size={20} className="text-gray-600" />
+            </button>
+            <h2 className="text-lg font-bold text-gray-800">授業の編集</h2>
+            <div className="w-10 h-10"></div>
+          </div>
+
+          <div className="px-5 pt-6 space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1.5">授業名</label>
+              <input type="text" value={editForm.title || ""} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold focus:bg-white focus:ring-2 focus:ring-orange-100 focus:outline-none transition-all" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-xs font-bold text-gray-500 mb-1.5">開始時間</label><input type="time" value={editForm.timeStart || ""} onChange={(e) => setEditForm({ ...editForm, timeStart: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold focus:bg-white focus:ring-2 focus:ring-orange-100 focus:outline-none transition-all" /></div>
+              <div><label className="block text-xs font-bold text-gray-500 mb-1.5">終了時間</label><input type="time" value={editForm.timeEnd || ""} onChange={(e) => setEditForm({ ...editForm, timeEnd: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold focus:bg-white focus:ring-2 focus:ring-orange-100 focus:outline-none transition-all" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-xs font-bold text-gray-500 mb-1.5">教室</label><input type="text" value={editForm.room || ""} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold focus:bg-white focus:ring-2 focus:ring-orange-100 focus:outline-none transition-all" /></div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5">時限枠</label>
+                <select value={editForm.period || "1"} onChange={(e) => setEditForm({ ...editForm, period: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold focus:bg-white focus:ring-2 focus:ring-orange-100 focus:outline-none transition-all">
+                  {ROW_PERIODS.map(p => <option key={p} value={p}>{p === "special" ? "特別枠" : `${p}限`}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1.5">担当教員</label>
+              <input type="text" value={editForm.professor || ""} onChange={(e) => setEditForm({ ...editForm, professor: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold focus:bg-white focus:ring-2 focus:ring-orange-100 focus:outline-none transition-all" />
+            </div>
+
+            <div className="pt-6 pb-10">
+              <button onClick={handleSaveClass} disabled={isSaving} className="w-full flex items-center justify-center gap-2 py-4 bg-orange-500 text-white rounded-xl font-bold shadow-sm hover:bg-orange-600 transition-colors disabled:opacity-50">
+                {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />} 保存して完了
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 通常の詳細画面
     return (
       <div className="w-full max-w-lg mx-auto bg-white min-h-screen pb-20 animate-in fade-in slide-in-from-right-2 duration-300">
         <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-4 bg-white/90 backdrop-blur-md border-b border-gray-100">
@@ -285,8 +413,20 @@ export default function SchoolPage() {
               <div className="text-xs font-medium text-blue-500">（登録なし）</div>
             </div>
           </div>
+          
+          <div className="flex gap-3 mb-8">
+            <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold hover:bg-blue-100 transition-colors">
+              <Video size={16}/> Zoomを開く
+            </button>
+            <button 
+              onClick={() => { setEditForm(selectedClass); setIsEditing(true); }}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-300 text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors"
+            >
+              <Edit2 size={16}/> 編集する
+            </button>
+          </div>
 
-          {/* 課題リスト (DBから取得) */}
+          {/* 課題リスト */}
           <h3 className="font-bold text-sm text-gray-800 mb-3 mt-8">課題</h3>
           <div className="bg-gray-50 rounded-2xl p-4 mb-8 space-y-4">
             {classTasks.length === 0 ? (
@@ -294,19 +434,51 @@ export default function SchoolPage() {
             ) : (
               classTasks.map((task) => (
                 <div key={task.id} className={`flex gap-3 pb-4 border-b border-gray-200 ${task.completed ? 'opacity-50' : ''}`}>
-                  <div className={`rounded w-5 h-5 flex items-center justify-center shrink-0 mt-0.5 ${task.completed ? 'bg-orange-500 text-white' : 'border-2 border-amber-500 bg-amber-50'}`}>
+                  <button 
+                    onClick={() => handleToggleTask(task)}
+                    className={`rounded w-5 h-5 flex items-center justify-center shrink-0 mt-0.5 cursor-pointer transition-colors ${task.completed ? 'bg-orange-500 text-white border-orange-500' : 'border-2 border-amber-500 bg-amber-50 hover:bg-amber-100'}`}
+                  >
                     {task.completed && <Check size={14} strokeWidth={3} />}
-                  </div>
-                  <div>
+                  </button>
+                  <div className="flex-1">
                     <p className={`text-sm font-bold ${task.completed ? 'text-gray-800 line-through decoration-gray-500' : 'text-gray-800'}`}>{task.title}</p>
-                    <p className={`text-xs mt-1 font-bold ${task.completed ? 'text-gray-500' : 'text-amber-600'}`}>期限：{task.deadline}</p>
+                    <p className={`text-xs mt-1 font-bold ${task.completed ? 'text-gray-500' : 'text-amber-600'}`}>期限：{task.deadline || "指定なし"}</p>
                   </div>
                 </div>
               ))
             )}
-            <button className="flex items-center gap-2 text-orange-500 text-sm font-bold py-1 hover:text-orange-600">
-              <Plus size={16}/> 課題を追加
-            </button>
+            
+            {/* 課題追加フォーム */}
+            {isAddingTask ? (
+              <div className="pt-2 animate-in fade-in">
+                <input 
+                  type="text" 
+                  placeholder="課題のタイトル..." 
+                  value={newTaskForm.title}
+                  onChange={e => setNewTaskForm({...newTaskForm, title: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold mb-2 focus:ring-2 focus:ring-orange-100 focus:outline-none"
+                />
+                <input 
+                  type="date" 
+                  value={newTaskForm.deadline}
+                  onChange={e => setNewTaskForm({...newTaskForm, deadline: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 mb-3 focus:ring-2 focus:ring-orange-100 focus:outline-none"
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => setIsAddingTask(false)} className="flex-1 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-gray-600">キャンセル</button>
+                  <button onClick={handleAddTask} disabled={isSaving || !newTaskForm.title} className="flex-1 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold disabled:opacity-50 flex items-center justify-center">
+                    {isSaving ? <Loader2 size={16} className="animate-spin" /> : "追加する"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsAddingTask(true)}
+                className="flex items-center gap-2 text-orange-500 text-sm font-bold py-1 hover:text-orange-600 transition-colors"
+              >
+                <Plus size={16}/> 新しい課題を追加
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -381,7 +553,7 @@ export default function SchoolPage() {
         </div>
       </div>
 
-      {/* バナー (DBにあれば表示) */}
+      {/* バナー */}
       {campaigns.length > 0 && (
         <FloatingBanner 
           title={campaigns[0].title}
@@ -404,7 +576,6 @@ export default function SchoolPage() {
             </div>
 
             <div className="bg-white">
-              {/* 日付ヘッダー */}
               <div className="grid grid-cols-[24px_1fr_1fr_1fr_1fr_1fr] gap-1 mb-2">
                 <div></div>
                 {weekDates.map((date, i) => {
@@ -427,7 +598,6 @@ export default function SchoolPage() {
                 })}
               </div>
 
-              {/* グリッド本体 */}
               {loading ? (
                 <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={30} /></div>
               ) : (
@@ -439,14 +609,12 @@ export default function SchoolPage() {
                     </div>
                     {weekDates.map((date, i) => {
                       const targetDateStr = formatYYYYMMDD(date);
-                      // DBから取得した該当授業を探す
                       const cell = classes.find(c => c.date === targetDateStr && c.period === period);
                       
                       if (!cell) {
                         return <div key={i} className="border border-gray-100 rounded-md bg-gray-50/30 min-h-[70px]"></div>;
                       }
 
-                      // この授業に未完了の課題があるかチェック
                       const hasUncompletedTask = tasks.some(t => t.classId === cell.id && !t.completed);
 
                       return (
@@ -458,7 +626,6 @@ export default function SchoolPage() {
                           <span className="font-bold text-[10px] leading-tight whitespace-pre-line tracking-tight">{cell.title}</span>
                           {cell.room && <span className="text-[8px] mt-1 opacity-70 leading-tight block">{cell.room}</span>}
                           
-                          {/* 課題がある場合はドットを表示 */}
                           {hasUncompletedTask && (
                             <div className="absolute bottom-1.5 left-1.5 flex gap-1">
                               <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
@@ -472,7 +639,6 @@ export default function SchoolPage() {
               )}
             </div>
 
-            {/* 凡例 */}
             <div className="flex flex-wrap gap-x-3 gap-y-2 text-[9px] mt-6 px-2 justify-center text-gray-600">
               <span className="flex items-center gap-1"><span className="w-2 h-2 border border-orange-200 bg-orange-50"></span>形態系 / 病理</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 border border-blue-400 bg-blue-50"></span>機能系</span>
@@ -483,7 +649,7 @@ export default function SchoolPage() {
           </div>
         )}
 
-{/* ================= シラバスタブ ================= */}
+        {/* ================= シラバスタブ ================= */}
         {activeTab === "syllabus" && (
           <div className="space-y-4 animate-in fade-in duration-300">
             <div className="bg-white p-8 sm:p-12 rounded-2xl border border-gray-100 shadow-sm text-center">
@@ -506,6 +672,7 @@ export default function SchoolPage() {
             </div>
           </div>
         )}
+
         {/* ================= 勉強系記事タブ ================= */}
         {activeTab === "articles" && (
           <div className="space-y-4 animate-in fade-in duration-300">
