@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation"; // ページ遷移用に追加
+import { useRouter } from "next/navigation";
 import {
   Calendar, Clock, ChevronRight, ChevronLeft, Menu, BookOpen, Loader2,
-  CalendarDays, X, Save, Edit2, MapPin, ClipboardList, ExternalLink
+  CalendarDays, X, Save, Edit2, MapPin, ClipboardList, ExternalLink, User, FileText
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
 // =============================================================
-// DB(CSV)の生データをそのまま受け取る型
+// 型定義
 // =============================================================
 type ClassData = {
   id: string;
@@ -25,23 +25,14 @@ type ClassData = {
   timeDisplay: string;
 };
 
-const CATEGORY_STYLES: Record<string, { border: string; bg: string; text: string; pill: string }> = {
-  形態系: { border: "border-orange-200", bg: "bg-orange-50", text: "text-orange-700", pill: "bg-orange-50 text-orange-600 border-orange-100" },
-  機能系: { border: "border-blue-200", bg: "bg-blue-50", text: "text-blue-700", pill: "bg-blue-50 text-blue-600 border-blue-100" },
-  生化学: { border: "border-emerald-200", bg: "bg-emerald-50", text: "text-emerald-700", pill: "bg-emerald-50 text-emerald-600 border-emerald-100" },
-  病理: { border: "border-rose-200", bg: "bg-rose-50", text: "text-rose-700", pill: "bg-rose-50 text-rose-600 border-rose-100" },
-  臨床: { border: "border-teal-200", bg: "bg-teal-50", text: "text-teal-700", pill: "bg-teal-50 text-teal-600 border-teal-100" },
-  default: { border: "border-gray-200", bg: "bg-gray-50/50", text: "text-gray-700", pill: "bg-gray-100 text-gray-600 border-gray-200" },
-};
-
 function autoDetectCategory(subject: string): string {
-  if (!subject) return "default";
-  if (subject.includes("病理")) return "病理";
-  if (subject.includes("薬理") || subject.includes("生理")) return "機能系";
-  if (subject.includes("解剖")) return "形態系";
+  if (!subject) return "一般";
+  if (subject.includes("病理")) return "病理学";
+  if (subject.includes("薬理") || subject.includes("生理")) return "機能系医学";
+  if (subject.includes("解剖")) return "形態系医学";
   if (subject.includes("生化学")) return "生化学";
-  if (subject.includes("臨床") || subject.includes("PBL") || subject.includes("試験") || subject.includes("討論") || subject.includes("内科学") || subject.includes("外科学")) return "臨床";
-  return "default";
+  if (subject.includes("臨床") || subject.includes("PBL") || subject.includes("内科学") || subject.includes("外科学")) return "臨床医学";
+  return "一般講義";
 }
 
 const DAYS = ["月", "火", "水", "木", "金"];
@@ -67,15 +58,18 @@ function formatYYYYMMDD(d: Date) {
 }
 
 export default function SchoolPage() {
-  const router = useRouter(); // ページ遷移用ルーター
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"timetable" | "syllabus">("timetable");
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassData[]>([]);
   
+  // 日付管理
   const [currentDate, setCurrentDate] = useState(new Date("2026-04-13T00:00:00"));
   const weekDates = useMemo(() => getWeekDates(new Date(currentDate)), [currentDate]);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0); // 選択中の曜日 (0=月, 4=金)
   
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
+  const [detailInnerTab, setDetailInnerTab] = useState<"detail" | "syllabus" | "materials">("detail");
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ClassData>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -85,25 +79,20 @@ export default function SchoolPage() {
     try {
       const res = await supabaseRestFetch<any>({ path: "timetable_classes?select=*" });
       let rawData: any[] = [];
-      if (Array.isArray(res)) {
-        rawData = res;
-      } else if (res && typeof res === "object" && Array.isArray((res as any).data)) {
-        rawData = (res as any).data;
-      }
+      if (Array.isArray(res)) rawData = res;
+      else if (res && typeof res === "object" && Array.isArray((res as any).data)) rawData = (res as any).data;
 
       if (rawData.length > 0) {
         setClasses(
           rawData.map((c) => {
             const startTime = c.time_start ? c.time_start.substring(0, 5) : "";
             const endTime = c.time_end ? c.time_end.substring(0, 5) : "";
-            const dateStr = c.date ? c.date.split("T")[0] : "";
-
             return {
               id: String(c.id),
               title: c.subject || "（科目名なし）",
               category: autoDetectCategory(c.subject || ""),
               day: c.day_of_week || "",
-              date: dateStr,
+              date: c.date ? c.date.split("T")[0] : "",
               period: String(c.period || ""),
               room: c.room || "",
               professor: c.teacher || "",
@@ -152,138 +141,250 @@ export default function SchoolPage() {
   };
 
   // ============================================================
-  // 時間割 詳細ビュー
+  // 新デザイン: 詳細ビュー (画像再現)
   // ============================================================
   const renderDetailView = () => {
     if (!selectedClass) return null;
-    const style = CATEGORY_STYLES[selectedClass.category] || CATEGORY_STYLES.default;
-    return (
-      <div className="bg-white min-h-[800px] animate-fade-in pb-20">
-        <div className="flex items-center justify-between px-4 py-4 mb-2 border-b border-gray-100">
-          <button onClick={() => isEditing ? setIsEditing(false) : setSelectedClass(null)} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50">
-            {isEditing ? <X size={24} /> : <ChevronLeft size={24} />}
-          </button>
-          <h2 className="text-base font-bold text-gray-800">{isEditing ? "授業の編集" : "授業の詳細"}</h2>
-          {!isEditing ? (
-            <button onClick={() => { setEditForm({ ...selectedClass }); setIsEditing(true); }} className="w-10 h-10 flex items-center justify-center rounded-full border border-orange-200 text-orange-500 hover:bg-orange-50">
-              <Edit2 size={18} />
-            </button>
-          ) : <div className="w-10 h-10" />}
-        </div>
-        <div className="px-6 pt-4">
-          {isEditing ? (
-            <div className="space-y-5">
+
+    if (isEditing) {
+      return (
+        <div className="bg-white min-h-screen animate-fade-in pb-20">
+          <header className="flex items-center justify-between px-4 py-4 mb-2 border-b border-gray-100">
+            <button onClick={() => setIsEditing(false)} className="p-2 text-gray-500 hover:bg-gray-50 rounded-full"><X size={24} /></button>
+            <h2 className="text-base font-bold text-gray-800">授業の編集</h2>
+            <div className="w-10"></div>
+          </header>
+          <div className="px-6 pt-4 space-y-5">
+            {/* 編集フォーム (既存のロジックを踏襲) */}
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1.5">授業名</label>
+              <input type="text" value={editForm.title || ""} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-xs font-bold text-gray-500 mb-1.5">開始時間</label><input type="time" value={editForm.timeStart || ""} onChange={(e) => setEditForm({ ...editForm, timeStart: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" /></div>
+              <div><label className="block text-xs font-bold text-gray-500 mb-1.5">終了時間</label><input type="time" value={editForm.timeEnd || ""} onChange={(e) => setEditForm({ ...editForm, timeEnd: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-xs font-bold text-gray-500 mb-1.5">教室</label><input type="text" value={editForm.room || ""} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" /></div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">授業名</label>
-                <input type="text" value={editForm.title || ""} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-xs font-bold text-gray-500 mb-1.5">開始時間</label><input type="time" value={editForm.timeStart || ""} onChange={(e) => setEditForm({ ...editForm, timeStart: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 mb-1.5">終了時間</label><input type="time" value={editForm.timeEnd || ""} onChange={(e) => setEditForm({ ...editForm, timeEnd: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-xs font-bold text-gray-500 mb-1.5">教室</label><input type="text" value={editForm.room || ""} onChange={(e) => setEditForm({ ...editForm, room: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" /></div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1.5">時限枠</label>
-                  <select value={editForm.period || "1"} onChange={(e) => setEditForm({ ...editForm, period: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold">
-                    {ROW_PERIODS.map(p => <option key={p} value={p}>{p === "special" ? "特別枠" : `${p}限`}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">担当教員</label>
-                <input type="text" value={editForm.professor || ""} onChange={(e) => setEditForm({ ...editForm, professor: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
-              </div>
-              <div className="pt-6 flex gap-3">
-                <button onClick={() => setIsEditing(false)} className="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-bold">キャンセル</button>
-                <button onClick={handleSaveClass} disabled={isSaving} className="flex-1 py-3.5 bg-orange-500 text-white rounded-xl font-bold flex items-center justify-center gap-2">
-                  {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />} 保存する
-                </button>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5">時限枠</label>
+                <select value={editForm.period || "1"} onChange={(e) => setEditForm({ ...editForm, period: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold">
+                  {ROW_PERIODS.map(p => <option key={p} value={p}>{p === "special" ? "特別枠" : `${p}限`}</option>)}
+                </select>
               </div>
             </div>
-          ) : (
-            <>
-              <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border mb-4 ${style.pill}`}>{selectedClass.category}</div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-3">{selectedClass.title}</h1>
-              <p className="text-sm font-bold text-gray-600 mb-8">{selectedClass.date.replace(/-/g, "/")} ({selectedClass.day}) ・ {selectedClass.period === "special" ? "特別枠" : `${selectedClass.period}限`}</p>
-              <h3 className="text-sm font-bold text-gray-800 mb-4">授業情報</h3>
-              <div className="bg-gray-50 rounded-2xl p-5 mb-6 space-y-4 border border-gray-100">
-                <div className="flex items-center gap-4"><Clock size={16} className="text-gray-400" /><span className="text-sm text-gray-700 font-medium">{selectedClass.timeDisplay}</span></div>
-                <div className="flex items-center gap-4"><MapPin size={16} className="text-gray-400" /><span className="text-sm text-gray-700 font-medium">{selectedClass.room || "場所未設定"}</span></div>
-                <div className="flex items-center gap-4"><BookOpen size={16} className="text-gray-400" /><span className="text-sm text-gray-700 font-medium">{selectedClass.professor || "教員未設定"}</span></div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1.5">担当教員</label>
+              <input type="text" value={editForm.professor || ""} onChange={(e) => setEditForm({ ...editForm, professor: e.target.value })} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold" />
+            </div>
+            <div className="pt-6">
+              <button onClick={handleSaveClass} disabled={isSaving} className="w-full py-4 bg-orange-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm">
+                {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />} 保存して完了
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white min-h-screen animate-fade-in pb-20 font-sans">
+        {/* ヘッダー */}
+        <header className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+          <button onClick={() => setSelectedClass(null)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-50 rounded-full transition-colors">
+            <ChevronLeft size={26} strokeWidth={2.5} />
+          </button>
+          <h1 className="font-bold text-gray-900 text-[17px]">講義詳細</h1>
+          <button onClick={() => { setEditForm({ ...selectedClass }); setIsEditing(true); }} className="p-2 -mr-2 text-gray-600 hover:bg-gray-50 rounded-full transition-colors">
+            <Edit2 size={20} />
+          </button>
+        </header>
+
+        {/* コンテンツボディ */}
+        <div className="p-6">
+          <div className="inline-block px-3 py-1 bg-gray-100 text-gray-600 text-[11px] font-bold rounded mb-4">
+            {selectedClass.category}
+          </div>
+          
+          <h2 className="text-[26px] font-extrabold text-gray-900 mb-3 leading-tight tracking-tight">
+            {selectedClass.title}
+          </h2>
+          
+          <p className="text-[13px] font-bold text-gray-400 mb-8 flex items-center gap-1.5">
+            {selectedClass.date.replace(/-/g, '/')} ({selectedClass.day}) {selectedClass.period === "special" ? "特別枠" : `${selectedClass.period}限`}
+            <span className="ml-2 text-gray-300">•</span>
+            <span className="ml-2">{selectedClass.timeDisplay}</span>
+          </p>
+
+          {/* アイコン付き情報カード (画像再現) */}
+          <div className="space-y-3 mb-10">
+            <div className="flex items-center gap-4 bg-[#f8f9fc] p-4 rounded-2xl border border-gray-50">
+              <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center shadow-sm text-gray-500">
+                <MapPin size={20} strokeWidth={2.5} />
               </div>
-            </>
-          )}
+              <div>
+                <p className="text-[11px] font-bold text-gray-400 mb-0.5">場所</p>
+                <p className="text-[15px] font-extrabold text-gray-800">{selectedClass.room || "場所未設定"}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 bg-[#f8f9fc] p-4 rounded-2xl border border-gray-50">
+              <div className="w-11 h-11 rounded-full bg-white flex items-center justify-center shadow-sm text-gray-500">
+                <User size={20} strokeWidth={2.5} />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-gray-400 mb-0.5">教員</p>
+                <p className="text-[15px] font-extrabold text-gray-800">{selectedClass.professor || "教員未設定"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* インナータブ */}
+          <div className="flex border-b border-gray-200 mb-6">
+            <button 
+              onClick={() => setDetailInnerTab("detail")} 
+              className={`flex-1 pb-3 text-[14px] font-bold border-b-[3px] transition-colors ${detailInnerTab === "detail" ? "border-gray-900 text-gray-900" : "border-transparent text-gray-400 hover:text-gray-600"}`}
+            >
+              授業詳細
+            </button>
+            <button 
+              onClick={() => setDetailInnerTab("syllabus")} 
+              className={`flex-1 pb-3 text-[14px] font-bold border-b-[3px] transition-colors ${detailInnerTab === "syllabus" ? "border-gray-900 text-gray-900" : "border-transparent text-gray-400 hover:text-gray-600"}`}
+            >
+              シラバス
+            </button>
+            <button 
+              onClick={() => setDetailInnerTab("materials")} 
+              className={`flex-1 pb-3 text-[14px] font-bold border-b-[3px] transition-colors ${detailInnerTab === "materials" ? "border-gray-900 text-gray-900" : "border-transparent text-gray-400 hover:text-gray-600"}`}
+            >
+              資料
+            </button>
+          </div>
+
+          {/* タブコンテンツ */}
+          <div className="text-[14px] text-gray-600 font-medium leading-relaxed">
+            {detailInnerTab === "detail" && (
+              <div className="space-y-4 animate-fade-in">
+                <p>この授業に関する詳細なトピックや連絡事項が表示されます。</p>
+              </div>
+            )}
+            {detailInnerTab === "syllabus" && (
+              <div className="space-y-4 animate-fade-in">
+                <p>シラバスシステムと連携した授業目標・評価基準が表示されます。</p>
+                <button className="text-blue-600 font-bold flex items-center gap-1"><ExternalLink size={16}/> 公式シラバスを確認</button>
+              </div>
+            )}
+            {detailInnerTab === "materials" && (
+              <div className="space-y-4 animate-fade-in">
+                <p>配布資料や参考リンクはありません。</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
   };
 
   // ============================================================
-  // 時間割 グリッドビュー
+  // 新デザイン: 時間割 リストビュー (画像再現)
   // ============================================================
   const renderTimetableGrid = () => {
+    const activeDate = weekDates[selectedDayIndex];
+    const activeDateStr = formatYYYYMMDD(activeDate);
+    
+    // 選択された日の授業だけを抽出し、時限順にソート
+    const daysClasses = classes
+      .filter(c => c.date === activeDateStr)
+      .sort((a, b) => {
+        const valA = a.period === "special" ? 7 : parseInt(a.period) || 99;
+        const valB = b.period === "special" ? 7 : parseInt(b.period) || 99;
+        return valA - valB;
+      });
+
     return (
-      <div className="bg-white p-1.5 sm:p-6 rounded-xl sm:rounded-2xl border border-orange-50 shadow-sm animate-fade-in w-full">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() - 7)))} className="p-1 hover:bg-gray-50 rounded-full"><ChevronLeft size={20} className="text-gray-400" /></button>
-          <div className="flex flex-col sm:flex-row items-center gap-1">
-            <div className="relative group flex items-center cursor-pointer">
-              <input type="date" value={formatYYYYMMDD(currentDate)} onChange={(e) => e.target.value && setCurrentDate(new Date(e.target.value))} className="absolute inset-0 opacity-0 cursor-pointer w-full z-10" />
-              <h3 className="text-sm sm:text-lg font-bold text-gray-800 flex items-center gap-1">
-                {currentDate.getFullYear()}年{currentDate.getMonth() + 1}月
-                <CalendarDays size={16} className="text-gray-400" />
+      <div className="bg-[#f8f9fc] min-h-screen pb-24 w-full animate-fade-in">
+        
+        {/* ウィーク/デイセレクター */}
+        <div className="bg-white px-4 pt-4 pb-2 border-b border-gray-100 shadow-sm sticky top-0 z-10">
+          <div className="flex justify-between items-center mb-5 px-2">
+            <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() - 7)))} className="p-1 text-gray-400 hover:bg-gray-50 rounded-full"><ChevronLeft size={20} /></button>
+            <div className="flex items-center gap-2">
+              <h3 className="text-[16px] font-bold text-gray-800">
+                {activeDate.getFullYear()}年{activeDate.getMonth() + 1}月 第{Math.ceil((activeDate.getDate() + (new Date(activeDate.getFullYear(), activeDate.getMonth(), 1).getDay() || 7) - 1) / 7)}週
               </h3>
+              <button onClick={() => setCurrentDate(new Date("2026-04-13T00:00:00"))} className="text-[10px] font-bold px-3 py-1 bg-orange-50 text-orange-600 rounded-full">今週</button>
             </div>
-            <button onClick={() => setCurrentDate(new Date("2026-04-13T00:00:00"))} className="text-[9px] font-bold px-3 py-0.5 bg-orange-50 text-orange-600 border border-orange-100 rounded-full active:scale-95 transition-transform">開始週に戻る</button>
+            <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() + 7)))} className="p-1 text-gray-400 hover:bg-gray-50 rounded-full"><ChevronRight size={20} /></button>
           </div>
-          <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() + 7)))} className="p-1 hover:bg-gray-50 rounded-full"><ChevronRight size={20} className="text-gray-400" /></button>
+
+          <div className="flex justify-between items-center mb-2">
+            {weekDates.map((date, i) => {
+              const isSelected = selectedDayIndex === i;
+              return (
+                <button 
+                  key={i} 
+                  onClick={() => setSelectedDayIndex(i)} 
+                  className={`flex flex-col items-center justify-center w-12 h-14 rounded-xl transition-all ${isSelected ? 'bg-orange-500 text-white shadow-md shadow-orange-200' : 'text-gray-400 hover:bg-gray-50'}`}
+                >
+                  <span className={`text-[10px] font-bold mb-1 ${isSelected ? 'text-orange-100' : ''}`}>{DAYS[i]}</span>
+                  <span className={`text-[18px] font-extrabold ${isSelected ? 'text-white' : 'text-gray-800'}`}>{date.getDate()}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
-        ) : (
-          <div className="w-full">
-            <div className="grid grid-cols-[18px_repeat(5,1fr)] sm:grid-cols-[28px_repeat(5,1fr)] gap-0.5 sm:gap-2 mb-2">
-              <div />
-              {weekDates.map((date, i) => (
-                <div key={i} className="text-center flex flex-col items-center">
-                  <span className={`text-[10px] sm:text-base font-bold text-gray-800`}>{date.getDate()}</span>
-                  <div className={`text-[9px] sm:text-xs font-bold w-4 h-4 sm:w-7 sm:h-7 rounded-full flex items-center justify-center mt-0.5 text-gray-500`}>{DAYS[i]}</div>
-                </div>
+        {/* 1日のリスト表示 */}
+        <div className="p-4 sm:p-6">
+          <div className="mb-4 pl-1">
+            <h2 className="text-gray-500 font-bold text-[13px]">{activeDate.getMonth() + 1}/{activeDate.getDate()} {DAYS[activeDate.getDay()-1]}曜日</h2>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={32} /></div>
+          ) : daysClasses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+              <CalendarDays size={48} className="mb-4 opacity-20" />
+              <p className="font-bold text-sm">この日の授業はありません</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {daysClasses.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => { setSelectedClass(c); setIsEditing(false); }}
+                  className="w-full bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex relative hover:shadow-md hover:-translate-y-0.5 transition-all text-left group"
+                >
+                  {/* 左側のアクセントカラー (画像再現) */}
+                  <div className="w-1.5 bg-orange-500 absolute left-0 top-0 bottom-0" />
+                  
+                  <div className="p-4 pl-5 w-full">
+                    {/* 上部: 時限と時間 */}
+                    <div className="flex items-center gap-3 mb-2.5">
+                      <span className="bg-gray-100 text-gray-600 text-[10px] font-extrabold px-2.5 py-1 rounded-full tracking-wider">
+                        {c.period === "special" ? "特別枠" : `${c.period}限`}
+                      </span>
+                      <span className="text-gray-400 text-[12px] font-bold flex items-center gap-1">
+                        <Clock size={12} strokeWidth={2.5} />{c.timeDisplay}
+                      </span>
+                    </div>
+                    
+                    {/* 中部: 授業名 */}
+                    <h3 className="font-extrabold text-gray-900 text-[16px] mb-3 leading-tight group-hover:text-orange-600 transition-colors">
+                      {c.title}
+                    </h3>
+                    
+                    {/* 下部: 教員と教室 */}
+                    <div className="flex items-center gap-4 text-[12px] text-gray-500 font-bold">
+                      <div className="flex items-center gap-1.5"><User size={14} strokeWidth={2.5}/>{c.professor || "未設定"}</div>
+                      <div className="flex items-center gap-1.5"><MapPin size={14} strokeWidth={2.5}/>{c.room || "未設定"}</div>
+                    </div>
+                  </div>
+                </button>
               ))}
             </div>
-
-            {ROW_PERIODS.map((period) => (
-              <div key={period} className="grid grid-cols-[18px_repeat(5,1fr)] sm:grid-cols-[28px_repeat(5,1fr)] gap-0.5 sm:gap-2 mb-0.5 sm:mb-2">
-                <div className="flex flex-col items-center justify-center text-gray-400 h-full">
-                  <span className={`font-bold leading-none ${period === "special" ? "text-[8px] sm:text-xs text-orange-500" : "text-[10px] sm:text-sm"}`}>{period === "special" ? "特" : period}</span>
-                </div>
-
-                {weekDates.map((targetDate) => {
-                  const targetDateStr = formatYYYYMMDD(targetDate);
-                  const cellClass = classes.find((c) => c.date === targetDateStr && c.period === period);
-
-                  if (!cellClass) {
-                    return <div key={`${targetDateStr}-${period}`} className="border border-gray-100 bg-gray-50/10 rounded min-h-[52px] xs:min-h-[62px] sm:min-h-[100px]" />;
-                  }
-
-                  const style = CATEGORY_STYLES[cellClass.category] || CATEGORY_STYLES.default;
-                  return (
-                    <button
-                      key={cellClass.id}
-                      onClick={() => { setSelectedClass(cellClass); setIsEditing(false); }}
-                      className={`relative border rounded sm:rounded-xl p-0.5 sm:p-2.5 min-h-[52px] xs:min-h-[62px] sm:min-h-[100px] flex flex-col text-left transition-transform hover:scale-[1.02] overflow-hidden ${style.border} ${style.bg}`}
-                    >
-                      <span className={`font-bold text-[8px] xs:text-[9px] sm:text-xs md:text-sm leading-tight line-clamp-3 break-all ${style.text}`}>{cellClass.title}</span>
-                      {cellClass.room && <span className="hidden sm:block text-[10px] text-gray-400 font-bold truncate mt-1">{cellClass.room}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };
@@ -305,7 +406,6 @@ export default function SchoolPage() {
               <h2 className="text-lg font-bold text-gray-800">シラバス検索</h2>
             </div>
           </div>
-          {/* iframeがブロックされた時のための代替リンク */}
           <a
             href={syllabusUrl}
             target="_blank"
@@ -316,8 +416,6 @@ export default function SchoolPage() {
             別タブで開く
           </a>
         </div>
-        
-        {/* 大学のシステムによってはX-Frame-Optionsでブロックされる可能性があります */}
         <div className="w-full flex-1 min-h-[700px] bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
           <iframe
             src={syllabusUrl}
@@ -331,27 +429,22 @@ export default function SchoolPage() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white min-h-screen font-sans">
+    <div className="w-full max-w-md sm:max-w-4xl mx-auto bg-gray-50 min-h-screen font-sans">
       {!selectedClass && (
-        <div className="px-4 sm:px-6 py-5 border-b border-orange-50 sticky top-0 bg-white z-20">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">学校</h2>
+        <div className="px-4 py-3 border-b border-gray-200 bg-white sticky top-0 z-20">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-xl font-extrabold text-gray-900 tracking-tight">学校</h2>
             <button onClick={fetchClasses} className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 active:scale-95 transition-transform"><Menu size={18} /></button>
           </div>
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-            <TabButton active={activeTab === "timetable"} onClick={() => setActiveTab("timetable")} icon={<Calendar size={16} />} label="時間割" />
-            <TabButton active={activeTab === "syllabus"} onClick={() => setActiveTab("syllabus")} icon={<ClipboardList size={16} />} label="シラバス" />
-            {/* 勉強系記事タブをクリックすると、ルーターを使って別ページへ遷移します */}
-            <TabButton 
-              active={false} 
-              onClick={() => router.push("/articles?tab=study")} 
-              icon={<BookOpen size={16} />} 
-              label="勉強系記事" 
-            />
+            <TabButton active={activeTab === "timetable"} onClick={() => setActiveTab("timetable")} icon={<Calendar size={15} />} label="時間割" />
+            <TabButton active={activeTab === "syllabus"} onClick={() => setActiveTab("syllabus")} icon={<ClipboardList size={15} />} label="シラバス" />
+            <TabButton active={false} onClick={() => router.push("/articles?tab=study")} icon={<BookOpen size={15} />} label="勉強系記事" />
           </div>
         </div>
       )}
-      <div className={`bg-[#FFF9FA] ${!selectedClass && activeTab === "timetable" ? "p-2 sm:p-6" : "p-4 sm:p-6"}`}>
+      
+      <div className="w-full">
         {activeTab === "timetable" && (selectedClass ? renderDetailView() : renderTimetableGrid())}
         {activeTab === "syllabus" && renderSyllabus()}
       </div>
@@ -361,7 +454,7 @@ export default function SchoolPage() {
 
 function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; }) {
   return (
-    <button onClick={onClick} className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${active ? "bg-orange-500 text-white shadow-md" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}>
+    <button onClick={onClick} className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-bold transition-all ${active ? "bg-[#ff7a45] text-white shadow-md" : "bg-white text-gray-500 border border-gray-200 hover:bg-gray-50"}`}>
       {icon}
       {label}
     </button>
