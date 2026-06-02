@@ -1,33 +1,77 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, ExternalLink, Loader2, Megaphone } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
 export default function SchoolArticleDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const [data, setData] = useState<any>(null);
+  const router = useRouter();
+
+  const [article, setArticle] = useState<any>(null);
+  const [sponsor, setSponsor] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
-      // Supabaseのarticlesテーブルから直接取得
-      const res = await supabaseRestFetch<any[]>({
-        path: `articles?id=eq.${id}`,
-      });
-      if (res && res.length > 0) {
-        setData(res[0]);
+      setLoading(true);
+      try {
+        // 1. 記事取得
+        const articleData = await supabaseRestFetch<any[]>({ path: `articles?id=eq.${id}` });
+        // 2. 広告取得 (ランダムに1件取得する等のロジックを想定)
+        const sponsorData = await supabaseRestFetch<any[]>({ path: `sponsors?limit=1` });
+
+        setArticle(articleData?.[0] || null);
+        setSponsor(sponsorData?.[0] || null);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
     }
     fetchData();
   }, [id]);
 
-  if (!data) return <div>読み込み中...</div>;
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-orange-500" /></div>;
+  if (!article) return <div className="p-10 text-center">記事が見つかりません。</div>;
 
   return (
-    <div>
-      <h1>{data.title}</h1>
-      <pre style={{ whiteSpace: 'pre-wrap' }}>{data.content}</pre>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* 固定ヘッダー */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b px-4 py-3 flex items-center">
+        <button onClick={() => router.back()} className="text-gray-600"><ArrowLeft /></button>
+        <h1 className="ml-4 font-bold text-gray-800">記事詳細</h1>
+      </header>
+
+      <main className="max-w-lg mx-auto bg-white min-h-screen shadow-sm">
+        {/* スポンサー広告バー (冒頭) */}
+        {sponsor && (
+          <div className="bg-orange-50 border-b border-orange-100 p-3 flex items-center gap-3">
+            <Megaphone className="text-orange-500 shrink-0" size={20} />
+            <div className="flex-1">
+              <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">Sponsored</p>
+              <p className="text-sm font-bold text-gray-800">{sponsor.title}</p>
+            </div>
+            <a href={sponsor.link} className="text-orange-500 text-xs font-bold underline">詳細</a>
+          </div>
+        )}
+
+        <img src={article.image_url} alt="" className="w-full aspect-video object-cover bg-gray-200" />
+
+        <article className="px-5 py-8">
+          <h1 className="text-2xl font-extrabold text-gray-900 mb-6">{article.title}</h1>
+          <div className="prose prose-orange max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+            {article.content}
+          </div>
+          
+          {/* 中盤のCall to Action */}
+          <a href={article.url} className="mt-10 block w-full bg-gray-900 text-white text-center py-4 rounded-xl font-bold hover:bg-gray-800 transition">
+            詳細を確認する
+          </a>
+        </article>
+      </main>
     </div>
   );
 }
