@@ -93,8 +93,11 @@ export default function SponsorsPage() {
 
                 <div className="space-y-8">
                   {platinum.map((sponsor) => {
-                    // ★ 動画URLがあればIDを取得する
                     const videoId = sponsor.video_url ? getYouTubeId(sponsor.video_url) : null;
+                    // DBに動画URLがあればそれを使用、なければご指定の動画をデフォルトにする
+                    const embedUrl = videoId
+                      ? `https://www.youtube.com/embed/${videoId}`
+                      : "https://www.youtube.com/embed/sqHz0vG4QfM?si=f1-PclW31XicCLH6";
 
                     return (
                       <div
@@ -167,40 +170,17 @@ export default function SponsorsPage() {
                             <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
                               <Play size={14} /> VIDEO
                             </div>
-                            <div className="relative rounded-2xl overflow-hidden h-32 mb-4 bg-gray-900 shrink-0">
-                              {/* ★ 動画IDがある場合はYouTubeを埋め込む */}
-                              {videoId ? (
-                                <iframe
-                                  width="100%"
-                                  height="100%"
-                                  src={`https://www.youtube.com/embed/${videoId}`}
-                                  title="YouTube video player"
-                                  frameBorder="0"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowFullScreen
-                                  className="absolute inset-0 w-full h-full"
-                                ></iframe>
-                              ) : (
-                                /* ★ 動画URLがない場合はこれまでのサムネイルデザインを表示 */
-                                <>
-                                  <img
-                                    src={
-                                      sponsor.video_thumbnail_url ||
-                                      "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=500&q=60"
-                                    }
-                                    alt="Video thumbnail"
-                                    className="w-full h-full object-cover opacity-70"
-                                  />
-                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center text-orange-500 shadow-lg">
-                                      <Play size={20} className="ml-1" fill="currentColor" />
-                                    </div>
-                                  </div>
-                                  <span className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded pointer-events-none">
-                                    {sponsor.video_duration || "3:24"}
-                                  </span>
-                                </>
-                              )}
+                            {/* ご指定の動画タグを16:9比率で綺麗に収める設定 */}
+                            <div className="relative rounded-2xl overflow-hidden aspect-video w-full mb-4 bg-gray-900 shrink-0">
+                              <iframe
+                                className="absolute inset-0 w-full h-full"
+                                src={embedUrl}
+                                title="YouTube video player"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerPolicy="strict-origin-when-cross-origin"
+                                allowFullScreen
+                              ></iframe>
                             </div>
                             <h4 className="font-bold text-gray-800 text-sm mb-2 line-clamp-1">
                               {sponsor.video_title || "病院紹介ビデオ - 研修医の1日"}
