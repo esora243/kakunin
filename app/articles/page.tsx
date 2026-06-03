@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Loader2, Newspaper, Image as ImageIcon } from "lucide-react";
+import { Search, Loader2, Newspaper, Image as ImageIcon, Megaphone } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 import { schoolArticles, activityArticles } from "@/lib/data";
 import { FloatingBanner } from "@/components/FloatingBanner";
 
-// 記事データの型定義（Supabaseのスキーマとローカルデータの両方をカバー）
+// 記事データの型定義
 type ArticleItem = {
   id: string | number;
   type?: string;
@@ -27,37 +27,69 @@ type ArticleItem = {
  */
 export default function ArticlesPage() {
   const [allArticles, setAllArticles] = useState<ArticleItem[]>([]);
+  const [sponsors, setSponsors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("すべて");
 
+  // 広告クリック時のカウント処理
+  const handleSponsorClick = async (sponsorId: number) => {
+    if (!sponsorId) return;
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/increment_click`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ row_id: sponsorId })
+      });
+    } catch (e) {
+      console.error("クリック集計エラー:", e);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
-    async function fetchArticles() {
+    async function fetchData() {
       setLoading(true);
       try {
-        const data = await supabaseRestFetch<ArticleItem[]>({
-          path: "articles?select=*",
-        });
-        if (!cancelled) setAllArticles(data || []);
+        // 記事とスポンサーデータを並行して取得
+        const [articleData, sponsorData] = await Promise.all([
+          supabaseRestFetch<ArticleItem[]>({ path: "articles?select=*" }).catch(() => []),
+          supabaseRestFetch<any[]>({ path: "sponsors" }).catch(() => [])
+        ]);
+
+        if (!cancelled) {
+          setAllArticles(articleData || []);
+          setSponsors(sponsorData || []);
+        }
       } catch (error) {
-        console.error("記事取得エラー:", error);
-        if (!cancelled) setAllArticles([]);
+        console.error("データ取得エラー:", error);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    void fetchArticles();
+    void fetchData();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // フォールバック: ローカルの記事(schoolArticles + activityArticles) を統合
+  // 記事の結合と「日付の降順（最新順）」ソート
   const displayArticles = useMemo(() => {
-    if (allArticles.length > 0) return allArticles;
-    // ローカルデータの型を ArticleItem に合わせる
-    return [...schoolArticles, ...activityArticles] as ArticleItem[];
+    // 取得できなければローカルデータを使用（既存のフォールバック機能を維持）
+    const rawArticles = allArticles.length > 0 
+      ? allArticles 
+      : [...schoolArticles, ...activityArticles] as ArticleItem[];
+
+    // 日付で降順ソート
+    return rawArticles.sort((a, b) => {
+      const dateA = new Date(a.publish_date || a.date || 0).getTime();
+      const dateB = new Date(b.publish_date || b.date || 0).getTime();
+      return dateB - dateA; // 新しいものが上
+    });
   }, [allArticles]);
 
   // カテゴリ一覧を動的に生成
@@ -165,47 +197,74 @@ export default function ArticlesPage() {
             )}
           </div>
         ) : (
-          filteredArticles.map((article) => {
+          filteredArticles.map((article, index) => {
             const imageUrl = article.image_url || article.image;
             const dateStr = article.publish_date || article.date || "";
             const formattedDate = dateStr ? dateStr.replace(/-/g, "/") : "";
 
+            // スポンサー表示の判定（3記事ごと）
+            const showSponsor = (index + 1) % 3 === 0;
+            const sponsorIndex = Math.floor(index / 3) % (sponsors.length || 1);
+            const sponsor = sponsors[sponsorIndex];
+
             return (
-              <Link
-                key={`${article.type || "default"}-${article.id}`}
-                href={getArticleHref(article)}
-                className="block bg-white rounded-xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow"
-              >
-                <div className="flex">
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={article.title}
-                      className="w-28 h-28 object-cover shrink-0 bg-orange-50"
-                    />
-                  ) : (
-                    <div className="w-28 h-28 shrink-0 bg-gray-100 flex flex-col items-center justify-center text-gray-300">
-                      <ImageIcon size={24} />
+              <div key={`${article.type || "default"}-${article.id}`}>
+                {/* 記事カード本体 */}
+                <Link
+                  href={getArticleHref(article)}
+                  className="block bg-white rounded-xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <div className="flex">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={article.title}
+                        className="w-28 h-28 object-cover shrink-0 bg-orange-50"
+                      />
+                    ) : (
+                      <div className="w-28 h-28 shrink-0 bg-gray-100 flex flex-col items-center justify-center text-gray-300">
+                        <ImageIcon size={24} />
+                      </div>
+                    )}
+                    <div className="p-3 flex flex-col justify-center min-w-0 flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-orange-500 font-bold px-1.5 py-0.5 bg-orange-50 rounded-sm truncate max-w-[60%]">
+                          {article.category || "未分類"}
+                        </span>
+                        <span className="text-[10px] text-gray-400 shrink-0">
+                          {formattedDate}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-gray-800 line-clamp-2 mb-1 leading-tight">
+                        {article.title}
+                      </h4>
+                      <p className="text-xs text-gray-500 line-clamp-2 leading-tight">
+                        {article.excerpt || "本文がありません"}
+                      </p>
                     </div>
-                  )}
-                  <div className="p-3 flex flex-col justify-center min-w-0 flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] text-orange-500 font-bold px-1.5 py-0.5 bg-orange-50 rounded-sm truncate max-w-[60%]">
-                        {article.category || "未分類"}
-                      </span>
-                      <span className="text-[10px] text-gray-400 shrink-0">
-                        {formattedDate}
-                      </span>
-                    </div>
-                    <h4 className="text-sm font-bold text-gray-800 line-clamp-2 mb-1 leading-tight">
-                      {article.title}
-                    </h4>
-                    <p className="text-xs text-gray-500 line-clamp-2 leading-tight">
-                      {article.excerpt || "本文がありません"}
-                    </p>
                   </div>
-                </div>
-              </Link>
+                </Link>
+
+                {/* 記事間に挿入される広告 */}
+                {showSponsor && sponsor?.name && sponsor?.url && (
+                  <div className="mt-3 bg-orange-50 border border-orange-100 rounded-xl p-3 flex items-center gap-3 shadow-sm">
+                    <Megaphone className="text-orange-500 shrink-0" size={20} />
+                    <div className="flex-1 overflow-hidden">
+                      <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider mb-0.5">Sponsored</p>
+                      <p className="text-sm font-bold text-gray-800 truncate">{sponsor.name}</p>
+                    </div>
+                    <a 
+                      href={sponsor.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      onClick={() => handleSponsorClick(sponsor.id)}
+                      className="text-orange-500 text-xs font-bold underline shrink-0"
+                    >
+                      詳細へ
+                    </a>
+                  </div>
+                )}
+              </div>
             );
           })
         )}
