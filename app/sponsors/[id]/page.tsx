@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, ExternalLink, Building2, Play } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
+import { Loader2, ExternalLink, Play, Building2 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
 // YouTubeの通常のURLから動画IDを抽出する関数
@@ -13,145 +13,280 @@ const getYouTubeId = (url: string) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
-export default function SponsorDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params.id as string;
-
-  const [sponsor, setSponsor] = useState<any>(null);
+/**
+ * スポンサーページ
+ */
+export default function SponsorsPage() {
+  const [sponsors, setSponsors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 外部リンクへ飛ぶ際にクリックカウントを増やす
-  const handleExternalClick = async () => {
-    if (!sponsor?.id) return;
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/increment_click`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({ row_id: sponsor.id })
-      });
-    } catch (e) {
-      console.error("クリック集計エラー:", e);
-    }
-  };
-
   useEffect(() => {
-    if (!id) return;
-    async function fetchSponsor() {
+    async function fetchSponsors() {
       setLoading(true);
       try {
-        const data = await supabaseRestFetch<any[]>({ path: `sponsors?id=eq.${id}` });
-        setSponsor(data?.[0] || null);
+        const data = await supabaseRestFetch<any[]>({ path: "sponsors?select=*" });
+        setSponsors(data || []);
       } catch (error) {
         console.error("スポンサー取得エラー:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchSponsor();
-  }, [id]);
+    void fetchSponsors();
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FFF9FA] flex items-center justify-center">
-        <Loader2 className="animate-spin text-orange-500" size={40} />
-      </div>
-    );
-  }
-
-  if (!sponsor) {
-    return (
-      <div className="min-h-screen bg-[#FFF9FA] flex flex-col items-center justify-center p-6">
-        <Building2 size={48} className="text-gray-300 mb-4" />
-        <h2 className="text-xl font-bold text-gray-800 mb-2">企業情報が見つかりません</h2>
-        <button onClick={() => router.back()} className="mt-4 text-orange-500 font-bold underline">
-          戻る
-        </button>
-      </div>
-    );
-  }
-
-  const videoId = sponsor.video_url ? getYouTubeId(sponsor.video_url) : null;
-  const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+  const platinum = useMemo(
+    () => sponsors.filter((s) => (s.tier || "").toLowerCase() === "platinum"),
+    [sponsors],
+  );
+  const gold = useMemo(
+    () => sponsors.filter((s) => (s.tier || "").toLowerCase() === "gold"),
+    [sponsors],
+  );
+  const supporters = useMemo(
+    () =>
+      sponsors.filter(
+        (s) =>
+          !["platinum", "gold"].includes((s.tier || "").toLowerCase()),
+      ),
+    [sponsors],
+  );
 
   return (
-    <div className="min-h-screen bg-[#FFF9FA] pb-20">
-      {/* ヘッダー */}
-      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-50 px-4 py-3 flex items-center gap-3 shadow-sm">
-        <button onClick={() => router.back()} className="text-gray-600 hover:text-orange-500">
-          <ArrowLeft size={24} />
-        </button>
-        <h1 className="text-base font-bold text-gray-800 flex-1 truncate">企業詳細</h1>
+    <div className="w-full max-w-4xl mx-auto pb-12 bg-[#FFF9FA] min-h-screen">
+      {/* ============================================================
+          sticky ヘッダー
+         ============================================================ */}
+      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-50 px-4 py-4 shadow-sm">
+        <h2 className="text-lg font-bold text-gray-800 tracking-tight">
+          パートナー企業のご紹介
+        </h2>
+        <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+          Hugmeidを通じて、医学生の未来とキャリアを応援・支援していただいている企業・医療機関様です。
+        </p>
       </div>
 
-      <div className="max-w-2xl mx-auto w-full bg-white min-h-screen shadow-sm">
-        {/* ヒーロー画像 */}
-        <div className="w-full h-64 sm:h-80 bg-gray-100 relative">
-          <img
-            src={sponsor.banner_image_url || sponsor.image_url || "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80"}
-            alt={sponsor.name}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
-            <span className="bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full w-max mb-3">
-              {sponsor.tier || "PARTNER"}
-            </span>
-            <h2 className="text-white text-3xl font-bold tracking-tight">{sponsor.name}</h2>
+      <div className="px-4 sm:px-6 pt-4">
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="animate-spin text-orange-500" size={40} />
           </div>
-        </div>
-
-        <div className="p-6">
-          {/* 説明文 */}
-          <div className="mb-8">
-            <h3 className="text-lg font-bold text-gray-800 mb-3 border-b-2 border-orange-500 inline-block pb-1">
-              企業メッセージ
-            </h3>
-            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-              {sponsor.description}
+        ) : sponsors.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-orange-100 p-10 text-center mt-6">
+            <Building2 className="mx-auto text-orange-200 mb-3" size={40} />
+            <p className="text-gray-700 font-bold mb-2">スポンサー情報は未登録です</p>
+            <p className="text-sm text-gray-500">
+              Supabase の sponsors テーブルに本番データを追加してください。
             </p>
           </div>
+        ) : (
+          <div className="space-y-12">
+            {/* === PLATINUM === */}
+            {platinum.length > 0 && (
+              <section>
+                <div className="flex flex-col items-center mb-6">
+                  <span className="text-orange-500 text-[10px] font-extrabold tracking-[0.2em] mb-1">
+                    PLATINUM PARTNERS
+                  </span>
+                  <h3 className="text-2xl font-bold text-gray-800">プレミアムパートナー</h3>
+                </div>
 
-          {/* 動画セクション（URLがある場合のみ表示） */}
-          {embedUrl && (
-            <div className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-3 border-b-2 border-orange-500 inline-block pb-1 flex items-center gap-2">
-                <Play size={18} /> 紹介動画
-              </h3>
-              <div className="w-full aspect-video rounded-xl overflow-hidden shadow-md bg-black">
-                <iframe
-                  className="w-full h-full"
-                  src={embedUrl}
-                  title="YouTube video player"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
+                <div className="space-y-8">
+                  {platinum.map((sponsor) => {
+                    const videoId = sponsor.video_url ? getYouTubeId(sponsor.video_url) : null;
+                    const embedUrl = videoId
+                      ? `https://www.youtube.com/embed/${videoId}`
+                      : "https://www.youtube.com/embed/sqHz0vG4QfM?si=f1-PclW31XicCLH6";
+
+                    return (
+                      <div
+                        key={sponsor.id}
+                        className="bg-white rounded-3xl shadow-md border border-orange-100 overflow-hidden animate-fade-in"
+                      >
+                        {/* ヒーロー: 内部詳細ページへのリンクに変更 */}
+                        <Link
+                          href={`/sponsors/${sponsor.id}`}
+                          className="block relative w-full h-64 sm:h-80 group overflow-hidden"
+                        >
+                          <img
+                            src={
+                              sponsor.banner_image_url ||
+                              sponsor.image_url ||
+                              "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80"
+                            }
+                            alt={sponsor.name}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-6">
+                            <span className="bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full w-max mb-3 shadow-md">
+                              PLATINUM
+                            </span>
+                            <h4 className="text-white text-2xl font-bold mb-2 tracking-tight">
+                              {sponsor.name}
+                            </h4>
+                            <p className="text-gray-200 text-sm line-clamp-2 max-w-lg">
+                              {sponsor.description}
+                            </p>
+                          </div>
+                        </Link>
+
+                        {/* サブカード(PICK UP / VIDEO) */}
+                        <div className="p-6 bg-[#FDFBF7] grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all">
+                            <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
+                              <Building2 size={14} /> PICK UP
+                            </div>
+                            <div className="rounded-2xl overflow-hidden h-32 mb-4 bg-gray-100">
+                              <img
+                                src={
+                                  sponsor.pickup_image_url ||
+                                  "https://images.unsplash.com/photo-1576091160550-2173ff9e5ee5?auto=format&fit=crop&w=500&q=60"
+                                }
+                                alt="Pick up"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <h4 className="font-bold text-gray-800 text-sm mb-2">
+                              {sponsor.pickup_title || "初期研修プログラム"}
+                            </h4>
+                            <p className="text-xs text-gray-500 mb-4 line-clamp-2">
+                              {sponsor.pickup_description ||
+                                "全国トップクラスの研修体制と豊富な症例数で実践的な臨床力が身につきます。"}
+                            </p>
+                            <Link
+                              href={`/sponsors/${sponsor.id}`}
+                              className="inline-flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
+                            >
+                              詳細を見る <ExternalLink size={12} />
+                            </Link>
+                          </div>
+
+                          <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
+                            <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
+                              <Play size={14} /> VIDEO
+                            </div>
+                            <div className="relative rounded-2xl overflow-hidden aspect-video w-full mb-4 bg-gray-900 shrink-0">
+                              <iframe
+                                className="absolute inset-0 w-full h-full"
+                                src={embedUrl}
+                                title="YouTube video player"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerPolicy="strict-origin-when-cross-origin"
+                                allowFullScreen
+                              ></iframe>
+                            </div>
+                            <h4 className="font-bold text-gray-800 text-sm mb-2 line-clamp-1">
+                              {sponsor.video_title || "病院紹介ビデオ - 研修医の1日"}
+                            </h4>
+                            <p className="text-xs text-gray-500 line-clamp-2 flex-1">
+                              {sponsor.video_description || "動画で施設の雰囲気やインタビューをご覧いただけます。"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* === GOLD === */}
+            {gold.length > 0 && (
+              <section className="pt-2 border-t border-orange-100">
+                <div className="flex flex-col items-center mb-6 mt-8">
+                  <span className="text-gray-400 text-[10px] font-extrabold tracking-[0.2em] mb-1">
+                    GOLD PARTNERS
+                  </span>
+                  <h3 className="text-xl font-bold text-gray-700">公式スポンサー</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {gold.map((sponsor) => (
+                    <Link
+                      key={sponsor.id}
+                      href={`/sponsors/${sponsor.id}`}
+                      className="block relative h-48 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group border border-orange-50"
+                    >
+                      <img
+                        src={
+                          sponsor.banner_image_url ||
+                          sponsor.image_url ||
+                          "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=600&q=60"
+                        }
+                        alt={sponsor.name}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-5">
+                        <span className="text-[10px] text-orange-300 font-bold bg-black/40 px-2 py-0.5 rounded-sm w-max mb-2">
+                          {sponsor.category || "GOLD"}
+                        </span>
+                        <h4 className="text-white font-bold text-sm mb-1">{sponsor.name}</h4>
+                        <p className="text-gray-300 text-xs line-clamp-2">
+                          {sponsor.description}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* === SUPPORTER === */}
+            {supporters.length > 0 && (
+              <section className="pt-2 border-t border-orange-100">
+                <div className="flex flex-col items-center mb-4 mt-8">
+                  <h3 className="text-lg font-bold text-gray-600">サポーター様</h3>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                  {supporters.map((sponsor) => (
+                    <Link
+                      key={sponsor.id}
+                      href={`/sponsors/${sponsor.id}`}
+                      className="aspect-square bg-white rounded-xl border border-orange-50 p-4 flex flex-col items-center justify-center hover:border-orange-300 hover:shadow-md transition-all group"
+                    >
+                      {sponsor.image_url ? (
+                        <img
+                          src={sponsor.image_url}
+                          alt={sponsor.name}
+                          className="w-10 h-10 object-contain grayscale group-hover:grayscale-0 transition-all mb-2"
+                        />
+                      ) : (
+                        <span className="text-gray-400 font-bold text-xs">
+                          {sponsor.tier}
+                        </span>
+                      )}
+                      <span className="text-[9px] text-center text-gray-500 font-medium line-clamp-2">
+                        {sponsor.name}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* === 営業 CTA === */}
+            <section className="bg-gradient-to-br from-orange-50 to-orange-50 rounded-3xl p-8 border border-orange-100 text-center shadow-sm mt-8">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Building2 size={24} className="text-orange-500" />
               </div>
-            </div>
-          )}
-
-          {/* 外部リンクへの巨大CTAボタン */}
-          {sponsor.url && (
-            <div className="mt-10 p-6 bg-orange-50 rounded-2xl border border-orange-100 text-center">
-              <p className="text-sm text-gray-600 mb-4 font-bold">
-                詳しい情報やエントリーは公式サイトをご覧ください
+              <h3 className="text-lg font-bold text-gray-800 mb-2">
+                スポンサー/掲載企業様を募集しております
+              </h3>
+              <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto leading-relaxed">
+                HugNaviを通じて、全国の医学生に向けて貴社の魅力や求人情報をダイレクトに発信しませんか？
+                <br />
+                掲載プランの資料請求やお問い合わせはお気軽にどうぞ。
               </p>
-              <a
-                href={sponsor.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={handleExternalClick}
-                className="flex items-center justify-center gap-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-6 rounded-xl shadow-md transition-all transform hover:-translate-y-1"
+              <Link
+                href="/connect"
+                className="inline-flex items-center gap-2 bg-orange-500 text-white px-8 py-3.5 rounded-full font-bold text-sm shadow-md hover:bg-orange-600 transition-colors transform hover:-translate-y-0.5"
               >
-                公式サイトへアクセス <ExternalLink size={20} />
-              </a>
-            </div>
-          )}
-        </div>
+                お問い合わせ・資料請求 <ExternalLink size={16} />
+              </Link>
+            </section>
+          </div>
+        )}
       </div>
     </div>
   );
