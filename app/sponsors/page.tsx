@@ -92,20 +92,16 @@ export default function SponsorsPage() {
 
                 <div className="space-y-8">
                   {platinum.map((sponsor) => {
-                    // 本番データのみを使用し、ダミーデータは完全に排除
                     const videoId = sponsor.video_url ? getYouTubeId(sponsor.video_url) : null;
                     const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : null;
                     const heroImage = sponsor.banner_image_url || sponsor.image_url;
-
-                    const hasPickup = !!(sponsor.pickup_title || sponsor.pickup_image_url || sponsor.pickup_description);
-                    const hasVideo = !!embedUrl;
 
                     return (
                       <div
                         key={sponsor.id}
                         className="bg-white rounded-3xl shadow-md border border-orange-100 overflow-hidden animate-fade-in"
                       >
-                        {/* ヒーロー: 内部詳細ページへのリンク */}
+                        {/* ヒーロー */}
                         <Link
                           href={`/sponsors/${sponsor.id}`}
                           className="block relative w-full h-64 sm:h-80 group overflow-hidden bg-gray-900"
@@ -117,8 +113,8 @@ export default function SponsorsPage() {
                               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-80"
                             />
                           ) : (
-                            <div className="absolute inset-0 flex items-center justify-center text-gray-700">
-                              <ImageIcon size={48} className="opacity-30" />
+                            <div className="absolute inset-0 flex items-center justify-center text-gray-700 bg-gray-100">
+                              <Building2 size={48} className="opacity-20" />
                             </div>
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-6">
@@ -136,75 +132,71 @@ export default function SponsorsPage() {
                           </div>
                         </Link>
 
-                        {/* サブカード(PICK UP / VIDEO) - データが存在する場合のみ表示 */}
-                        {(hasPickup || hasVideo) && (
-                          <div className={`p-6 bg-[#FDFBF7] grid grid-cols-1 ${hasPickup && hasVideo ? 'md:grid-cols-2' : ''} gap-6`}>
-                            
-                            {/* PICK UPブロック */}
-                            {hasPickup && (
-                              <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                                <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
-                                  <Building2 size={14} /> PICK UP
+                        {/* サブカード(PICK UP / VIDEO) 配置レイアウトは元のまま維持 */}
+                        <div className="p-6 bg-[#FDFBF7] grid grid-cols-1 md:grid-cols-2 gap-6">
+                          
+                          {/* PICK UP */}
+                          <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all">
+                            <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
+                              <Building2 size={14} /> PICK UP
+                            </div>
+                            <div className="rounded-2xl overflow-hidden h-32 mb-4 bg-gray-100 relative">
+                              {sponsor.pickup_image_url ? (
+                                <img
+                                  src={sponsor.pickup_image_url}
+                                  alt={sponsor.pickup_title || "Pick up"}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="absolute inset-0 flex items-center justify-center text-gray-300">
+                                  <ImageIcon size={24} />
                                 </div>
-                                {sponsor.pickup_image_url && (
-                                  <div className="rounded-2xl overflow-hidden h-32 mb-4 bg-gray-100">
-                                    <img
-                                      src={sponsor.pickup_image_url}
-                                      alt="Pick up"
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                )}
-                                {sponsor.pickup_title && (
-                                  <h4 className="font-bold text-gray-800 text-sm mb-2">
-                                    {sponsor.pickup_title}
-                                  </h4>
-                                )}
-                                {sponsor.pickup_description && (
-                                  <p className="text-xs text-gray-500 mb-4 line-clamp-2">
-                                    {sponsor.pickup_description}
-                                  </p>
-                                )}
-                                <Link
-                                  href={`/sponsors/${sponsor.id}`}
-                                  className="inline-flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
-                                >
-                                  詳細を見る <ExternalLink size={12} />
-                                </Link>
-                              </div>
-                            )}
-
-                            {/* VIDEOブロック */}
-                            {hasVideo && (
-                              <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
-                                <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
-                                  <Play size={14} /> VIDEO
-                                </div>
-                                <div className="relative rounded-2xl overflow-hidden aspect-video w-full mb-4 bg-gray-900 shrink-0">
-                                  <iframe
-                                    className="absolute inset-0 w-full h-full"
-                                    src={embedUrl as string}
-                                    title="YouTube video player"
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                    referrerPolicy="strict-origin-when-cross-origin"
-                                    allowFullScreen
-                                  ></iframe>
-                                </div>
-                                {sponsor.video_title && (
-                                  <h4 className="font-bold text-gray-800 text-sm mb-2 line-clamp-1">
-                                    {sponsor.video_title}
-                                  </h4>
-                                )}
-                                {sponsor.video_description && (
-                                  <p className="text-xs text-gray-500 line-clamp-2 flex-1">
-                                    {sponsor.video_description}
-                                  </p>
-                                )}
-                              </div>
-                            )}
+                              )}
+                            </div>
+                            <h4 className="font-bold text-gray-800 text-sm mb-2 min-h-[20px]">
+                              {sponsor.pickup_title}
+                            </h4>
+                            <p className="text-xs text-gray-500 mb-4 line-clamp-2 min-h-[32px]">
+                              {sponsor.pickup_description}
+                            </p>
+                            <Link
+                              href={`/sponsors/${sponsor.id}`}
+                              className="inline-flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
+                            >
+                              詳細を見る <ExternalLink size={12} />
+                            </Link>
                           </div>
-                        )}
+
+                          {/* VIDEO */}
+                          <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
+                            <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
+                              <Play size={14} /> VIDEO
+                            </div>
+                            <div className="relative rounded-2xl overflow-hidden aspect-video w-full mb-4 bg-gray-900 shrink-0">
+                              {embedUrl ? (
+                                <iframe
+                                  className="absolute inset-0 w-full h-full"
+                                  src={embedUrl}
+                                  title="YouTube video player"
+                                  frameBorder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                  referrerPolicy="strict-origin-when-cross-origin"
+                                  allowFullScreen
+                                ></iframe>
+                              ) : (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-300">
+                                  <Play size={32} />
+                                </div>
+                              )}
+                            </div>
+                            <h4 className="font-bold text-gray-800 text-sm mb-2 line-clamp-1 min-h-[20px]">
+                              {sponsor.video_title}
+                            </h4>
+                            <p className="text-xs text-gray-500 line-clamp-2 flex-1 min-h-[32px]">
+                              {sponsor.video_description}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -222,6 +214,7 @@ export default function SponsorsPage() {
                   <h3 className="text-xl font-bold text-gray-700">公式スポンサー</h3>
                 </div>
 
+                {/* Gridレイアウト維持 */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {gold.map((sponsor) => {
                     const heroImage = sponsor.banner_image_url || sponsor.image_url;
@@ -238,8 +231,8 @@ export default function SponsorsPage() {
                             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-80"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center text-gray-700">
-                            <ImageIcon size={32} className="opacity-30" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-gray-400">
+                            <Building2 size={32} className="opacity-20" />
                           </div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-5">
@@ -266,6 +259,7 @@ export default function SponsorsPage() {
                 <div className="flex flex-col items-center mb-4 mt-8">
                   <h3 className="text-lg font-bold text-gray-600">サポーター様</h3>
                 </div>
+                {/* Gridレイアウト維持 */}
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
                   {supporters.map((sponsor) => (
                     <Link
