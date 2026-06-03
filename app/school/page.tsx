@@ -178,13 +178,18 @@ export default function SchoolPage() {
           const startTime = c.time_start ? c.time_start.substring(0, 5) : "";
           const endTime = c.time_end ? c.time_end.substring(0, 5) : "";
           const cat = autoDetectCategory(c.subject || "");
+          
+          // ★ 修正点: DBの文字列から「曜日」という文字を取り除き、「月」などに統一する
+          const rawDay = c.day_of_week || c.day || "";
+          const cleanDay = String(rawDay).replace("曜日", "");
+
           return {
             id: String(c.id),
             title: c.subject || "（科目名なし）",
             category: cat,
-            day: c.day_of_week || "",
+            day: cleanDay, // "月", "火" などの1文字になる
             date: c.date ? c.date.split("T")[0] : "",
-            period: String(c.period || ""),
+            period: c.period != null ? String(c.period) : "", // ★ 修正点: 0などの数値も安全に文字列化
             room: c.room || "",
             professor: c.teacher || "",
             timeStart: startTime,
@@ -402,7 +407,7 @@ export default function SchoolPage() {
             </div>
             <div className="flex py-3 border-b border-gray-200">
               <div className="w-24 text-xs text-gray-600 flex items-center gap-2"><Calendar size={14}/> 日付</div>
-              <div className="text-xs font-medium text-gray-800">{selectedClass.date.replace(/-/g, '/')}</div>
+              <div className="text-xs font-medium text-gray-800">{selectedClass.date ? selectedClass.date.replace(/-/g, '/') : "毎週"}</div>
             </div>
             <div className="flex py-3 border-b border-gray-200">
               <div className="w-24 text-xs text-gray-600 flex items-center gap-2"><MapPin size={14}/> 教室</div>
@@ -609,7 +614,17 @@ export default function SchoolPage() {
                     </div>
                     {weekDates.map((date, i) => {
                       const targetDateStr = formatYYYYMMDD(date);
-                      const cell = classes.find(c => c.date === targetDateStr && c.period === period);
+                      const dayStr = DAYS[i];
+                      
+                      // ★ 修正点: 同じ時限の授業を抽出
+                      const matchedClasses = classes.filter(c => c.period === period);
+                      
+                      // ★ 修正点:
+                      // 1. まず「日付(date)」が完全に一致する授業（補講やスポット授業）を探す
+                      // 2. なければ「曜日(day_of_week)」が一致する授業（毎週の授業）を探す
+                      const cell = 
+                        matchedClasses.find(c => c.date === targetDateStr) || 
+                        matchedClasses.find(c => c.day === dayStr);
                       
                       if (!cell) {
                         return <div key={i} className="border border-gray-100 rounded-md bg-gray-50/30 min-h-[70px]"></div>;
