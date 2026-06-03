@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Calendar, Clock, ChevronRight, ChevronLeft, Menu, BookOpen, Loader2,
   X, Save, Edit2, MapPin, ClipboardList, ExternalLink, Video, Check,
-  Search, ArrowLeft, Tag, Share2, Plus, MoreVertical, Trash2
+  Search, ArrowLeft, Tag, Share2, Plus, MoreVertical, Trash2, RefreshCcw
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
@@ -118,6 +118,7 @@ export default function SchoolPage() {
   
   // DBデータ状態
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false); // バックグラウンド同期中かどうかのフラグ
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [tasks, setTasks] = useState<TaskData[]>([]);
   const [articles, setArticles] = useState<ArticleData[]>([]);
@@ -137,59 +138,57 @@ export default function SchoolPage() {
   const [newTaskForm, setNewTaskForm] = useState({ title: "", deadline: "" });
 
   // 日付管理
-  const [currentDate, setCurrentDate] = useState(new Date("2026-04-13T00:00:00"));
+  const [currentDate, setCurrentDate] = useState(new Date());
   const weekDates = useMemo(() => getWeekDates(new Date(currentDate)), [currentDate]);
 
-  // DBから全てのデータを取得
-  const fetchAllData = async () => {
-    setLoading(true);
+  const handlePrevWeek = () => {
+    setCurrentDate(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() - 7);
+      return d;
+    });
+  };
+
+  const handleNextWeek = () => {
+    setCurrentDate(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + 7);
+      return d;
+    });
+  };
+
+  // DBから全てのデータを取得 (showLoading=falseで渡すと裏でこっそり更新する共同編集用機能)
+  const fetchAllData = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    else setIsSyncing(true);
+
     try {
-      // 時間割
-      let rawClasses: any[] = [];
-      try {
-        const classRes = await supabaseRestFetch<any>({ path: "timetable_classes?select=*" });
-        rawClasses = Array.isArray(classRes) ? classRes : (classRes?.data || []);
-      } catch (e) { console.error("時間割エラー:", e); }
+      const [classRes, taskRes, artRes, campRes] = await Promise.all([
+        supabaseRestFetch<any>({ path: "timetable_classes?select=*" }).catch(() => []),
+        supabaseRestFetch<any>({ path: "class_tasks?select=*" }).catch(() => []),
+        supabaseRestFetch<any>({ path: "articles?select=*" }).catch(() => []),
+        supabaseRestFetch<any>({ path: "campaigns?select=*" }).catch(() => [])
+      ]);
 
-      // 課題
-      let rawTasks: any[] = [];
-      try {
-        const taskRes = await supabaseRestFetch<any>({ path: "class_tasks?select=*" });
-        rawTasks = Array.isArray(taskRes) ? taskRes : (taskRes?.data || []);
-      } catch (e) { console.error("課題エラー:", e); }
+      const rawClasses = Array.isArray(classRes) ? classRes : (classRes?.data || []);
+      const rawTasks = Array.isArray(taskRes) ? taskRes : (taskRes?.data || []);
+      const rawArticles = Array.isArray(artRes) ? artRes : (artRes?.data || []);
+      const rawCampaigns = Array.isArray(campRes) ? campRes : (campRes?.data || []);
 
-      // 記事
-      let rawArticles: any[] = [];
-      try {
-        const artRes = await supabaseRestFetch<any>({ path: "articles?select=*" });
-        rawArticles = Array.isArray(artRes) ? artRes : (artRes?.data || []);
-      } catch (e) { console.error("記事エラー:", e); }
-
-      // キャンペーン
-      let rawCampaigns: any[] = [];
-      try {
-        const campRes = await supabaseRestFetch<any>({ path: "campaigns?select=*" });
-        rawCampaigns = Array.isArray(campRes) ? campRes : (campRes?.data || []);
-      } catch (e) { console.error("キャンペーンエラー:", e); }
-
-      // 状態へのマッピング
       if (rawClasses.length > 0) {
-        setClasses(rawClasses.map((c) => {
+        setClasses(rawClasses.map((c: any) => {
           const startTime = c.time_start ? c.time_start.substring(0, 5) : "";
           const endTime = c.time_end ? c.time_end.substring(0, 5) : "";
           const cat = autoDetectCategory(c.subject || "");
-          
-          // ★ 修正点: DBの文字列から「曜日」という文字を取り除き、「月」などに統一する
-          const rawDay = c.day_of_week || c.day || "";
-          const cleanDay = String(rawDay).replace("曜日", "");
+          const cleanDay = String(c.day_of_week || c.day || "").replace("曜日", "");
 
           return {
             id: String(c.id),
             title: c.subject || "（科目名なし）",
             category: cat,
-            day: cleanDay, // "月", "火" などの1文字になる
+            day: cleanDay,
             date: c.date ? c.date.split("T")[0] : "",
-            period: c.period != null ? String(c.period) : "", // ★ 修正点: 0などの数値も安全に文字列化
+            period: c.period != null ? String(c.period) : "",
             room: c.room || "",
             professor: c.teacher || "",
             timeStart: startTime,
@@ -200,7 +199,7 @@ export default function SchoolPage() {
         }));
       }
 
-      setTasks(rawTasks.map(t => ({
+      setTasks(rawTasks.map((t: any) => ({
         id: String(t.id),
         classId: String(t.class_id),
         title: t.title || "無題の課題",
@@ -208,7 +207,7 @@ export default function SchoolPage() {
         completed: !!t.completed
       })));
 
-      setArticles(rawArticles.map(a => ({
+      setArticles(rawArticles.map((a: any) => ({
         id: String(a.id),
         title: a.title || "タイトルなし",
         category: a.category || "一般",
@@ -218,7 +217,7 @@ export default function SchoolPage() {
         content: a.content || a.body || "本文がありません。"
       })));
 
-      setCampaigns(rawCampaigns.map(c => ({
+      setCampaigns(rawCampaigns.map((c: any) => ({
         id: String(c.id),
         title: c.title || "",
         imageUrl: c.image_url || c.image || "",
@@ -226,13 +225,22 @@ export default function SchoolPage() {
       })));
 
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
+      setIsSyncing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchAllData();
   }, []);
+
+  // ★ 共同編集用：15秒に1回バックグラウンドで最新データを取得する
+  useEffect(() => {
+    fetchAllData(true);
+
+    const interval = setInterval(() => {
+      // 編集中でなければ自動で最新状態に更新する
+      fetchAllData(false);
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [fetchAllData]);
 
   // 記事のフィルタリング処理
   const categories = ["すべて", ...Array.from(new Set(articles.map(a => a.category)))];
@@ -244,13 +252,39 @@ export default function SchoolPage() {
     });
   }, [searchQuery, selectedCategory, articles]);
 
+  // ★ 共同編集用：編集開始時に「他の人が直前に編集した最新のデータ」を取得して上書きを防ぐ
+  const handleStartEdit = async () => {
+    if (!selectedClass) return;
+    setIsEditing(true);
+    setEditForm(selectedClass); // まずは現在のデータをセット
+    setIsSyncing(true);
+
+    try {
+      const data = await supabaseRestFetch<any[]>({ path: `timetable_classes?id=eq.${selectedClass.id}` });
+      if (data && data.length > 0) {
+        const c = data[0];
+        setEditForm({
+          title: c.subject || "",
+          room: c.room || "",
+          professor: c.teacher || "",
+          timeStart: c.time_start ? c.time_start.substring(0, 5) : "",
+          timeEnd: c.time_end ? c.time_end.substring(0, 5) : "",
+          period: c.period != null ? String(c.period) : "",
+        });
+      }
+    } catch (e) {
+      console.error("最新データの取得エラー", e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
 
   // === 編集アクション（時間割の保存） ===
   const handleSaveClass = async () => {
     if (!selectedClass) return;
     setIsSaving(true);
     try {
-      // 時間のフォーマットをHH:MM:SSに補正して保存
       const formatTime = (timeStr?: string) => timeStr ? (timeStr.length === 5 ? `${timeStr}:00` : timeStr) : null;
       
       await supabaseRestFetch<any>({
@@ -265,9 +299,9 @@ export default function SchoolPage() {
           period: editForm.period,
         },
       });
-      await fetchAllData();
+      // 保存完了後に全体を再取得して他の人の画面にも即時反映させる
+      await fetchAllData(false);
       
-      // 更新後のデータで選択中のクラスも書き換える
       setSelectedClass(prev => prev ? { ...prev, ...editForm } as ClassData : null);
       setIsEditing(false);
     } catch (error) {
@@ -292,7 +326,7 @@ export default function SchoolPage() {
           completed: false
         },
       });
-      await fetchAllData();
+      await fetchAllData(false);
       setNewTaskForm({ title: "", deadline: "" });
       setIsAddingTask(false);
     } catch (error) {
@@ -305,7 +339,7 @@ export default function SchoolPage() {
   // === 課題トグル（完了/未完了） ===
   const handleToggleTask = async (task: TaskData) => {
     try {
-      // 画面の即時反映 (Optimistic UI)
+      // Optimistic UI（画面上ですぐにチェックをつける）
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t));
       
       await supabaseRestFetch<any>({
@@ -313,9 +347,10 @@ export default function SchoolPage() {
         method: "PATCH",
         body: { completed: !task.completed },
       });
+      // 裏で他の端末と同期
+      fetchAllData(false);
     } catch (error) {
-      // 失敗した場合は元に戻すために再取得
-      fetchAllData();
+      fetchAllData(false);
     }
   };
 
@@ -334,7 +369,10 @@ export default function SchoolPage() {
             <button onClick={() => setIsEditing(false)} className="w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 hover:bg-gray-50">
               <X size={20} className="text-gray-600" />
             </button>
-            <h2 className="text-lg font-bold text-gray-800">授業の編集</h2>
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              授業の編集 
+              {isSyncing && <RefreshCcw size={14} className="text-orange-500 animate-spin" />}
+            </h2>
             <div className="w-10 h-10"></div>
           </div>
 
@@ -424,10 +462,10 @@ export default function SchoolPage() {
               <Video size={16}/> Zoomを開く
             </button>
             <button 
-              onClick={() => { setEditForm(selectedClass); setIsEditing(true); }}
+              onClick={handleStartEdit}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-300 text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors"
             >
-              <Edit2 size={16}/> 編集する
+              {isSyncing ? <Loader2 size={16} className="animate-spin" /> : <Edit2 size={16}/>} 編集する
             </button>
           </div>
 
@@ -543,7 +581,10 @@ export default function SchoolPage() {
       {/* 共通ヘッダー */}
       <div className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">学校</h2>
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            学校
+            {isSyncing && <RefreshCcw size={14} className="text-gray-400 animate-spin" />}
+          </h2>
           <div className="flex gap-2">
             <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"><Plus size={16}/></button>
             <button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"><Menu size={16}/></button>
@@ -573,11 +614,11 @@ export default function SchoolPage() {
         {activeTab === "timetable" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between px-2 mb-2">
-              <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() - 7)))} className="p-1"><ChevronLeft size={20} className="text-gray-400 hover:text-gray-700" /></button>
+              <button onClick={handlePrevWeek} className="p-1"><ChevronLeft size={20} className="text-gray-400 hover:text-gray-700" /></button>
               <span className="font-bold text-gray-800 text-sm">
                 {currentDate.getFullYear()}年{currentDate.getMonth() + 1}月 第{Math.ceil((currentDate.getDate() + (new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay() || 7) - 1) / 7)}週
               </span>
-              <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() + 7)))} className="p-1"><ChevronRight size={20} className="text-gray-400 hover:text-gray-700" /></button>
+              <button onClick={handleNextWeek} className="p-1"><ChevronRight size={20} className="text-gray-400 hover:text-gray-700" /></button>
             </div>
 
             <div className="bg-white">
@@ -616,12 +657,8 @@ export default function SchoolPage() {
                       const targetDateStr = formatYYYYMMDD(date);
                       const dayStr = DAYS[i];
                       
-                      // ★ 修正点: 同じ時限の授業を抽出
                       const matchedClasses = classes.filter(c => c.period === period);
                       
-                      // ★ 修正点:
-                      // 1. まず「日付(date)」が完全に一致する授業（補講やスポット授業）を探す
-                      // 2. なければ「曜日(day_of_week)」が一致する授業（毎週の授業）を探す
                       const cell = 
                         matchedClasses.find(c => c.date === targetDateStr) || 
                         matchedClasses.find(c => c.day === dayStr);
