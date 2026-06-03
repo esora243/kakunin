@@ -5,16 +5,16 @@ import Link from "next/link";
 import { Loader2, ExternalLink, Play, Building2 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 
+// YouTubeの通常のURLから動画IDを抽出する関数
+const getYouTubeId = (url: string) => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 /**
  * スポンサーページ
- * - Hugmeid mock の Sponsors.tsx デザインを反映:
- *   1) sticky な orange-50 背景ヘッダー(コンセプト説明)
- *   2) PLATINUM/GOLD/SUPPORTER の3階層レイアウト
- *      - PLATINUM: 大判ヒーロー + PICK UP/VIDEO サブカード
- *      - GOLD: 2列カード(画像 + テキスト)
- *      - SUPPORTER: ロゴ枠グリッド
- *   3) 営業用 CTA(問い合わせ誘導)
- * - kakunin の Supabase 連携(sponsors テーブル) を保持。
  */
 export default function SponsorsPage() {
   const [sponsors, setSponsors] = useState<any[]>([]);
@@ -92,105 +92,127 @@ export default function SponsorsPage() {
                 </div>
 
                 <div className="space-y-8">
-                  {platinum.map((sponsor) => (
-                    <div
-                      key={sponsor.id}
-                      className="bg-white rounded-3xl shadow-md border border-orange-100 overflow-hidden animate-fade-in"
-                    >
-                      {/* ヒーロー */}
-                      <a
-                        href={sponsor.url || "#"}
-                        target={sponsor.url ? "_blank" : undefined}
-                        rel="noopener noreferrer"
-                        className="block relative w-full h-64 sm:h-80 group overflow-hidden"
+                  {platinum.map((sponsor) => {
+                    // ★ 動画URLがあればIDを取得する
+                    const videoId = sponsor.video_url ? getYouTubeId(sponsor.video_url) : null;
+
+                    return (
+                      <div
+                        key={sponsor.id}
+                        className="bg-white rounded-3xl shadow-md border border-orange-100 overflow-hidden animate-fade-in"
                       >
-                        <img
-                          src={
-                            sponsor.banner_image_url ||
-                            sponsor.image_url ||
-                            "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80"
-                          }
-                          alt={sponsor.name}
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-6">
-                          <span className="bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full w-max mb-3 shadow-md">
-                            PLATINUM
-                          </span>
-                          <h4 className="text-white text-2xl font-bold mb-2 tracking-tight">
-                            {sponsor.name}
-                          </h4>
-                          <p className="text-gray-200 text-sm line-clamp-2 max-w-lg">
-                            {sponsor.description}
-                          </p>
-                        </div>
-                      </a>
-
-                      {/* サブカード(PICK UP / VIDEO) */}
-                      <div className="p-6 bg-[#FDFBF7] grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                          <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
-                            <Building2 size={14} /> PICK UP
-                          </div>
-                          <div className="rounded-2xl overflow-hidden h-32 mb-4 bg-gray-100">
-                            <img
-                              src={
-                                sponsor.pickup_image_url ||
-                                "https://images.unsplash.com/photo-1576091160550-2173ff9e5ee5?auto=format&fit=crop&w=500&q=60"
-                              }
-                              alt="Pick up"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <h4 className="font-bold text-gray-800 text-sm mb-2">
-                            {sponsor.pickup_title || "初期研修プログラム"}
-                          </h4>
-                          <p className="text-xs text-gray-500 mb-4 line-clamp-2">
-                            {sponsor.pickup_description ||
-                              "全国トップクラスの研修体制と豊富な症例数で実践的な臨床力が身につきます。"}
-                          </p>
-                          <a
-                            href={sponsor.url || "#"}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
-                          >
-                            詳細を見る <ExternalLink size={12} />
-                          </a>
-                        </div>
-
-                        <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                          <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
-                            <Play size={14} /> VIDEO
-                          </div>
-                          <div className="relative rounded-2xl overflow-hidden h-32 mb-4 bg-gray-900">
-                            <img
-                              src={
-                                sponsor.video_thumbnail_url ||
-                                "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=500&q=60"
-                              }
-                              alt="Video thumbnail"
-                              className="w-full h-full object-cover opacity-70"
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center text-orange-500 shadow-lg">
-                                <Play size={20} className="ml-1" fill="currentColor" />
-                              </div>
-                            </div>
-                            <span className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                              {sponsor.video_duration || "3:24"}
+                        {/* ヒーロー */}
+                        <a
+                          href={sponsor.url || "#"}
+                          target={sponsor.url ? "_blank" : undefined}
+                          rel="noopener noreferrer"
+                          className="block relative w-full h-64 sm:h-80 group overflow-hidden"
+                        >
+                          <img
+                            src={
+                              sponsor.banner_image_url ||
+                              sponsor.image_url ||
+                              "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80"
+                            }
+                            alt={sponsor.name}
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-6">
+                            <span className="bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full w-max mb-3 shadow-md">
+                              PLATINUM
                             </span>
+                            <h4 className="text-white text-2xl font-bold mb-2 tracking-tight">
+                              {sponsor.name}
+                            </h4>
+                            <p className="text-gray-200 text-sm line-clamp-2 max-w-lg">
+                              {sponsor.description}
+                            </p>
                           </div>
-                          <h4 className="font-bold text-gray-800 text-sm mb-2 line-clamp-1">
-                            {sponsor.video_title || "病院紹介ビデオ - 研修医の1日"}
-                          </h4>
-                          <p className="text-xs text-gray-500 line-clamp-2">
-                            動画で施設の雰囲気やインタビューをご覧いただけます。
-                          </p>
+                        </a>
+
+                        {/* サブカード(PICK UP / VIDEO) */}
+                        <div className="p-6 bg-[#FDFBF7] grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all">
+                            <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
+                              <Building2 size={14} /> PICK UP
+                            </div>
+                            <div className="rounded-2xl overflow-hidden h-32 mb-4 bg-gray-100">
+                              <img
+                                src={
+                                  sponsor.pickup_image_url ||
+                                  "https://images.unsplash.com/photo-1576091160550-2173ff9e5ee5?auto=format&fit=crop&w=500&q=60"
+                                }
+                                alt="Pick up"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <h4 className="font-bold text-gray-800 text-sm mb-2">
+                              {sponsor.pickup_title || "初期研修プログラム"}
+                            </h4>
+                            <p className="text-xs text-gray-500 mb-4 line-clamp-2">
+                              {sponsor.pickup_description ||
+                                "全国トップクラスの研修体制と豊富な症例数で実践的な臨床力が身につきます。"}
+                            </p>
+                            <a
+                              href={sponsor.url || "#"}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
+                            >
+                              詳細を見る <ExternalLink size={12} />
+                            </a>
+                          </div>
+
+                          <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
+                            <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
+                              <Play size={14} /> VIDEO
+                            </div>
+                            <div className="relative rounded-2xl overflow-hidden h-32 mb-4 bg-gray-900 shrink-0">
+                              {/* ★ 動画IDがある場合はYouTubeを埋め込む */}
+                              {videoId ? (
+                                <iframe
+                                  width="100%"
+                                  height="100%"
+                                  src={`https://www.youtube.com/embed/${videoId}`}
+                                  title="YouTube video player"
+                                  frameBorder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                  className="absolute inset-0 w-full h-full"
+                                ></iframe>
+                              ) : (
+                                /* ★ 動画URLがない場合はこれまでのサムネイルデザインを表示 */
+                                <>
+                                  <img
+                                    src={
+                                      sponsor.video_thumbnail_url ||
+                                      "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=500&q=60"
+                                    }
+                                    alt="Video thumbnail"
+                                    className="w-full h-full object-cover opacity-70"
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="w-12 h-12 bg-white/90 rounded-full flex items-center justify-center text-orange-500 shadow-lg">
+                                      <Play size={20} className="ml-1" fill="currentColor" />
+                                    </div>
+                                  </div>
+                                  <span className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded pointer-events-none">
+                                    {sponsor.video_duration || "3:24"}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <h4 className="font-bold text-gray-800 text-sm mb-2 line-clamp-1">
+                              {sponsor.video_title || "病院紹介ビデオ - 研修医の1日"}
+                            </h4>
+                            <p className="text-xs text-gray-500 line-clamp-2 flex-1">
+                              {sponsor.video_description || "動画で施設の雰囲気やインタビューをご覧いただけます。"}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             )}
