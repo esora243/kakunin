@@ -4,16 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import {
   MessageCircle,
   HelpCircle,
-  Users,
-  Globe,
   Send,
   Loader2,
   ChevronDown,
-  GraduationCap,
-  Briefcase,
-  MapPin,
-  Mail,
-  ExternalLink,
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 import { FloatingBanner } from "@/components/FloatingBanner";
@@ -23,14 +16,12 @@ const FAQ_CATEGORIES = ["すべて", "基本情報", "求人", "アカウント"
 /**
  * 繋がりページ
  * - Hugmeid mock の Connect.tsx に準拠した sticky ヘッダー / orange タブ /
- *   FloatingBanner / FAQ アコーディオン / お問い合わせフォームを反映。
- * - kakunin の Supabase 連携(faqs / inquiries POST), 4タブ構成 を保持。
- * - 要件定義書: お問い合わせ/FAQ は Phase 1、OBマッチング/コミュニティは Phase 2。
+ * FloatingBanner / FAQ アコーディオン / お問い合わせフォームを反映。
+ * - kakunin の Supabase 連携(faqs / inquiries POST), 2タブ構成 を保持。
+ * - 要件定義書: お問い合わせ/FAQ は Phase 1。OBマッチング/コミュニティは削除。
  */
 export default function ConnectPage() {
-  const [activeTab, setActiveTab] = useState<"contact" | "faq" | "ob" | "community">(
-    "contact",
-  );
+  const [activeTab, setActiveTab] = useState<"contact" | "faq">("contact");
 
   // お問い合わせ
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,7 +86,7 @@ export default function ConnectPage() {
   return (
     <div className="w-full max-w-lg mx-auto pb-8 animate-slide-in-right">
       {/* ============================================================
-          sticky ヘッダー (タブ)
+         sticky ヘッダー (タブ)
          ============================================================ */}
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-orange-100 px-4 py-4 shadow-sm">
         <h2 className="text-xl font-bold text-gray-800 mb-4">繋がり</h2>
@@ -111,21 +102,11 @@ export default function ConnectPage() {
             onClick={() => setActiveTab("faq")}
             label="❓ FAQ"
           />
-          <TabPill
-            active={activeTab === "ob"}
-            onClick={() => setActiveTab("ob")}
-            label="👥 OBマッチング"
-          />
-          <TabPill
-            active={activeTab === "community"}
-            onClick={() => setActiveTab("community")}
-            label="🌐 コミュニティ"
-          />
         </div>
       </div>
 
       {/* ============================================================
-          FloatingBanner (繋がり用)
+         FloatingBanner (繋がり用)
          ============================================================ */}
       <div className="pt-3">
         <FloatingBanner
@@ -137,7 +118,7 @@ export default function ConnectPage() {
       </div>
 
       {/* ============================================================
-          コンテンツ
+         コンテンツ
          ============================================================ */}
       <div className="px-4 pt-1">
         {/* === お問い合わせ === */}
@@ -368,60 +349,6 @@ export default function ConnectPage() {
               >
                 お問い合わせする
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* === OBマッチング (Phase 2) === */}
-        {activeTab === "ob" && (
-          <div className="space-y-4 animate-fade-in">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center shadow-md">
-                  <GraduationCap className="text-white" size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-800">OBマッチング</h3>
-                  <p className="text-xs text-gray-500">先輩医師に相談できます</p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-600">
-                研修先選び、専門科選択、キャリア相談など、先輩医師に直接相談できるサービスです。
-              </p>
-            </div>
-
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-              <p className="text-xs text-gray-700">
-                <span className="font-bold">⚠️ 注意：</span>
-                Phase 2 機能のため、現在準備中です。リリース時に LINE Push でお知らせします。
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* === コミュニティ (Phase 2) === */}
-        {activeTab === "community" && (
-          <div className="space-y-4 animate-fade-in">
-            <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl p-6 border border-purple-100">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center shadow-md">
-                  <Users className="text-white" size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-800">医学生コミュニティ</h3>
-                  <p className="text-xs text-gray-500">仲間と繋がろう</p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-600">
-                同じ目標を持つ仲間と情報交換、勉強会、交流イベントなどを開催予定です。
-              </p>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="text-xs text-gray-700">
-                <span className="font-bold">💡 ヒント：</span>
-                コミュニティ機能は Phase 2 で公開予定です。LINE OpenChat との連携を検討しています。
-              </p>
             </div>
           </div>
         )}
