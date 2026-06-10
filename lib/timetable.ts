@@ -23,8 +23,8 @@ export type ListTimetableOptions = {
  *
  * 課題メモ・通知タブを廃止する設計変更に伴い、
  * 個別タスクではなく「時間割1コマ」に
- *   - isCuttable / attendanceWeight
- *   - departmentName / departmentSummary / examMaterialsUrl
+ * - isCuttable / attendanceWeight
+ * - departmentName / departmentSummary / examMaterialsUrl
  * を直接持たせることで「一目で管理」を実現する。
  */
 export async function listTimetableClasses(
