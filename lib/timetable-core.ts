@@ -13,10 +13,10 @@ export const DAY_ORDER = new Map<TimetableDay, number>(
 
 /**
  * 表示順の period 番号。
- *   1〜6 : 通常コマ
- *   7    : 昼休み枠（学内活動）
- *   8    : 放課後枠（学外・課外活動）
- *   99   : 特別枠（祝日特別講義など、互換維持）
+ * 1〜6 : 通常コマ
+ * 7    : 昼休み枠（学内活動）
+ * 8    : 放課後枠（学外・課外活動）
+ * 99   : 特別枠（祝日特別講義など、互換維持）
  *
  * これまで "7" を special としていた旧仕様は 99 へ移行。
  * （課題メモ・通知タブを廃止し、すべて時間割側にまとめる方針）
@@ -77,6 +77,10 @@ export function sortTimetableClasses(items: TimetableClassDto[]) {
 export function buildTimetableGrid(items: TimetableClassDto[]) {
   const grid = Object.fromEntries(TIMETABLE_DAYS.map((day) => [day, {}])) as TimetableGridDto;
   for (const item of items) {
+    // 【修正箇所】月〜金以外のデータ（土曜日や空欄など）が来た場合はスキップしてクラッシュを防ぐ
+    if (!grid[item.day]) {
+      continue;
+    }
     grid[item.day][item.period] = item;
   }
   return grid;

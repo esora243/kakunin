@@ -7,11 +7,16 @@ export class SupabaseConfigError extends Error {
 
 export function getSupabaseRestConfig() {
   // 末尾の改行や見えないスペースを強制削除
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   if (!url || !anonKey) {
     throw new SupabaseConfigError("Supabase URL or Anon Key is missing in environment variables");
+  }
+
+  // ★ここを追加：https:// が抜けていたら強制的に補完して通信エラーを防ぐ
+  if (!url.startsWith("http")) {
+    url = "https://" + url;
   }
 
   return { url: url.replace(/\/$/, ""), anonKey };
