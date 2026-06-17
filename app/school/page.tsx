@@ -281,7 +281,8 @@ export default function SchoolPage() {
             title: c.title || "（科目名なし）",
             category: cat,
             day: c.day,
-            date: "",
+            // ★ここを修正しました（空文字ではなくAPIから来た日付を入れる）
+            date: c.date || "",
             period: Number(c.period) || 99,
             periodLabel,
             room: c.room || "",
