@@ -55,7 +55,7 @@ export async function listTimetableClasses(
       endsAt: row.time_end ? String(row.time_end).substring(0, 5) : "",
 
       grade: row.grade != null ? Number(row.grade) : null,
-      academicYear: row.academic_year != null ? Number(row.academic_year) : null,
+      academicYear: row.grade != null ? Number(row.grade) : null,
       termNumber: row.term_number != null ? Number(row.term_number) : null,
       universityName: row.university_name || null,
 
