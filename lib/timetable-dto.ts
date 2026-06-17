@@ -36,6 +36,9 @@ export type TimetableClassDto = {
   startsAt: string | null;
   endsAt: string | null;
 
+  // ★ここが追加された部分です：具体的な日付（例: "2026-04-13"）
+  date: string | null;
+
   // === 学年・大学・学期 ===
   /** 1〜6 年生 */
   grade: number | null;
