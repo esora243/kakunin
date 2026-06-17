@@ -6,7 +6,6 @@ export class SupabaseConfigError extends Error {
 }
 
 export function getSupabaseRestConfig() {
-  // 末尾の改行や見えないスペースを強制削除
   let url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
@@ -14,7 +13,6 @@ export function getSupabaseRestConfig() {
     throw new SupabaseConfigError("Supabase URL or Anon Key is missing in environment variables");
   }
 
-  // ★ここを追加：https:// が抜けていたら強制的に補完して通信エラーを防ぐ
   if (!url.startsWith("http")) {
     url = "https://" + url;
   }
@@ -22,14 +20,12 @@ export function getSupabaseRestConfig() {
   return { url: url.replace(/\/$/, ""), anonKey };
 }
 
-// ★ここが修正ポイント: method と body を許可する型（Type）を明記
 export interface SupabaseFetchOptions {
   path: string;
   method?: "GET" | "POST" | "PATCH" | "DELETE" | "PUT";
   body?: any;
 }
 
-// 引数の型を SupabaseFetchOptions に変更
 export async function supabaseRestFetch<T>(options: SupabaseFetchOptions): Promise<T> {
   const config = getSupabaseRestConfig();
   const { path, method = "GET", body } = options;
@@ -42,8 +38,8 @@ export async function supabaseRestFetch<T>(options: SupabaseFetchOptions): Promi
       "Content-Type": "application/json",
       "Prefer": "return=representation",
     },
-    // bodyが存在する場合のみJSON形式に変換して送信
     body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store", // ★ここを追加：古いデータを取り続けるキャッシュを強制破壊
   });
 
   if (!response.ok) {
