@@ -53,7 +53,7 @@ export async function listTimetableClasses(
       slotKind,
       startsAt: row.time_start ? String(row.time_start).substring(0, 5) : "",
       endsAt: row.time_end ? String(row.time_end).substring(0, 5) : "",
-
+      date: row.date || null,
       grade: row.grade != null ? Number(row.grade) : null,
       academicYear: row.grade != null ? Number(row.grade) : null,
       termNumber: row.term_number != null ? Number(row.term_number) : null,
