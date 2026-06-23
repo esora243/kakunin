@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Megaphone } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
+// ローカルのJSONデータを読み込む関数をインポート
+import { getAllArticles } from "@/lib/articles";
 
 export default function ArticleDetailPage() {
   const params = useParams();
@@ -20,11 +22,25 @@ export default function ArticleDetailPage() {
     async function fetchData() {
       setLoading(true);
       try {
-        // 1. JSONファイルは使わず、Supabaseの「articles」テーブルから直接取得
-        const articleData = await supabaseRestFetch<any[]>({ path: `articles?id=eq.${id}` });
-        setArticle(articleData?.[0] || null);
+        // 1. まずローカルのJSONデータ (articles.json) から記事を探す
+        const localArticles = getAllArticles();
+        const foundLocal = localArticles.find((a) => String(a.id) === id);
 
-        // 2. 広告取得 (sponsorsテーブルの最初の1件)
+        if (foundLocal) {
+          // JSONデータが見つかった場合はそれをセット
+          setArticle({
+            title: foundLocal.title,
+            content: foundLocal.content,
+            image_url: foundLocal.image,
+            url: foundLocal.url, // もしあれば
+          });
+        } else {
+          // 2. ローカルになければ Supabase の「articles」テーブルから取得
+          const articleData = await supabaseRestFetch<any[]>({ path: `articles?id=eq.${id}` });
+          setArticle(articleData?.[0] || null);
+        }
+
+        // 3. 広告取得 (sponsorsテーブルの最初の1件)
         try {
           const sponsorRes = await supabaseRestFetch<any[]>({ path: `sponsors?limit=1` });
           setSponsor(sponsorRes?.[0] || null);
