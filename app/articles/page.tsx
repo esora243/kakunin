@@ -25,11 +25,11 @@ import { FloatingBanner } from "@/components/FloatingBanner";
  * 記事一覧ページ
  *
  * 要件:
- *  1. データソースは必ず articles.json（lib/articles.ts 経由）から取得。
- *     Supabase 取得は補助。失敗・空のときは JSON のみで動く。
- *  2. 上部に「お気に入り / すべて / 学習法」のタブUIを実装。
- *  3. 記事発信ボタン（簡易投稿フォーム）を設置。
- *  4. SavedItemsContext と連動して、お気に入りを切替可能。
+ * 1. データソースは必ず articles.json（lib/articles.ts 経由）から取得。
+ * Supabase 取得は補助。失敗・空のときは JSON のみで動く。
+ * 2. 上部に「お気に入り / すべて / 学習法」のタブUIを実装。
+ * 3. 記事発信ボタン（簡易投稿フォーム）を設置。
+ * 4. SavedItemsContext と連動して、お気に入りを切替可能。
  */
 
 type ArticleTab = "favorite" | "all" | "study";
@@ -45,11 +45,8 @@ export default function ArticlesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<ArticleTab>("all");
 
-  // --- 投稿フォーム ---
+  // --- 投稿フォーム表示制御 ---
   const [showComposer, setShowComposer] = useState(false);
-  const [composerTitle, setComposerTitle] = useState("");
-  const [composerCategory, setComposerCategory] = useState("学習法");
-  const [composerBody, setComposerBody] = useState("");
 
   // --- お気に入り ---
   const { isSaved, toggleSaved, hydrated } = useSavedItems();
@@ -146,44 +143,6 @@ export default function ArticlesPage() {
     }
   };
 
-  // 記事発信
-  const handleSubmitArticle = async () => {
-    if (!composerTitle.trim() || !composerBody.trim()) return;
-    const payload: Article = {
-      id: `user-${Date.now()}`,
-      type: composerCategory === "学習法" ? "school" : "activity",
-      title: composerTitle.trim(),
-      category: composerCategory,
-      date: new Date().toISOString().slice(0, 10),
-      image: "",
-      excerpt: composerBody.trim().slice(0, 80),
-      content: composerBody.trim(),
-    };
-
-    // Supabase に投稿（失敗してもローカルには反映する）
-    try {
-      await supabaseRestFetch({
-        path: "articles",
-        method: "POST",
-        body: {
-          title: payload.title,
-          category: payload.category,
-          excerpt: payload.excerpt,
-          content: payload.content,
-          publish_date: payload.date,
-          type: payload.type,
-        },
-      });
-    } catch (e) {
-      console.warn("Supabase への投稿はスキップしました:", e);
-    }
-
-    setExtraArticles((prev) => [payload, ...prev]);
-    setComposerTitle("");
-    setComposerBody("");
-    setShowComposer(false);
-  };
-
   return (
     <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen animate-fade-in">
       {/* sticky ヘッダー */}
@@ -236,7 +195,7 @@ export default function ArticlesPage() {
         </div>
       </div>
 
-      {/* 記事発信フォーム */}
+      {/* 記事発信フォームへの案内 */}
       {showComposer && (
         <div className="mx-4 mt-4 bg-white border border-orange-200 rounded-2xl shadow-sm p-4 animate-fade-in">
           <div className="flex items-center justify-between mb-3">
@@ -252,43 +211,22 @@ export default function ArticlesPage() {
             </button>
           </div>
 
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="タイトル"
-              value={composerTitle}
-              onChange={(e) => setComposerTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 focus:outline-none"
-            />
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              記事の投稿は専用のGoogleフォームから受け付けています。以下のボタンから投稿をお願いします。
+            </p>
 
-            <select
-              value={composerCategory}
-              onChange={(e) => setComposerCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold bg-white focus:ring-2 focus:ring-orange-100 focus:outline-none"
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSfhRcBD1v_jap8m1tK2U3scRHd0RdFsApq_wi-jwlj4IqpWzw/viewform"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-colors"
             >
-              <option value="学習法">学習法</option>
-              <option value="課外活動">課外活動</option>
-              <option value="お知らせ">お知らせ</option>
-              <option value="メモ">メモ</option>
-            </select>
+              <Send size={16} /> 投稿フォームを開く
+            </a>
 
-            <textarea
-              placeholder="本文（文字のみ。相互編集メモにも使えます）"
-              value={composerBody}
-              onChange={(e) => setComposerBody(e.target.value)}
-              rows={5}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm leading-relaxed focus:ring-2 focus:ring-orange-100 focus:outline-none resize-y"
-            />
-
-            <button
-              onClick={handleSubmitArticle}
-              disabled={!composerTitle.trim() || !composerBody.trim()}
-              className="w-full inline-flex items-center justify-center gap-2 py-3 bg-orange-500 text-white rounded-xl font-bold disabled:opacity-40 hover:bg-orange-600 transition-colors"
-            >
-              <Send size={16} /> 発信する
-            </button>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              ※ 文字のみ対応。投稿は記事タブの一覧に即時反映され、他端末とも相互に閲覧・編集できます。
+            <p className="text-[11px] text-gray-500 leading-relaxed mt-2">
+              ※ ブラウザが開き、外部サイト（Googleフォーム）へ移動します。
             </p>
           </div>
         </div>
