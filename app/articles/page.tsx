@@ -14,6 +14,8 @@ import {
   Send,
   X,
   Sparkles,
+  Coffee,      // 追加インポート
+  Briefcase,   // 追加インポート
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 import { getAllArticles, sortArticlesByDateDesc } from "@/lib/articles";
@@ -21,38 +23,23 @@ import type { Article } from "@/lib/types";
 import { useSavedItems } from "@/components/SavedItemsContext";
 import { FloatingBanner } from "@/components/FloatingBanner";
 
-/**
- * 記事一覧ページ
- *
- * 要件:
- * 1. データソースは必ず articles.json（lib/articles.ts 経由）から取得。
- * Supabase 取得は補助。失敗・空のときは JSON のみで動く。
- * 2. 上部に「お気に入り / すべて / 学習法」のタブUIを実装。
- * 3. 記事発信ボタン（簡易投稿フォーム）を設置。
- * 4. SavedItemsContext と連動して、お気に入りを切替可能。
- */
-
-type ArticleTab = "favorite" | "all" | "study";
+// 1. タブの型を5つに拡張
+type ArticleTab = "favorite" | "all" | "study" | "life" | "career";
 
 export default function ArticlesPage() {
-  // --- データ ---
   const baseArticles: Article[] = useMemo(() => sortArticlesByDateDesc(getAllArticles()), []);
   const [extraArticles, setExtraArticles] = useState<Article[]>([]);
   const [sponsors, setSponsors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // --- 検索・タブ ---
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<ArticleTab>("all");
 
-  // --- 投稿フォーム表示制御・状態 ---
   const [showComposer, setShowComposer] = useState(false);
-  const [composerBody, setComposerBody] = useState(""); // 追加: 投稿フォームの入力状態
+  const [composerBody, setComposerBody] = useState(""); 
 
-  // --- お気に入り ---
   const { isSaved, toggleSaved, hydrated } = useSavedItems();
 
-  // Supabase は「あれば結合」する程度のオプショナル取得
   useEffect(() => {
     let cancelled = false;
     async function fetchData() {
@@ -87,7 +74,6 @@ export default function ArticlesPage() {
     };
   }, []);
 
-  // articles.json をベースに、Supabase 記事を id 重複なしで結合
   const allArticles: Article[] = useMemo(() => {
     const seen = new Set(baseArticles.map((a) => String(a.id)));
     const merged = [...baseArticles];
@@ -97,18 +83,18 @@ export default function ArticlesPage() {
     return sortArticlesByDateDesc(merged);
   }, [baseArticles, extraArticles]);
 
-  // タブ別に絞り込み
+  // 2. タブ別の絞り込みロジックを拡張
   const tabFiltered = useMemo(() => {
     if (activeTab === "favorite") {
       return allArticles.filter((a) => isSaved("article", a.id));
     }
-    if (activeTab === "study") {
-      return allArticles.filter((a) => a.category === "学習法");
-    }
+    if (activeTab === "study") return allArticles.filter((a) => a.category === "学習法");
+    if (activeTab === "life") return allArticles.filter((a) => a.category === "学生生活");
+    if (activeTab === "career") return allArticles.filter((a) => a.category === "キャリア");
+    
     return allArticles;
   }, [allArticles, activeTab, isSaved]);
 
-  // 検索フィルタ
   const filteredArticles = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return tabFiltered;
@@ -120,7 +106,6 @@ export default function ArticlesPage() {
     });
   }, [tabFiltered, searchQuery]);
 
-  // 記事 type に応じて遷移先
   const getArticleHref = (article: Article) => {
     if (article.type === "activity") return `/articles/${article.id}`;
     if (article.type === "school") return `/school/articles/${article.id}`;
@@ -144,16 +129,13 @@ export default function ArticlesPage() {
     }
   };
 
-  // 追加: フォーム送信処理（Googleフォーム等を開く）
   const handleSubmitArticle = () => {
-    // 必要に応じて実際のGoogleフォームのURLに変更してください
     const googleFormUrl = "https://docs.google.com/forms/"; 
     window.open(googleFormUrl, "_blank");
   };
 
   return (
     <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen animate-fade-in">
-      {/* sticky ヘッダー */}
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-4 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-800">記事</h2>
@@ -166,7 +148,6 @@ export default function ArticlesPage() {
           </button>
         </div>
 
-        {/* 検索 */}
         <div className="relative mb-3">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
@@ -180,8 +161,8 @@ export default function ArticlesPage() {
           />
         </div>
 
-        {/* タブ UI: お気に入り / すべて / 学習法 */}
-        <div className="flex gap-2 bg-[#F2F4F8]/60 p-1 rounded-xl">
+        {/* 3. 横スクロール可能な5つのタブ */}
+        <div className="flex gap-2 bg-[#F2F4F8]/60 p-1 rounded-xl overflow-x-auto [&::-webkit-scrollbar]:hidden snap-x">
           <TabButton
             active={activeTab === "favorite"}
             onClick={() => setActiveTab("favorite")}
@@ -200,10 +181,21 @@ export default function ArticlesPage() {
             icon={<Sparkles size={14} />}
             label="学習法"
           />
+          <TabButton
+            active={activeTab === "life"}
+            onClick={() => setActiveTab("life")}
+            icon={<Coffee size={14} />}
+            label="学生生活"
+          />
+          <TabButton
+            active={activeTab === "career"}
+            onClick={() => setActiveTab("career")}
+            icon={<Briefcase size={14} />}
+            label="キャリア"
+          />
         </div>
       </div>
 
-      {/* 記事発信フォームへの案内 */}
       {showComposer && (
         <div className="mx-4 mt-4 bg-white border border-[#B9C2DB] rounded-2xl shadow-sm p-4 animate-fade-in">
           <div className="flex items-center justify-between mb-3">
@@ -247,7 +239,6 @@ export default function ArticlesPage() {
         </div>
       )}
 
-      {/* FloatingBanner */}
       <div className="pt-3">
         <FloatingBanner
           campaignId="7"
@@ -257,7 +248,6 @@ export default function ArticlesPage() {
         />
       </div>
 
-      {/* 記事リスト */}
       <div className="px-4 pt-1 space-y-3 pb-6">
         {loading && !hydrated ? (
           <div className="flex justify-center py-12">
@@ -288,7 +278,6 @@ export default function ArticlesPage() {
                     className="block bg-white rounded-xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow"
                   >
                     <div className="flex">
-                      {/* サムネイル */}
                       {article.image ? (
                         <img
                           src={article.image}
@@ -317,7 +306,6 @@ export default function ArticlesPage() {
                     </div>
                   </Link>
 
-                  {/* お気に入りトグル */}
                   <button
                     onClick={() => toggleSaved("article", article.id)}
                     className={`absolute top-2 right-2 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors active:scale-90 ${
@@ -356,6 +344,7 @@ export default function ArticlesPage() {
   );
 }
 
+// 4. スマホで5つ並んでも崩れないように shrink-0 と px-3 を指定
 function TabButton({
   active,
   onClick,
@@ -370,7 +359,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+      className={`shrink-0 snap-start flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
         active ? "bg-white text-[#11204C] shadow-sm" : "text-gray-500 hover:text-gray-700"
       }`}
     >
@@ -380,11 +369,14 @@ function TabButton({
   );
 }
 
+// 5. 各タブに対応するメッセージを更新
 function EmptyState({ tab, onClearSearch }: { tab: ArticleTab; onClearSearch: () => void }) {
   const messageMap: Record<ArticleTab, string> = {
     favorite: "お気に入りに追加した記事がここに表示されます",
     all: "条件に一致する記事が見つかりません",
     study: "学習法カテゴリの記事はまだありません",
+    life: "学生生活カテゴリの記事はまだありません",
+    career: "キャリアカテゴリの記事はまだありません",
   };
 
   return (
