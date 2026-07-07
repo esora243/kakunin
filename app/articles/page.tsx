@@ -45,8 +45,9 @@ export default function ArticlesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<ArticleTab>("all");
 
-  // --- 投稿フォーム表示制御 ---
+  // --- 投稿フォーム表示制御・状態 ---
   const [showComposer, setShowComposer] = useState(false);
+  const [composerBody, setComposerBody] = useState(""); // 追加: 投稿フォームの入力状態
 
   // --- お気に入り ---
   const { isSaved, toggleSaved, hydrated } = useSavedItems();
@@ -143,6 +144,13 @@ export default function ArticlesPage() {
     }
   };
 
+  // 追加: フォーム送信処理（Googleフォーム等を開く）
+  const handleSubmitArticle = () => {
+    // 必要に応じて実際のGoogleフォームのURLに変更してください
+    const googleFormUrl = "https://docs.google.com/forms/"; 
+    window.open(googleFormUrl, "_blank");
+  };
+
   return (
     <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen animate-fade-in">
       {/* sticky ヘッダー */}
@@ -151,7 +159,7 @@ export default function ArticlesPage() {
           <h2 className="text-2xl font-bold text-gray-800">記事</h2>
           <button
             onClick={() => setShowComposer((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#F2F4F8]0 text-white text-xs font-bold shadow-sm hover:bg-[#11204C] transition-colors active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#F2F4F8] text-white text-xs font-bold shadow-sm hover:bg-[#11204C] transition-colors active:scale-95"
             aria-label="記事を発信する"
           >
             <PenSquare size={14} /> 記事を発信
@@ -168,7 +176,7 @@ export default function ArticlesPage() {
             placeholder="記事を検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#F2F4F8]0 sm:text-sm transition-colors"
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#F2F4F8] sm:text-sm transition-colors"
           />
         </div>
 
@@ -226,11 +234,11 @@ export default function ArticlesPage() {
 
             <button
               onClick={handleSubmitArticle}
-              disabled={!composerTitle.trim() || !composerBody.trim()}
+              disabled={!composerBody.trim()}
               className="w-full inline-flex items-center justify-center gap-2 py-3 bg-orange-500 text-white rounded-xl font-bold disabled:opacity-40 hover:bg-orange-600 transition-colors"
             >
               <Send size={16} /> 投稿フォームを開く
-            </a>
+            </button>
 
             <p className="text-[11px] text-gray-500 leading-relaxed mt-2">
               ※ ブラウザが開き、外部サイト（Googleフォーム）へ移動します。
@@ -280,7 +288,7 @@ export default function ArticlesPage() {
                     className="block bg-white rounded-xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow"
                   >
                     <div className="flex">
-                      {/* サムネイル: 要件により現状の半分程度 (w-28 h-28 → w-14 h-14) に縮小 */}
+                      {/* サムネイル */}
                       {article.image ? (
                         <img
                           src={article.image}
@@ -313,7 +321,7 @@ export default function ArticlesPage() {
                   <button
                     onClick={() => toggleSaved("article", article.id)}
                     className={`absolute top-2 right-2 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors active:scale-90 ${
-                      saved ? "bg-[#F2F4F8]0 text-white" : "bg-white/90 text-gray-400 hover:text-[#1E3A8A] border border-gray-200"
+                      saved ? "bg-[#1E3A8A] text-white" : "bg-white/90 text-gray-400 hover:text-[#1E3A8A] border border-gray-200"
                     }`}
                     aria-label={saved ? "お気に入りから外す" : "お気に入りに追加"}
                   >
