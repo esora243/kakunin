@@ -216,11 +216,18 @@ export default function ArticlesPage() {
               記事の投稿は専用のGoogleフォームから受け付けています。以下のボタンから投稿をお願いします。
             </p>
 
-            <a
-              href="https://docs.google.com/forms/d/e/1FAIpQLSfhRcBD1v_jap8m1tK2U3scRHd0RdFsApq_wi-jwlj4IqpWzw/viewform"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full inline-flex items-center justify-center gap-2 py-3 bg-[#F2F4F8]0 text-white rounded-xl font-bold hover:bg-[#11204C] transition-colors"
+            <textarea
+              placeholder="本文（文字のみ。相互編集メモにも使えます）"
+              value={composerBody}
+              onChange={(e) => setComposerBody(e.target.value)}
+              rows={5}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm leading-relaxed focus:ring-2 focus:ring-orange-100 focus:outline-none resize-y"
+            />
+
+            <button
+              onClick={handleSubmitArticle}
+              disabled={!composerTitle.trim() || !composerBody.trim()}
+              className="w-full inline-flex items-center justify-center gap-2 py-3 bg-orange-500 text-white rounded-xl font-bold disabled:opacity-40 hover:bg-orange-600 transition-colors"
             >
               <Send size={16} /> 投稿フォームを開く
             </a>
