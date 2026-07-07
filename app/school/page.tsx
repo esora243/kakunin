@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   Calendar, Clock, ChevronRight, ChevronLeft, Menu, Loader2,
   X, Save, Edit2, MapPin, ClipboardList, ExternalLink, Video, Check,
-  Search, ArrowLeft, Tag, Share2, Plus, MoreVertical, RefreshCcw,
-  GraduationCap, Stethoscope, BookOpen, AlertCircle,
+  Plus, MoreVertical, RefreshCcw, GraduationCap, Stethoscope, BookOpen, AlertCircle,
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
+
 // AuthContext には profile が無いため、localStorage の登録情報から読み取る
 function useProfileFromStorage() {
   const [profile, setProfile] = useState<{ university?: string; grade?: string } | null>(null);
@@ -25,7 +25,7 @@ function useProfileFromStorage() {
 }
 
 // =============================================================
-// 型定義（拡張）
+// 型定義
 // =============================================================
 type ClassData = {
   id: string;
@@ -33,7 +33,6 @@ type ClassData = {
   category: string;
   day: string;
   date: string;
-  /** 1〜6 / 7=昼 / 8=放課後 / 99=特別 */
   period: number;
   periodLabel: string;
   room: string;
@@ -41,31 +40,13 @@ type ClassData = {
   timeStart: string;
   timeEnd: string;
   timeDisplay: string;
-
-  // 拡張: 出席運用
   isCuttable: boolean;
   attendanceWeight: 0 | 1 | 2 | 3;
-
-  // 拡張: 診療科
   departmentName?: string | null;
   departmentSummary?: string | null;
   examMaterialsUrl?: string | null;
-
-  // 学年（フィルタ用）
   grade?: number | null;
-
-  // 課題メモ・通知タブを廃止 → コマ内に直接メモを持たせる
   notes?: string | null;
-};
-
-type ArticleData = {
-  id: string;
-  title: string;
-  category: string;
-  date: string;
-  image: string;
-  excerpt: string;
-  content: string;
 };
 
 type CampaignData = {
@@ -173,13 +154,12 @@ export default function SchoolPage() {
   const router = useRouter();
   const profile = useProfileFromStorage();
 
-  const [view, setView] = useState<"main" | "classDetail" | "articleDetail">("main");
-  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus" | "articles">("timetable");
+  const [view, setView] = useState<"main" | "classDetail">("main");
+  const [activeTab, setActiveTab] = useState<"timetable" | "syllabus">("timetable");
 
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [classes, setClasses] = useState<ClassData[]>([]);
-  const [articles, setArticles] = useState<ArticleData[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
 
   const initialGrade = (() => {
@@ -191,9 +171,6 @@ export default function SchoolPage() {
   const universityName = profile?.university || "浜松医科大学";
 
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
-  const [selectedArticle, setSelectedArticle] = useState<ArticleData | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("すべて");
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ClassData>>({});
@@ -224,15 +201,13 @@ export default function SchoolPage() {
     else setIsSyncing(true);
 
     try {
-      const [tt, artRes, campRes] = await Promise.all([
+      const [tt, campRes] = await Promise.all([
         fetch(`/api/timetable?grade=${selectedGrade}&university=${encodeURIComponent(universityName)}`, { cache: "no-store" })
           .then((r) => r.json())
           .catch(() => ({ ok: false, items: [] })),
-        supabaseRestFetch<any>({ path: "articles?select=*" }).catch(() => []),
         supabaseRestFetch<any>({ path: "campaigns?select=*" }).catch(() => []),
       ]);
 
-      const rawArticles = Array.isArray(artRes) ? artRes : artRes?.data || [];
       const rawCampaigns = Array.isArray(campRes) ? campRes : campRes?.data || [];
 
       if (tt?.ok && Array.isArray(tt.items)) {
@@ -264,18 +239,6 @@ export default function SchoolPage() {
         setClasses(items);
       }
 
-      setArticles(
-        rawArticles.map((a: any) => ({
-          id: String(a.id),
-          title: a.title || "タイトルなし",
-          category: a.category || "一般",
-          date: a.date || a.created_at?.split("T")[0] || "",
-          image: a.image_url || a.image || "https://images.unsplash.com/photo-1576091160550-2173ff9e5ee5?auto=format&fit=crop&q=80&w=600",
-          excerpt: a.excerpt || a.description || "",
-          content: a.content || a.body || "本文がありません。",
-        })),
-      );
-
       setCampaigns(
         rawCampaigns.map((c: any) => ({
           id: String(c.id),
@@ -295,15 +258,6 @@ export default function SchoolPage() {
     const interval = setInterval(() => fetchAllData(false), 15000);
     return () => clearInterval(interval);
   }, [fetchAllData]);
-
-  const categories = ["すべて", ...Array.from(new Set(articles.map((a) => a.category)))];
-  const filteredArticles = useMemo(() => {
-    return articles.filter((article) => {
-      const matchQuery = article.title.toLowerCase().includes(searchQuery.toLowerCase()) || article.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchCategory = selectedCategory === "すべて" || article.category === selectedCategory;
-      return matchQuery && matchCategory;
-    });
-  }, [searchQuery, selectedCategory, articles]);
 
   const handleStartEdit = async () => {
     if (!selectedClass) return;
@@ -386,9 +340,9 @@ export default function SchoolPage() {
           <FormRow label="診療科名"><input type="text" value={editForm.departmentName || ""} onChange={(e) => setEditForm({ ...editForm, departmentName: e.target.value })} className={INPUT_CLS} placeholder="例: 循環器内科" /></FormRow>
           <FormRow label="診療科の概要"><textarea rows={3} value={editForm.departmentSummary || ""} onChange={(e) => setEditForm({ ...editForm, departmentSummary: e.target.value })} className={`${INPUT_CLS} resize-y`} /></FormRow>
           <FormRow label="試験資料 URL"><input type="url" value={editForm.examMaterialsUrl || ""} onChange={(e) => setEditForm({ ...editForm, examMaterialsUrl: e.target.value })} className={INPUT_CLS} placeholder="https://..." /></FormRow>
-          <FormRow label="メモ・通知（旧タブ統合）"><textarea rows={4} value={editForm.notes || ""} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} className={`${INPUT_CLS} resize-y`} placeholder="課題・連絡事項・通知などを一括で記入" /></FormRow>
+          <FormRow label="メモ・通知"><textarea rows={4} value={editForm.notes || ""} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} className={`${INPUT_CLS} resize-y`} placeholder="課題・連絡事項・通知などを一括で記入" /></FormRow>
           <div className="pt-6 pb-10">
-            <button onClick={handleSaveClass} disabled={isSaving} className="w-full flex items-center justify-center gap-2 py-4 bg-[#F2F4F8]0 text-white rounded-xl font-bold shadow-sm hover:bg-[#11204C] transition-colors disabled:opacity-50">
+            <button onClick={handleSaveClass} disabled={isSaving} className="w-full flex items-center justify-center gap-2 py-4 bg-[#1E3A8A] text-white rounded-xl font-bold shadow-sm hover:bg-[#11204C] transition-colors disabled:opacity-50">
               {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />} 保存して完了
             </button>
           </div>
@@ -443,34 +397,6 @@ export default function SchoolPage() {
     );
   }
 
-  if (view === "articleDetail" && selectedArticle) {
-    return (
-      <div className="min-h-screen bg-white pb-20">
-        <div className="w-full max-w-lg mx-auto">
-          <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-3 flex items-center gap-3">
-            <button onClick={() => setView("main")} className="text-gray-600 hover:text-[#1E3A8A]"><ArrowLeft size={24} /></button>
-            <h1 className="text-base font-bold text-gray-800 flex-1 truncate">記事詳細</h1>
-            <button className="text-gray-400 hover:text-[#1E3A8A]"><Share2 size={20} /></button>
-          </div>
-          <div className="w-full h-64 bg-gray-100"><img src={selectedArticle.image} alt={selectedArticle.title} className="w-full h-full object-cover" /></div>
-          <div className="px-4 py-6 border-b border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full flex items-center gap-1"><Tag size={12} />{selectedArticle.category}</span>
-              <span className="text-xs text-gray-400 flex items-center gap-1"><Calendar size={12} />{selectedArticle.date.replace(/-/g, "/")}</span>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-800 leading-tight">{selectedArticle.title}</h1>
-          </div>
-          <div className="px-4 py-6 prose prose-sm max-w-none">
-            {selectedArticle.content.split("\n\n").map((paragraph, idx) => {
-              if (paragraph.startsWith("## ")) return <h2 key={idx} className="text-lg font-bold text-gray-800 mt-6 mb-3">{paragraph.replace("## ", "")}</h2>;
-              return <p key={idx} className="text-sm text-gray-700 leading-relaxed mb-4">{paragraph}</p>;
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen">
       <div className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-4">
@@ -486,9 +412,8 @@ export default function SchoolPage() {
           </select>
         </div>
         <div className="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-          <button onClick={() => setActiveTab("timetable")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-[#F2F4F8]0 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8]"}`}>📅 時間割</button>
-          <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-[#F2F4F8]0 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8]"}`}>📋 シラバス</button>
-          <button onClick={() => setActiveTab("articles")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "articles" ? "bg-[#F2F4F8]0 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8]"}`}>📚 勉強系記事</button>
+          <button onClick={() => setActiveTab("timetable")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-[#1E3A8A] text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8]"}`}>📅 時間割</button>
+          <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-[#1E3A8A] text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8]"}`}>📋 シラバス</button>
         </div>
       </div>
 
@@ -513,7 +438,7 @@ export default function SchoolPage() {
                   return (
                     <div key={i} className="text-center flex flex-col items-center">
                       {isToday ? (
-                        <><span className="bg-[#F2F4F8]0 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">{date.getDate()}</span><span className="text-[#1E3A8A] text-[10px] mt-0.5 font-bold">{DAYS[i]}</span></>
+                        <><span className="bg-[#1E3A8A] text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">{date.getDate()}</span><span className="text-[#1E3A8A] text-[10px] mt-0.5 font-bold">{DAYS[i]}</span></>
                       ) : (
                         <><span className="text-gray-800 text-xs font-bold h-6 flex items-center justify-center">{date.getDate()}</span><span className="text-gray-500 text-[10px] mt-0.5">{DAYS[i]}</span></>
                       )}
@@ -537,13 +462,10 @@ export default function SchoolPage() {
                         const dayStr = DAYS[i];
                         const targetDateStr = formatYYYYMMDD(date);
                         
-                        // ★ここが完全修正版のロジックです★
-                        // 1. まずは「その日付（例: 2026-04-13）」に一致する授業を【最優先】で探す
                         let cell = classes.find(
                           (c) => c.period === row.value && c.date && c.date.startsWith(targetDateStr)
                         );
                         
-                        // 2. もし見つからなければ、「日付指定なし（毎週）」の授業を探す
                         if (!cell) {
                           cell = classes.find(
                             (c) => c.period === row.value && (!c.date || c.date === "") && c.day === dayStr
@@ -598,42 +520,6 @@ export default function SchoolPage() {
             </div>
           </div>
         )}
-
-        {activeTab === "articles" && (
-          <div className="space-y-4">
-            <div className="relative px-1">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
-              <input type="text" placeholder="記事を検索..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#F2F4F8]0 sm:text-sm transition-colors" />
-            </div>
-            <div className="flex gap-2 overflow-x-auto px-1 pb-1 [&::-webkit-scrollbar]:hidden">
-              {categories.map((category) => (
-                <button key={category} onClick={() => setSelectedCategory(category)} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${selectedCategory === category ? "bg-gray-800 border-gray-800 text-white" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"}`}>{category}</button>
-              ))}
-            </div>
-            <div className="space-y-3 pb-6">
-              {loading ? (
-                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[#1E3A8A]" size={30} /></div>
-              ) : filteredArticles.length > 0 ? (
-                filteredArticles.map((article) => (
-                  <div key={article.id} onClick={() => { setSelectedArticle(article); setView("articleDetail"); }} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex hover:shadow-md transition-shadow cursor-pointer">
-                    {/* サムネイル: 要件により半分に縮小 (w-28 h-28 → w-14 h-14) */}
-                    <img src={article.image} alt={article.title} className="w-14 h-14 object-cover shrink-0 rounded-lg m-3" />
-                    <div className="p-3 flex flex-col justify-center min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-[#1E3A8A] font-bold px-1.5 py-0.5 bg-[#F2F4F8] rounded-sm">{article.category}</span>
-                        <span className="text-[10px] text-gray-400">{article.date.replace(/-/g, "/")}</span>
-                      </div>
-                      <h4 className="text-sm font-bold text-gray-800 line-clamp-2 mb-1 leading-tight">{article.title}</h4>
-                      <p className="text-xs text-gray-500 line-clamp-2 leading-tight">{article.excerpt}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200"><p className="text-gray-500 text-sm font-bold">記事が登録されていません</p></div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       {departmentModal && (
@@ -651,7 +537,7 @@ export default function SchoolPage() {
                 <p className="text-sm text-gray-500 italic">概要は未登録です。</p>
               )}
               {departmentModal.examMaterialsUrl && (
-                <a href={departmentModal.examMaterialsUrl} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-[#F2F4F8]0 text-white font-bold hover:bg-[#11204C] transition-colors">
+                <a href={departmentModal.examMaterialsUrl} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-[#1E3A8A] text-white font-bold hover:bg-[#11204C] transition-colors">
                   <BookOpen size={16} /> 試験資料を開く <ExternalLink size={14} />
                 </a>
               )}
