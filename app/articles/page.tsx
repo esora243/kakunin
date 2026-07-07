@@ -128,8 +128,9 @@ export default function ArticlesPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-800">記事</h2>
           
+          {/* 「記事を作成」ボタンをマイページのお問い合わせフォームへ遷移させる */}
           <Link
-            href="/profile"
+            href="/profile#contact"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#1E3A8A] text-white text-xs font-bold shadow-sm hover:bg-[#11204C] transition-colors active:scale-95"
             aria-label="記事を作成"
           >
@@ -222,7 +223,6 @@ export default function ArticlesPage() {
                     href={getArticleHref(article)}
                     className="block bg-white rounded-xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow"
                   >
-                    {/* ここに items-center を追加し、縦方向の中央寄せにしました */}
                     <div className="flex items-center">
                       {article.image ? (
                         <img
