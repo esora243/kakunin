@@ -3,336 +3,369 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  Users,
+  Plane,
+  ExternalLink,
+  Instagram,
+  Twitter,
+  Mail,
+  Newspaper,
   Search,
   Loader2,
-  Newspaper,
-  Image as ImageIcon,
-  Megaphone,
-  Bookmark,
-  BookmarkCheck,
-  PenSquare,
-  Sparkles,
-  Coffee,
-  Briefcase,
 } from "lucide-react";
+import { activityArticles, studentGroups, studyAbroadPrograms } from "@/lib/data";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
-import { getAllArticles, sortArticlesByDateDesc } from "@/lib/articles";
-import type { Article } from "@/lib/types";
-import { useSavedItems } from "@/components/SavedItemsContext";
 import { FloatingBanner } from "@/components/FloatingBanner";
 
-type ArticleTab = "favorite" | "all" | "study" | "life" | "career";
-
-export default function ArticlesPage() {
-  const baseArticles: Article[] = useMemo(() => sortArticlesByDateDesc(getAllArticles()), []);
-  const [extraArticles, setExtraArticles] = useState<Article[]>([]);
-  const [sponsors, setSponsors] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+/**
+ * 課外活動ページ
+ * - Hugmeid mock の Activities.tsx の sticky ヘッダー / orange タブ /
+ *   FloatingBanner 配置 / カードデザイン(rounded-2xl + border-[#F2F4F8]) を反映。
+ * - kakunin の Supabase 連携、検索・カテゴリフィルタ、ダミーデータfallback を保持。
+ * - 画面遷移書: 団体一覧 → 団体個別 / 留学一覧 → 個別 / 記事一覧 → 個別 を踏襲。
+ */
+export default function ActivitiesPage() {
+  const [activeTab, setActiveTab] = useState<"groups" | "study-abroad" | "articles">("groups");
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<ArticleTab>("all");
+  const [selectedCategory, setSelectedCategory] = useState("すべて");
 
-  const { isSaved, toggleSaved, hydrated } = useSavedItems();
+  const [groupsData, setGroupsData] = useState<any[]>([]);
+  const [programsData, setProgramsData] = useState<any[]>([]);
+  const [articlesData, setArticlesData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    async function fetchData() {
+    async function loadData() {
       setLoading(true);
       try {
-        const [articleData, sponsorData] = await Promise.all([
-          supabaseRestFetch<any[]>({ path: "articles?select=*" }).catch(() => [] as any[]),
-          supabaseRestFetch<any[]>({ path: "sponsors" }).catch(() => [] as any[]),
+        const [gRes, pRes, aRes] = await Promise.all([
+          supabaseRestFetch<any[]>({ path: "student_groups?select=*" }).catch(() => []),
+          supabaseRestFetch<any[]>({ path: "study_abroad_programs?select=*" }).catch(() => []),
+          supabaseRestFetch<any[]>({ path: "articles?type=eq.activity&select=*" }).catch(
+            () => [],
+          ),
         ]);
-
         if (!cancelled) {
-          const normalized: Article[] = (articleData || []).map((a: any) => ({
-            id: String(a.id ?? ""),
-            type: a.type === "activity" ? "activity" : "school",
-            title: a.title ?? "",
-            category: a.category ?? "未分類",
-            date: a.publish_date ?? a.date ?? "",
-            image: a.image_url ?? a.image ?? "",
-            excerpt: a.excerpt ?? "",
-            content: a.content ?? "",
-          }));
-          setExtraArticles(normalized);
-          setSponsors(sponsorData || []);
+          setGroupsData(gRes || []);
+          setProgramsData(pRes || []);
+          setArticlesData(aRes || []);
         }
+      } catch (error) {
+        console.error("データの取得に失敗しました", error);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    void fetchData();
+    void loadData();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const allArticles: Article[] = useMemo(() => {
-    const seen = new Set(baseArticles.map((a) => String(a.id)));
-    const merged = [...baseArticles];
-    for (const a of extraArticles) {
-      if (!seen.has(String(a.id))) merged.push(a);
-    }
-    return sortArticlesByDateDesc(merged);
-  }, [baseArticles, extraArticles]);
+  const displayGroups = groupsData.length > 0 ? groupsData : studentGroups;
+  const displayPrograms = programsData.length > 0 ? programsData : studyAbroadPrograms;
+  const displayArticles = articlesData.length > 0 ? articlesData : activityArticles;
 
-  const tabFiltered = useMemo(() => {
-    if (activeTab === "favorite") {
-      return allArticles.filter((a) => isSaved("article", a.id));
-    }
-    if (activeTab === "study") return allArticles.filter((a) => a.category === "学習法");
-    if (activeTab === "life") return allArticles.filter((a) => a.category === "学生生活");
-    if (activeTab === "career") return allArticles.filter((a) => a.category === "キャリア");
-    
-    return allArticles;
-  }, [allArticles, activeTab, isSaved]);
+  const hasContent = useMemo(
+    () =>
+      displayGroups.length > 0 || displayPrograms.length > 0 || displayArticles.length > 0,
+    [displayGroups, displayPrograms, displayArticles],
+  );
+
+  const CATEGORIES = useMemo(
+    () => [
+      "すべて",
+      ...Array.from(new Set(displayArticles.map((a: any) => a.category).filter(Boolean))),
+    ],
+    [displayArticles],
+  );
 
   const filteredArticles = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return tabFiltered;
-    return tabFiltered.filter((article) => {
-      const title = (article.title || "").toLowerCase();
-      const excerpt = (article.excerpt || "").toLowerCase();
-      const cat = (article.category || "").toLowerCase();
-      return title.includes(q) || excerpt.includes(q) || cat.includes(q);
+    return displayArticles.filter((article: any) => {
+      const query = searchQuery.trim().toLowerCase();
+      const matchQuery = !query || `${article.title}`.toLowerCase().includes(query);
+      const matchCategory =
+        selectedCategory === "すべて" || article.category === selectedCategory;
+      return matchQuery && matchCategory;
     });
-  }, [tabFiltered, searchQuery]);
-
-  const getArticleHref = (article: Article) => {
-    if (article.type === "activity") return `/articles/${article.id}`;
-    if (article.type === "school") return `/school/articles/${article.id}`;
-    return `/articles/${article.id}`;
-  };
-
-  const handleSponsorClick = async (sponsorId: number) => {
-    if (!sponsorId) return;
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/increment_click`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ row_id: sponsorId }),
-      });
-    } catch (e) {
-      console.error("クリック集計エラー:", e);
-    }
-  };
+  }, [displayArticles, searchQuery, selectedCategory]);
 
   return (
-    <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen animate-fade-in">
+    <div className="w-full max-w-lg mx-auto pb-8 animate-slide-in-right">
+      {/* ============================================================
+          ヘッダー(タブ) - Hugmeid mock の sticky 配置
+         ============================================================ */}
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-4 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">記事</h2>
-          
-          {/* 「記事を作成」ボタンをリンクに変更し /contact へ遷移させる */}
-          <Link
-            href="/contact"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#1E3A8A] text-white text-xs font-bold shadow-sm hover:bg-[#11204C] transition-colors active:scale-95"
-            aria-label="記事を作成"
-          >
-            <PenSquare size={14} /> 記事を作成
-          </Link>
-        </div>
+        <h2 className="text-xl font-bold text-gray-800 mb-4">課外活動</h2>
 
-        <div className="relative mb-3">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-gray-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="記事を検索..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#F2F4F8] sm:text-sm transition-colors"
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar">
+          <TabPill
+            active={activeTab === "groups"}
+            onClick={() => setActiveTab("groups")}
+            label="👥 学生団体"
           />
-        </div>
-
-        <div className="flex gap-2 bg-[#F2F4F8]/60 p-1 rounded-xl overflow-x-auto [&::-webkit-scrollbar]:hidden snap-x">
-          <TabButton
-            active={activeTab === "favorite"}
-            onClick={() => setActiveTab("favorite")}
-            icon={<BookmarkCheck size={14} />}
-            label="お気に入り"
+          <TabPill
+            active={activeTab === "study-abroad"}
+            onClick={() => setActiveTab("study-abroad")}
+            label="✈️ 留学情報"
           />
-          <TabButton
-            active={activeTab === "all"}
-            onClick={() => setActiveTab("all")}
-            icon={<Newspaper size={14} />}
-            label="すべて"
-          />
-          <TabButton
-            active={activeTab === "study"}
-            onClick={() => setActiveTab("study")}
-            icon={<Sparkles size={14} />}
-            label="学習法"
-          />
-          <TabButton
-            active={activeTab === "life"}
-            onClick={() => setActiveTab("life")}
-            icon={<Coffee size={14} />}
-            label="学生生活"
-          />
-          <TabButton
-            active={activeTab === "career"}
-            onClick={() => setActiveTab("career")}
-            icon={<Briefcase size={14} />}
-            label="キャリア"
+          <TabPill
+            active={activeTab === "articles"}
+            onClick={() => setActiveTab("articles")}
+            label="📝 記事"
           />
         </div>
       </div>
 
-      {/* FloatingBanner */}
+      {/* ============================================================
+          FloatingBanner - 課外活動向け広告
+         ============================================================ */}
       <div className="pt-3">
         <FloatingBanner
-          campaignId="7"
-          title="医学生向け奨学金プログラム説明会"
-          imageUrl="https://images.unsplash.com/photo-1603726574690-cc3138bfec8c?auto=format&fit=crop&q=80&w=1080"
-          sponsorName="公益財団法人 未来医療基金"
+          campaignId="2"
+          title="留学支援プログラム説明会開催中"
+          imageUrl="https://images.unsplash.com/photo-1609126385558-bc3fc5082b0a?auto=format&fit=crop&q=80&w=1080"
+          sponsorName="グローバル医療教育機構"
         />
       </div>
 
-      <div className="px-4 pt-1 space-y-3 pb-6">
-        {loading && !hydrated ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin text-[#1E3A8A]" size={32} />
+      {/* ============================================================
+          コンテンツ
+         ============================================================ */}
+      <div className="px-4 pt-1 space-y-4">
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-[#B9C2DB] p-8 text-center">
+            <Loader2 className="mx-auto text-[#B9C2DB] mb-3 animate-spin" size={40} />
+            <p className="font-bold text-gray-800">データを読み込んでいます</p>
           </div>
-        ) : filteredArticles.length === 0 ? (
-          <EmptyState
-            tab={activeTab}
-            onClearSearch={() => {
-              setSearchQuery("");
-              setActiveTab("all");
-            }}
-          />
+        ) : !hasContent ? (
+          <div className="bg-white rounded-2xl border border-[#B9C2DB] p-8 text-center">
+            <Users className="mx-auto text-[#B9C2DB] mb-3" size={40} />
+            <p className="text-gray-700 font-bold mb-2">課外活動データは未登録です</p>
+            <p className="text-sm text-gray-500">
+              Supabase の student_groups / study_abroad_programs / articles に
+              本番データを追加してください。
+            </p>
+          </div>
         ) : (
-          filteredArticles.map((article, index) => {
-            const saved = isSaved("article", article.id);
-            const formattedDate = article.date ? article.date.replace(/-/g, "/") : "";
-
-            const showSponsor = (index + 1) % 3 === 0;
-            const sponsorIndex = Math.floor(index / 3) % (sponsors.length || 1);
-            const sponsor = sponsors[sponsorIndex];
-
-            return (
-              <div key={`${article.type || "default"}-${article.id}`}>
-                <div className="relative">
+          <>
+            {activeTab === "groups" &&
+              displayGroups.map((group: any) => {
+                const social =
+                  typeof group.social_links === "string"
+                    ? JSON.parse(group.social_links)
+                    : group.social_links || group.social || {};
+                return (
                   <Link
-                    href={getArticleHref(article)}
-                    className="block bg-white rounded-xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow"
+                    key={group.id}
+                    href={`/activities/groups/${group.id}`}
+                    className="block bg-white rounded-2xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow group"
                   >
-                    <div className="flex">
-                      {article.image ? (
+                    <div className="relative h-40 bg-gray-100">
+                      {(group.image_url || group.image) ? (
                         <img
-                          src={article.image}
-                          alt={article.title}
-                          className="w-14 h-14 object-cover shrink-0 bg-[#F2F4F8] rounded-lg m-3"
+                          src={group.image_url || group.image}
+                          alt={group.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
-                      ) : (
-                        <div className="w-14 h-14 shrink-0 bg-gray-100 flex flex-col items-center justify-center text-gray-300 rounded-lg m-3">
-                          <ImageIcon size={16} />
+                      ) : null}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                      <div className="absolute bottom-3 left-3 right-3">
+                        <span className="text-[10px] font-bold bg-[#F2F4F8]0 text-white px-2 py-1 rounded-full">
+                          {group.category}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-gray-800 mb-2 group-hover:text-[#11204C] transition-colors">
+                        {group.name}
+                      </h3>
+                      <p className="text-xs text-gray-600 leading-relaxed mb-3 line-clamp-2">
+                        {group.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Users size={14} className="text-[#1E3A8A]" />
+                          <span>{group.members_count || group.members}名</span>
                         </div>
-                      )}
-                      <div className="p-3 pr-10 flex flex-col justify-center min-w-0 flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-[#1E3A8A] font-bold px-1.5 py-0.5 bg-[#F2F4F8] rounded-sm truncate max-w-[60%]">
-                            {article.category || "未分類"}
-                          </span>
-                          <span className="text-[10px] text-gray-400 shrink-0">{formattedDate}</span>
+                        <div className="flex items-center gap-2">
+                          {social.instagram && (
+                            <Instagram size={14} className="text-[#1E3A8A]" />
+                          )}
+                          {social.twitter && <Twitter size={14} className="text-blue-400" />}
+                          {social.mail && <Mail size={14} className="text-gray-400" />}
                         </div>
-                        <h4 className="text-sm font-bold text-gray-800 line-clamp-2 mb-1 leading-tight">
-                          {article.title}
-                        </h4>
-                        <p className="text-xs text-gray-500 line-clamp-2 leading-tight">
-                          {article.excerpt || "本文がありません"}
-                        </p>
                       </div>
                     </div>
                   </Link>
+                );
+              })}
 
-                  <button
-                    onClick={() => toggleSaved("article", article.id)}
-                    className={`absolute top-2 right-2 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors active:scale-90 ${
-                      saved ? "bg-[#1E3A8A] text-white" : "bg-white/90 text-gray-400 hover:text-[#1E3A8A] border border-gray-200"
-                    }`}
-                    aria-label={saved ? "お気に入りから外す" : "お気に入りに追加"}
-                  >
-                    {saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-                  </button>
+            {activeTab === "study-abroad" &&
+              displayPrograms.map((program: any) => (
+                <div
+                  key={program.id}
+                  className="block bg-white rounded-2xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow group"
+                >
+                  <div className="relative h-32 bg-gray-100">
+                    {(program.image_url || program.image) ? (
+                      <img
+                        src={program.image_url || program.image}
+                        alt={program.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : null}
+                    <div className="absolute top-3 left-3 bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+                      {program.country}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-bold text-gray-800 mb-2 group-hover:text-[#11204C] transition-colors">
+                      {program.title}
+                    </h3>
+                    <div className="space-y-1.5 text-xs text-gray-600 mb-3">
+                      <div className="flex items-center gap-2">
+                        <Plane size={12} className="text-[#1E3A8A]" />
+                        <span>{program.duration}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users size={12} className="text-[#1E3A8A]" />
+                        <span>{program.organization}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                      <span className="text-[10px] text-red-500 font-bold">
+                        締切: {program.deadline}
+                      </span>
+                      {program.url ? (
+                        <a
+                          href={program.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs font-bold text-[#1E3A8A] hover:text-[#11204C]"
+                        >
+                          詳細 <ExternalLink size={12} />
+                        </a>
+                      ) : (
+                        <span className="text-[10px] text-gray-400">URL未設定</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+            {activeTab === "articles" && (
+              <div className="space-y-4 animate-fade-in">
+                {/* 検索バー */}
+                <div className="relative px-1">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="記事を検索..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#F2F4F8]0 sm:text-sm transition-colors"
+                  />
                 </div>
 
-                {showSponsor && sponsor?.name && sponsor?.url && (
-                  <div className="mt-3 bg-[#F2F4F8] border border-[#B9C2DB] rounded-xl p-3 flex items-center gap-3 shadow-sm">
-                    <Megaphone className="text-[#1E3A8A] shrink-0" size={20} />
-                    <div className="flex-1 overflow-hidden">
-                      <p className="text-[10px] text-[#1E3A8A] font-bold uppercase tracking-wider mb-0.5">Sponsored</p>
-                      <p className="text-sm font-bold text-gray-800 truncate">{sponsor.name}</p>
-                    </div>
-                    <a
-                      href={sponsor.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => handleSponsorClick(sponsor.id)}
-                      className="text-[#1E3A8A] text-xs font-bold underline shrink-0"
+                <div className="flex gap-2 overflow-x-auto px-1 pb-1 hide-scrollbar">
+                  {CATEGORIES.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
+                        selectedCategory === category
+                          ? "bg-gray-800 border-gray-800 text-white"
+                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
                     >
-                      詳細へ
-                    </a>
+                      {category}
+                    </button>
+                  ))}
+                </div>
+
+                {filteredArticles.length === 0 && displayArticles.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-[#B9C2DB] p-8 text-center mt-4">
+                    <Newspaper className="mx-auto text-[#B9C2DB] mb-3" size={40} />
+                    <p className="font-bold text-gray-800 mb-2">該当する記事がありません</p>
                   </div>
                 )}
+
+                {filteredArticles.map((article: any) => (
+                  <a
+                    key={article.id}
+                    href={article.content_url || article.url || "#"}
+                    target={article.content_url || article.url ? "_blank" : undefined}
+                    rel={
+                      article.content_url || article.url
+                        ? "noopener noreferrer"
+                        : undefined
+                    }
+                    className="block bg-white rounded-2xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow group"
+                  >
+                    <div className="flex gap-4 p-4">
+                      {/* サムネイル: 要件により半分に縮小 (w-24 h-24 → w-12 h-12) */}
+                      <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-gray-100">
+                        {(article.image_url || article.image) ? (
+                          <img
+                            src={article.image_url || article.image}
+                            alt={article.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-50 text-purple-600 rounded">
+                            {article.category}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            {article.publish_date || article.date}
+                          </span>
+                        </div>
+                        <h3 className="font-bold text-gray-800 leading-tight line-clamp-2 group-hover:text-[#11204C] transition-colors">
+                          {article.title}
+                        </h3>
+                        <div className="mt-3 text-xs text-gray-400 flex items-center gap-1">
+                          <Newspaper size={12} />
+                          {article.content_url || article.url ? "外部記事へ" : "URL未設定"}
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                ))}
               </div>
-            );
-          })
+            )}
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function TabButton({
+function TabPill({
   active,
   onClick,
-  icon,
   label,
 }: {
   active: boolean;
   onClick: () => void;
-  icon: React.ReactNode;
   label: string;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 snap-start flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-        active ? "bg-white text-[#11204C] shadow-sm" : "text-gray-500 hover:text-gray-700"
+      className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+        active
+          ? "bg-[#F2F4F8]0 text-white shadow-md"
+          : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8] border border-gray-100"
       }`}
     >
-      {icon}
       {label}
     </button>
-  );
-}
-
-function EmptyState({ tab, onClearSearch }: { tab: ArticleTab; onClearSearch: () => void }) {
-  const messageMap: Record<ArticleTab, string> = {
-    favorite: "お気に入りに追加した記事がここに表示されます",
-    all: "条件に一致する記事が見つかりません",
-    study: "学習法カテゴリの記事はまだありません",
-    life: "学生生活カテゴリの記事はまだありません",
-    career: "キャリアカテゴリの記事はまだありません",
-  };
-
-  return (
-    <div className="text-center py-10 bg-white rounded-xl border border-dashed border-[#B9C2DB]">
-      <Newspaper className="mx-auto text-[#B9C2DB] mb-2" size={32} />
-      <p className="text-gray-500 text-sm font-bold">{messageMap[tab]}</p>
-      {tab !== "favorite" && (
-        <button onClick={onClearSearch} className="mt-2 text-[#1E3A8A] text-xs font-bold underline">
-          検索条件をクリア
-        </button>
-      )}
-    </div>
   );
 }
