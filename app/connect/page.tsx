@@ -187,7 +187,7 @@ export default function ConnectPage() {
                     <option value="contact">連絡先が欲しい</option>
                     <option value="service">サービスに関するご質問</option>
                     <option value="bug">不具合の報告</option>
-                    <option value="feature">機能追加のご要望</option>
+                    <option value="feature">記事を投稿したい</option>
                     <option value="other">その他</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
