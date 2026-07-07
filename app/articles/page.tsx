@@ -11,11 +11,9 @@ import {
   Bookmark,
   BookmarkCheck,
   PenSquare,
-  Send,
-  X,
   Sparkles,
-  Coffee,      // 追加インポート
-  Briefcase,   // 追加インポート
+  Coffee,
+  Briefcase,
 } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
 import { getAllArticles, sortArticlesByDateDesc } from "@/lib/articles";
@@ -23,7 +21,6 @@ import type { Article } from "@/lib/types";
 import { useSavedItems } from "@/components/SavedItemsContext";
 import { FloatingBanner } from "@/components/FloatingBanner";
 
-// 1. タブの型を5つに拡張
 type ArticleTab = "favorite" | "all" | "study" | "life" | "career";
 
 export default function ArticlesPage() {
@@ -34,9 +31,6 @@ export default function ArticlesPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<ArticleTab>("all");
-
-  const [showComposer, setShowComposer] = useState(false);
-  const [composerBody, setComposerBody] = useState(""); 
 
   const { isSaved, toggleSaved, hydrated } = useSavedItems();
 
@@ -83,7 +77,6 @@ export default function ArticlesPage() {
     return sortArticlesByDateDesc(merged);
   }, [baseArticles, extraArticles]);
 
-  // 2. タブ別の絞り込みロジックを拡張
   const tabFiltered = useMemo(() => {
     if (activeTab === "favorite") {
       return allArticles.filter((a) => isSaved("article", a.id));
@@ -129,23 +122,20 @@ export default function ArticlesPage() {
     }
   };
 
-  const handleSubmitArticle = () => {
-    const googleFormUrl = "https://docs.google.com/forms/"; 
-    window.open(googleFormUrl, "_blank");
-  };
-
   return (
     <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen animate-fade-in">
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-4 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-800">記事</h2>
-          <button
-            onClick={() => setShowComposer((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#F2F4F8] text-white text-xs font-bold shadow-sm hover:bg-[#11204C] transition-colors active:scale-95"
-            aria-label="記事を発信する"
+          
+          {/* 「記事を作成」ボタンをリンクに変更し /contact へ遷移させる */}
+          <Link
+            href="/contact"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#1E3A8A] text-white text-xs font-bold shadow-sm hover:bg-[#11204C] transition-colors active:scale-95"
+            aria-label="記事を作成"
           >
-            <PenSquare size={14} /> 記事を発信
-          </button>
+            <PenSquare size={14} /> 記事を作成
+          </Link>
         </div>
 
         <div className="relative mb-3">
@@ -161,7 +151,6 @@ export default function ArticlesPage() {
           />
         </div>
 
-        {/* 3. 横スクロール可能な5つのタブ */}
         <div className="flex gap-2 bg-[#F2F4F8]/60 p-1 rounded-xl overflow-x-auto [&::-webkit-scrollbar]:hidden snap-x">
           <TabButton
             active={activeTab === "favorite"}
@@ -196,49 +185,7 @@ export default function ArticlesPage() {
         </div>
       </div>
 
-      {showComposer && (
-        <div className="mx-4 mt-4 bg-white border border-[#B9C2DB] rounded-2xl shadow-sm p-4 animate-fade-in">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-              <PenSquare size={16} className="text-[#1E3A8A]" /> 記事を発信する
-            </h3>
-            <button
-              onClick={() => setShowComposer(false)}
-              className="text-gray-400 hover:text-gray-700"
-              aria-label="閉じる"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              記事の投稿は専用のGoogleフォームから受け付けています。以下のボタンから投稿をお願いします。
-            </p>
-
-            <textarea
-              placeholder="本文（文字のみ。相互編集メモにも使えます）"
-              value={composerBody}
-              onChange={(e) => setComposerBody(e.target.value)}
-              rows={5}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm leading-relaxed focus:ring-2 focus:ring-orange-100 focus:outline-none resize-y"
-            />
-
-            <button
-              onClick={handleSubmitArticle}
-              disabled={!composerBody.trim()}
-              className="w-full inline-flex items-center justify-center gap-2 py-3 bg-orange-500 text-white rounded-xl font-bold disabled:opacity-40 hover:bg-orange-600 transition-colors"
-            >
-              <Send size={16} /> 投稿フォームを開く
-            </button>
-
-            <p className="text-[11px] text-gray-500 leading-relaxed mt-2">
-              ※ ブラウザが開き、外部サイト（Googleフォーム）へ移動します。
-            </p>
-          </div>
-        </div>
-      )}
-
+      {/* FloatingBanner */}
       <div className="pt-3">
         <FloatingBanner
           campaignId="7"
@@ -344,7 +291,6 @@ export default function ArticlesPage() {
   );
 }
 
-// 4. スマホで5つ並んでも崩れないように shrink-0 と px-3 を指定
 function TabButton({
   active,
   onClick,
@@ -369,7 +315,6 @@ function TabButton({
   );
 }
 
-// 5. 各タブに対応するメッセージを更新
 function EmptyState({ tab, onClearSearch }: { tab: ArticleTab; onClearSearch: () => void }) {
   const messageMap: Record<ArticleTab, string> = {
     favorite: "お気に入りに追加した記事がここに表示されます",
