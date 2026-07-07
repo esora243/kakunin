@@ -52,7 +52,7 @@ export default function SchoolArticleDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="animate-spin text-orange-500" size={32} />
+        <Loader2 className="animate-spin text-[#1E3A8A]" size={32} />
       </div>
     );
   }
@@ -67,7 +67,7 @@ export default function SchoolArticleDetailPage() {
           </p>
           <button
             onClick={() => router.back()}
-            className="bg-orange-500 text-white font-bold px-6 py-3 rounded-full"
+            className="bg-[#F2F4F8]0 text-white font-bold px-6 py-3 rounded-full"
           >
             戻る
           </button>
@@ -86,29 +86,29 @@ export default function SchoolArticleDetailPage() {
     <div className="min-h-screen bg-white pb-20">
       <div className="w-full max-w-lg mx-auto">
         {/* ヘッダー */}
-        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-100 px-4 py-3 flex items-center gap-3 shadow-sm">
+        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-3 flex items-center gap-3 shadow-sm">
           <button
             onClick={() => router.back()}
-            className="text-gray-600 hover:text-orange-500"
+            className="text-gray-600 hover:text-[#1E3A8A]"
             aria-label="戻る"
           >
             <ArrowLeft size={24} />
           </button>
           <h1 className="text-base font-bold text-gray-800 flex-1 truncate">記事詳細</h1>
-          <button className="text-gray-400 hover:text-orange-500" aria-label="共有">
+          <button className="text-gray-400 hover:text-[#1E3A8A]" aria-label="共有">
             <Share2 size={20} />
           </button>
         </div>
 
         {/* スポンサー広告バー */}
         {sponsor?.name && sponsor?.url && (
-          <div className="bg-orange-50 border-b border-orange-100 p-3 flex items-center gap-3">
-            <Megaphone className="text-orange-500 shrink-0" size={20} />
+          <div className="bg-[#F2F4F8] border-b border-[#B9C2DB] p-3 flex items-center gap-3">
+            <Megaphone className="text-[#1E3A8A] shrink-0" size={20} />
             <div className="flex-1 overflow-hidden">
-              <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">Sponsored</p>
+              <p className="text-[10px] text-[#1E3A8A] font-bold uppercase tracking-wider">Sponsored</p>
               <p className="text-sm font-bold text-gray-800 truncate">{sponsor.name}</p>
             </div>
-            <a href={sponsor.url} target="_blank" rel="noopener noreferrer" className="text-orange-500 text-xs font-bold underline shrink-0">
+            <a href={sponsor.url} target="_blank" rel="noopener noreferrer" className="text-[#1E3A8A] text-xs font-bold underline shrink-0">
               詳細へ
             </a>
           </div>
@@ -125,7 +125,7 @@ export default function SchoolArticleDetailPage() {
             ) : null}
           </div>
 
-          <div className="px-4 py-6 border-b border-orange-50">
+          <div className="px-4 py-6 border-b border-[#F2F4F8]">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-600 rounded-full flex items-center gap-1">
                 <Tag size={12} />
@@ -152,7 +152,7 @@ export default function SchoolArticleDetailPage() {
                 href={article.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-orange-500 text-white px-5 py-3 rounded-full font-bold text-sm shadow-sm hover:bg-orange-600 transition-colors"
+                className="inline-flex items-center gap-2 bg-[#F2F4F8]0 text-white px-5 py-3 rounded-full font-bold text-sm shadow-sm hover:bg-[#11204C] transition-colors"
               >
                 元記事を開く <ExternalLink size={16} />
               </a>

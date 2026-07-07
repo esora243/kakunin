@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Megaphone } from "lucide-react";
 import { supabaseRestFetch } from "@/lib/supabase/rest";
+// ローカルのJSONデータを読み込む関数をインポート
+import { getAllArticles } from "@/lib/articles";
 
 export default function ArticleDetailPage() {
   const params = useParams();
@@ -20,11 +22,25 @@ export default function ArticleDetailPage() {
     async function fetchData() {
       setLoading(true);
       try {
-        // 1. JSONファイルは使わず、Supabaseの「articles」テーブルから直接取得
-        const articleData = await supabaseRestFetch<any[]>({ path: `articles?id=eq.${id}` });
-        setArticle(articleData?.[0] || null);
+        // 1. まずローカルのJSONデータ (articles.json) から記事を探す
+        const localArticles = getAllArticles();
+        const foundLocal = localArticles.find((a) => String(a.id) === id);
 
-        // 2. 広告取得 (sponsorsテーブルの最初の1件)
+        if (foundLocal) {
+          // JSONデータが見つかった場合はそれをセット
+          setArticle({
+            title: foundLocal.title,
+            content: foundLocal.content,
+            image_url: foundLocal.image,
+            url: foundLocal.url, // もしあれば
+          });
+        } else {
+          // 2. ローカルになければ Supabase の「articles」テーブルから取得
+          const articleData = await supabaseRestFetch<any[]>({ path: `articles?id=eq.${id}` });
+          setArticle(articleData?.[0] || null);
+        }
+
+        // 3. 広告取得 (sponsorsテーブルの最初の1件)
         try {
           const sponsorRes = await supabaseRestFetch<any[]>({ path: `sponsors?limit=1` });
           setSponsor(sponsorRes?.[0] || null);
@@ -43,7 +59,7 @@ export default function ArticleDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="animate-spin text-orange-500" size={32} />
+        <Loader2 className="animate-spin text-[#1E3A8A]" size={32} />
       </div>
     );
   }
@@ -52,7 +68,7 @@ export default function ArticleDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center flex-col gap-4">
         <div className="font-bold text-gray-800">記事が見つかりません。</div>
-        <button onClick={() => router.back()} className="text-orange-500 text-sm underline font-bold">戻る</button>
+        <button onClick={() => router.back()} className="text-[#1E3A8A] text-sm underline font-bold">戻る</button>
       </div>
     );
   }
@@ -67,13 +83,13 @@ export default function ArticleDetailPage() {
       <main className="max-w-lg mx-auto bg-white min-h-screen shadow-sm">
         {/* スポンサー広告バー (name, url を使用) */}
         {sponsor?.name && sponsor?.url && (
-          <div className="bg-orange-50 border-b border-orange-100 p-3 flex items-center gap-3">
-            <Megaphone className="text-orange-500 shrink-0" size={20} />
+          <div className="bg-[#F2F4F8] border-b border-[#B9C2DB] p-3 flex items-center gap-3">
+            <Megaphone className="text-[#1E3A8A] shrink-0" size={20} />
             <div className="flex-1 overflow-hidden">
-              <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">Sponsored</p>
+              <p className="text-[10px] text-[#1E3A8A] font-bold uppercase tracking-wider">Sponsored</p>
               <p className="text-sm font-bold text-gray-800 truncate">{sponsor.name}</p>
             </div>
-            <a href={sponsor.url} target="_blank" rel="noopener noreferrer" className="text-orange-500 text-xs font-bold underline shrink-0">詳細へ</a>
+            <a href={sponsor.url} target="_blank" rel="noopener noreferrer" className="text-[#1E3A8A] text-xs font-bold underline shrink-0">詳細へ</a>
           </div>
         )}
 

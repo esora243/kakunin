@@ -62,7 +62,7 @@ export default function CampaignDetailPage() {
   if (!campaign) {
     return (
       <div className="w-full max-w-lg mx-auto bg-white min-h-screen p-6 flex flex-col items-center justify-center text-center">
-        <Megaphone className="text-orange-200 mb-4" size={44} />
+        <Megaphone className="text-[#B9C2DB] mb-4" size={44} />
         <h2 className="text-xl font-bold text-gray-800 mb-2">
           キャンペーンが見つかりません
         </h2>
@@ -71,7 +71,7 @@ export default function CampaignDetailPage() {
         </p>
         <Link
           href="/campaign"
-          className="bg-orange-500 text-white font-bold py-3 px-6 rounded-full hover:bg-orange-600 transition-colors"
+          className="bg-[#F2F4F8]0 text-white font-bold py-3 px-6 rounded-full hover:bg-[#11204C] transition-colors"
         >
           キャンペーン一覧へ戻る
         </Link>
@@ -81,18 +81,18 @@ export default function CampaignDetailPage() {
 
   return (
     <div className="w-full max-w-lg mx-auto bg-white min-h-screen animate-slide-in-right">
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-50 px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#F2F4F8] px-4 py-3 flex items-center justify-between">
         <button
           onClick={() => router.back()}
           aria-label="戻る"
-          className="p-2 -ml-2 text-gray-500 hover:bg-orange-50 rounded-full transition-colors"
+          className="p-2 -ml-2 text-gray-500 hover:bg-[#F2F4F8] rounded-full transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
         <span className="font-bold text-sm text-gray-800">キャンペーン詳細</span>
         <button
           aria-label="共有"
-          className="p-2 -mr-2 text-gray-500 hover:bg-orange-50 rounded-full transition-colors"
+          className="p-2 -mr-2 text-gray-500 hover:bg-[#F2F4F8] rounded-full transition-colors"
         >
           <Share size={18} />
         </button>
@@ -102,7 +102,7 @@ export default function CampaignDetailPage() {
         {campaign.img ? (
           <img src={campaign.img} alt={campaign.title} className="w-full h-full object-cover" />
         ) : null}
-        <div className="absolute top-4 left-4 bg-orange-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm">
+        <div className="absolute top-4 left-4 bg-[#F2F4F8]0 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm">
           {campaign.tag}
         </div>
       </div>
@@ -112,8 +112,8 @@ export default function CampaignDetailPage() {
           <h2 className="text-xl font-bold text-gray-800 leading-snug mb-3">
             {campaign.title}
           </h2>
-          <div className="flex items-center gap-2 text-sm text-gray-500 border-b border-orange-50 pb-4">
-            <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center font-bold text-xs">
+          <div className="flex items-center gap-2 text-sm text-gray-500 border-b border-[#F2F4F8] pb-4">
+            <div className="w-6 h-6 rounded-full bg-[#B9C2DB]/40 text-[#1E3A8A] flex items-center justify-center font-bold text-xs">
               C
             </div>
             <span>{campaign.company}</span>
@@ -153,15 +153,15 @@ export default function CampaignDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-base font-bold text-gray-800 flex items-center gap-2 border-b border-orange-100 pb-2">
+          <h3 className="text-base font-bold text-gray-800 flex items-center gap-2 border-b border-[#B9C2DB] pb-2">
             <span className="w-1.5 h-4 bg-orange-400 rounded-full" />
             プログラム内容
           </h3>
           <div className="text-sm text-gray-600 leading-relaxed space-y-4">
             <p>{campaign.description}</p>
-            <div className="bg-white border border-orange-50 rounded-xl p-4 shadow-sm">
+            <div className="bg-white border border-[#F2F4F8] rounded-xl p-4 shadow-sm">
               <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-1.5 text-sm">
-                <CheckCircle2 size={16} className="text-orange-500" /> 特典・メリット
+                <CheckCircle2 size={16} className="text-[#1E3A8A]" /> 特典・メリット
               </h4>
               {campaign.benefits && campaign.benefits.length > 0 ? (
                 <ul className="list-disc list-inside text-xs space-y-1.5 ml-1 text-gray-600">
@@ -179,7 +179,7 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-orange-100 p-3 pb-safe z-40 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#B9C2DB] p-3 pb-safe z-40 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
         <div className="max-w-lg mx-auto flex gap-3">
           <SaveButton saved={isSaved("campaign", campaign.id)} onClick={handleSave} />
           <button
@@ -204,8 +204,8 @@ function InfoCard({
   value: React.ReactNode;
 }) {
   return (
-    <div className="bg-orange-50/50 p-3 rounded-xl flex items-start gap-3 border border-orange-100/50">
-      <span className="text-orange-500 mt-0.5">{icon}</span>
+    <div className="bg-[#F2F4F8]/50 p-3 rounded-xl flex items-start gap-3 border border-[#B9C2DB]/50">
+      <span className="text-[#1E3A8A] mt-0.5">{icon}</span>
       <div>
         <div className="text-xs text-gray-500 mb-0.5">{label}</div>
         <div className="text-sm font-bold text-gray-800">{value}</div>

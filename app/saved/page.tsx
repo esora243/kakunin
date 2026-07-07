@@ -20,14 +20,14 @@ export default function SavedPage() {
   if (!isLoggedIn) {
     return (
       <div className="w-full max-w-lg mx-auto p-4 flex flex-col items-center justify-center min-h-[60vh]">
-        <Bookmark size={48} className="text-orange-200 mb-4" />
+        <Bookmark size={48} className="text-[#B9C2DB] mb-4" />
         <h2 className="text-xl font-bold text-gray-800 mb-2">保存機能</h2>
         <p className="text-sm text-gray-500 mb-6 text-center">
           保存した求人やキャンペーン・記事を見るにはログインが必要です
         </p>
         <button
           onClick={openLoginModal}
-          className="bg-orange-500 text-white font-bold py-3 px-8 rounded-full shadow-sm hover:bg-orange-600 transition-colors"
+          className="bg-[#F2F4F8]0 text-white font-bold py-3 px-8 rounded-full shadow-sm hover:bg-[#11204C] transition-colors"
         >
           ログインする
         </button>
@@ -92,9 +92,9 @@ export default function SavedPage() {
 
   return (
     <div className="w-full max-w-lg mx-auto pb-20 animate-fade-in">
-      <div className="sticky top-0 z-30 bg-[#FFF9FA]/90 backdrop-blur-md pt-4 pb-3 px-4 border-b border-orange-100">
+      <div className="sticky top-0 z-30 bg-[#F2F4F8]/90 backdrop-blur-md pt-4 pb-3 px-4 border-b border-[#B9C2DB]">
         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Bookmark className="text-orange-500" /> 保存済み
+          <Bookmark className="text-[#1E3A8A]" /> 保存済み
         </h2>
       </div>
 
@@ -102,8 +102,8 @@ export default function SavedPage() {
         {!hydrated ? (
           <div className="text-center text-sm text-gray-500">読み込み中...</div>
         ) : resolvedItems.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-orange-100 p-8 text-center">
-            <Bookmark className="mx-auto text-orange-200 mb-3" size={40} />
+          <div className="bg-white rounded-2xl border border-[#B9C2DB] p-8 text-center">
+            <Bookmark className="mx-auto text-[#B9C2DB] mb-3" size={40} />
             <p className="font-bold text-gray-800 mb-2">保存済みアイテムはまだありません</p>
             <p className="text-sm text-gray-500">
               記事・求人・キャンペーン詳細から保存すると、ここに一覧表示されます。
@@ -113,9 +113,9 @@ export default function SavedPage() {
           resolvedItems.map((item) => (
             <div
               key={item.key}
-              className="bg-white rounded-2xl border border-orange-50 p-4 shadow-sm flex items-start gap-3"
+              className="bg-white rounded-2xl border border-[#F2F4F8] p-4 shadow-sm flex items-start gap-3"
             >
-              <div className="w-11 h-11 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-[#F2F4F8] text-[#1E3A8A] flex items-center justify-center shrink-0">
                 {item.icon === "job" ? (
                   <Briefcase size={20} />
                 ) : item.icon === "campaign" ? (
@@ -126,13 +126,13 @@ export default function SavedPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-100 text-orange-600">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#B9C2DB]/40 text-[#11204C]">
                     {item.typeLabel}
                   </span>
                 </div>
                 <Link
                   href={item.href}
-                  className="font-bold text-gray-800 hover:text-orange-600 transition-colors block line-clamp-2"
+                  className="font-bold text-gray-800 hover:text-[#11204C] transition-colors block line-clamp-2"
                 >
                   {item.title}
                 </Link>

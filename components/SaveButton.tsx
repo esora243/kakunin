@@ -3,9 +3,8 @@
 import { BookmarkCheck, BookmarkPlus } from "lucide-react";
 
 /**
- * SaveButton
- * - Hugmeid mock のオレンジ基調デザイン:
- *   通常は orange-50 + orange-500 アイコン、保存済みは orange-500 塗り潰し。
+ * SaveButton - TestAPP ネイビーテイスト:
+ *   通常: 灰色 → ネイビー(#1E3A8A) hover。保存済み: ネイビー塗り or 白抜き。
  * - compact モードはカード右上のフローティング配置(求人カード等)。
  */
 type SaveButtonProps = {
@@ -20,7 +19,7 @@ export function SaveButton({ saved, onClick, compact = false }: SaveButtonProps)
       <button
         onClick={onClick}
         className={`absolute top-4 right-4 transition-colors active:scale-90 ${
-          saved ? "text-orange-500" : "text-gray-300 hover:text-orange-500"
+          saved ? "text-[#1E3A8A]" : "text-gray-300 hover:text-[#1E3A8A]"
         }`}
         aria-label={saved ? "保存済みから外す" : "保存する"}
       >
@@ -38,8 +37,8 @@ export function SaveButton({ saved, onClick, compact = false }: SaveButtonProps)
       onClick={onClick}
       className={`flex flex-col items-center justify-center w-16 shrink-0 rounded-xl border transition-colors active:scale-95 py-2 ${
         saved
-          ? "bg-orange-500 text-white border-orange-500"
-          : "bg-orange-50 text-orange-500 border-orange-100 hover:bg-orange-100"
+          ? "bg-[#1E3A8A] text-white border-[#1E3A8A]"
+          : "bg-[#F2F4F8] text-[#1E3A8A] border-[#B9C2DB] hover:bg-[#B9C2DB]/30"
       }`}
       aria-label={saved ? "保存済みから外す" : "保存する"}
     >

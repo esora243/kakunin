@@ -20,7 +20,7 @@ import { FloatingBanner } from "@/components/FloatingBanner";
 /**
  * 課外活動ページ
  * - Hugmeid mock の Activities.tsx の sticky ヘッダー / orange タブ /
- *   FloatingBanner 配置 / カードデザイン(rounded-2xl + border-orange-50) を反映。
+ *   FloatingBanner 配置 / カードデザイン(rounded-2xl + border-[#F2F4F8]) を反映。
  * - kakunin の Supabase 連携、検索・カテゴリフィルタ、ダミーデータfallback を保持。
  * - 画面遷移書: 団体一覧 → 団体個別 / 留学一覧 → 個別 / 記事一覧 → 個別 を踏襲。
  */
@@ -97,7 +97,7 @@ export default function ActivitiesPage() {
       {/* ============================================================
           ヘッダー(タブ) - Hugmeid mock の sticky 配置
          ============================================================ */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-orange-100 px-4 py-4 shadow-sm">
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-4 shadow-sm">
         <h2 className="text-xl font-bold text-gray-800 mb-4">課外活動</h2>
 
         <div className="flex gap-2 overflow-x-auto hide-scrollbar">
@@ -136,13 +136,13 @@ export default function ActivitiesPage() {
          ============================================================ */}
       <div className="px-4 pt-1 space-y-4">
         {loading ? (
-          <div className="bg-white rounded-2xl border border-orange-100 p-8 text-center">
-            <Loader2 className="mx-auto text-orange-300 mb-3 animate-spin" size={40} />
+          <div className="bg-white rounded-2xl border border-[#B9C2DB] p-8 text-center">
+            <Loader2 className="mx-auto text-[#B9C2DB] mb-3 animate-spin" size={40} />
             <p className="font-bold text-gray-800">データを読み込んでいます</p>
           </div>
         ) : !hasContent ? (
-          <div className="bg-white rounded-2xl border border-orange-100 p-8 text-center">
-            <Users className="mx-auto text-orange-200 mb-3" size={40} />
+          <div className="bg-white rounded-2xl border border-[#B9C2DB] p-8 text-center">
+            <Users className="mx-auto text-[#B9C2DB] mb-3" size={40} />
             <p className="text-gray-700 font-bold mb-2">課外活動データは未登録です</p>
             <p className="text-sm text-gray-500">
               Supabase の student_groups / study_abroad_programs / articles に
@@ -161,7 +161,7 @@ export default function ActivitiesPage() {
                   <Link
                     key={group.id}
                     href={`/activities/groups/${group.id}`}
-                    className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group"
+                    className="block bg-white rounded-2xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow group"
                   >
                     <div className="relative h-40 bg-gray-100">
                       {(group.image_url || group.image) ? (
@@ -173,13 +173,13 @@ export default function ActivitiesPage() {
                       ) : null}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                       <div className="absolute bottom-3 left-3 right-3">
-                        <span className="text-[10px] font-bold bg-orange-500 text-white px-2 py-1 rounded-full">
+                        <span className="text-[10px] font-bold bg-[#F2F4F8]0 text-white px-2 py-1 rounded-full">
                           {group.category}
                         </span>
                       </div>
                     </div>
                     <div className="p-4">
-                      <h3 className="font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
+                      <h3 className="font-bold text-gray-800 mb-2 group-hover:text-[#11204C] transition-colors">
                         {group.name}
                       </h3>
                       <p className="text-xs text-gray-600 leading-relaxed mb-3 line-clamp-2">
@@ -187,12 +187,12 @@ export default function ActivitiesPage() {
                       </p>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <Users size={14} className="text-orange-400" />
+                          <Users size={14} className="text-[#1E3A8A]" />
                           <span>{group.members_count || group.members}名</span>
                         </div>
                         <div className="flex items-center gap-2">
                           {social.instagram && (
-                            <Instagram size={14} className="text-orange-400" />
+                            <Instagram size={14} className="text-[#1E3A8A]" />
                           )}
                           {social.twitter && <Twitter size={14} className="text-blue-400" />}
                           {social.mail && <Mail size={14} className="text-gray-400" />}
@@ -207,7 +207,7 @@ export default function ActivitiesPage() {
               displayPrograms.map((program: any) => (
                 <div
                   key={program.id}
-                  className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group"
+                  className="block bg-white rounded-2xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow group"
                 >
                   <div className="relative h-32 bg-gray-100">
                     {(program.image_url || program.image) ? (
@@ -222,16 +222,16 @@ export default function ActivitiesPage() {
                     </div>
                   </div>
                   <div className="p-4">
-                    <h3 className="font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
+                    <h3 className="font-bold text-gray-800 mb-2 group-hover:text-[#11204C] transition-colors">
                       {program.title}
                     </h3>
                     <div className="space-y-1.5 text-xs text-gray-600 mb-3">
                       <div className="flex items-center gap-2">
-                        <Plane size={12} className="text-orange-400" />
+                        <Plane size={12} className="text-[#1E3A8A]" />
                         <span>{program.duration}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Users size={12} className="text-orange-400" />
+                        <Users size={12} className="text-[#1E3A8A]" />
                         <span>{program.organization}</span>
                       </div>
                     </div>
@@ -244,7 +244,7 @@ export default function ActivitiesPage() {
                           href={program.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600"
+                          className="flex items-center gap-1 text-xs font-bold text-[#1E3A8A] hover:text-[#11204C]"
                         >
                           詳細 <ExternalLink size={12} />
                         </a>
@@ -268,7 +268,7 @@ export default function ActivitiesPage() {
                     placeholder="記事を検索..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 sm:text-sm transition-colors"
+                    className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#F2F4F8]0 sm:text-sm transition-colors"
                   />
                 </div>
 
@@ -289,8 +289,8 @@ export default function ActivitiesPage() {
                 </div>
 
                 {filteredArticles.length === 0 && displayArticles.length > 0 && (
-                  <div className="bg-white rounded-2xl border border-orange-100 p-8 text-center mt-4">
-                    <Newspaper className="mx-auto text-orange-200 mb-3" size={40} />
+                  <div className="bg-white rounded-2xl border border-[#B9C2DB] p-8 text-center mt-4">
+                    <Newspaper className="mx-auto text-[#B9C2DB] mb-3" size={40} />
                     <p className="font-bold text-gray-800 mb-2">該当する記事がありません</p>
                   </div>
                 )}
@@ -305,10 +305,11 @@ export default function ActivitiesPage() {
                         ? "noopener noreferrer"
                         : undefined
                     }
-                    className="block bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow group"
+                    className="block bg-white rounded-2xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow group"
                   >
                     <div className="flex gap-4 p-4">
-                      <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 bg-gray-100">
+                      {/* サムネイル: 要件により半分に縮小 (w-24 h-24 → w-12 h-12) */}
+                      <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-gray-100">
                         {(article.image_url || article.image) ? (
                           <img
                             src={article.image_url || article.image}
@@ -326,7 +327,7 @@ export default function ActivitiesPage() {
                             {article.publish_date || article.date}
                           </span>
                         </div>
-                        <h3 className="font-bold text-gray-800 leading-tight line-clamp-2 group-hover:text-orange-600 transition-colors">
+                        <h3 className="font-bold text-gray-800 leading-tight line-clamp-2 group-hover:text-[#11204C] transition-colors">
                           {article.title}
                         </h3>
                         <div className="mt-3 text-xs text-gray-400 flex items-center gap-1">
@@ -360,8 +361,8 @@ function TabPill({
       onClick={onClick}
       className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
         active
-          ? "bg-orange-500 text-white shadow-md"
-          : "bg-gray-50 text-gray-600 hover:bg-orange-50 border border-gray-100"
+          ? "bg-[#F2F4F8]0 text-white shadow-md"
+          : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8] border border-gray-100"
       }`}
     >
       {label}

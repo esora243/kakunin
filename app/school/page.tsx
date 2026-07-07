@@ -101,7 +101,7 @@ function categoryStyle(category: string) {
   switch (category) {
     case "形態系":
     case "病理":
-      return { border: "border-orange-200", bg: "bg-orange-50", text: "text-orange-700", ring: "" };
+      return { border: "border-[#B9C2DB]", bg: "bg-[#F2F4F8]", text: "text-[#11204C]", ring: "" };
     case "機能系":
       return { border: "border-blue-300", bg: "bg-blue-50", text: "text-blue-700", ring: "" };
     case "生化学":
@@ -159,7 +159,7 @@ function FloatingBanner({ title, imageUrl, sponsorName }: { title: string, image
     <div className="mx-4 mt-2 mb-4 rounded-xl overflow-hidden relative h-24 shadow-sm border border-gray-100">
       <img src={imageUrl || "https://images.unsplash.com/photo-1758691462848-ba1e929da259?auto=format&fit=crop&q=80&w=1080"} alt={title} className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent p-4 flex flex-col justify-center">
-        <span className="text-[10px] text-orange-300 font-bold mb-1">{sponsorName}</span>
+        <span className="text-[10px] text-[#B9C2DB] font-bold mb-1">{sponsorName}</span>
         <h3 className="text-white text-sm font-bold leading-tight">{title}</h3>
       </div>
     </div>
@@ -388,7 +388,7 @@ export default function SchoolPage() {
           <FormRow label="試験資料 URL"><input type="url" value={editForm.examMaterialsUrl || ""} onChange={(e) => setEditForm({ ...editForm, examMaterialsUrl: e.target.value })} className={INPUT_CLS} placeholder="https://..." /></FormRow>
           <FormRow label="メモ・通知（旧タブ統合）"><textarea rows={4} value={editForm.notes || ""} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} className={`${INPUT_CLS} resize-y`} placeholder="課題・連絡事項・通知などを一括で記入" /></FormRow>
           <div className="pt-6 pb-10">
-            <button onClick={handleSaveClass} disabled={isSaving} className="w-full flex items-center justify-center gap-2 py-4 bg-orange-500 text-white rounded-xl font-bold shadow-sm hover:bg-orange-600 transition-colors disabled:opacity-50">
+            <button onClick={handleSaveClass} disabled={isSaving} className="w-full flex items-center justify-center gap-2 py-4 bg-[#F2F4F8]0 text-white rounded-xl font-bold shadow-sm hover:bg-[#11204C] transition-colors disabled:opacity-50">
               {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />} 保存して完了
             </button>
           </div>
@@ -421,11 +421,11 @@ export default function SchoolPage() {
             <InfoRow icon={<Video size={14} />} label="Zoom URL" value="（登録なし）" valueClass="text-blue-500" />
           </div>
           {(selectedClass.departmentName || selectedClass.departmentSummary || selectedClass.examMaterialsUrl) && (
-            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-2xl p-4 mb-4">
-              <h3 className="font-bold text-sm text-gray-800 mb-3 flex items-center gap-2"><Stethoscope size={14} className="text-orange-500" /> 診療科情報</h3>
-              {selectedClass.departmentName && <button onClick={() => setDepartmentModal(selectedClass)} className="text-sm font-bold text-orange-600 underline mb-2">{selectedClass.departmentName}</button>}
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-[#B9C2DB] rounded-2xl p-4 mb-4">
+              <h3 className="font-bold text-sm text-gray-800 mb-3 flex items-center gap-2"><Stethoscope size={14} className="text-[#1E3A8A]" /> 診療科情報</h3>
+              {selectedClass.departmentName && <button onClick={() => setDepartmentModal(selectedClass)} className="text-sm font-bold text-[#11204C] underline mb-2">{selectedClass.departmentName}</button>}
               {selectedClass.departmentSummary && <p className="text-xs text-gray-700 leading-relaxed mb-3 line-clamp-3">{selectedClass.departmentSummary}</p>}
-              {selectedClass.examMaterialsUrl && <a href={selectedClass.examMaterialsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-orange-600 underline">試験資料を開く <ExternalLink size={12} /></a>}
+              {selectedClass.examMaterialsUrl && <a href={selectedClass.examMaterialsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-[#11204C] underline">試験資料を開く <ExternalLink size={12} /></a>}
             </div>
           )}
           {selectedClass.notes && (
@@ -447,10 +447,10 @@ export default function SchoolPage() {
     return (
       <div className="min-h-screen bg-white pb-20">
         <div className="w-full max-w-lg mx-auto">
-          <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-100 px-4 py-3 flex items-center gap-3">
-            <button onClick={() => setView("main")} className="text-gray-600 hover:text-orange-500"><ArrowLeft size={24} /></button>
+          <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-3 flex items-center gap-3">
+            <button onClick={() => setView("main")} className="text-gray-600 hover:text-[#1E3A8A]"><ArrowLeft size={24} /></button>
             <h1 className="text-base font-bold text-gray-800 flex-1 truncate">記事詳細</h1>
-            <button className="text-gray-400 hover:text-orange-500"><Share2 size={20} /></button>
+            <button className="text-gray-400 hover:text-[#1E3A8A]"><Share2 size={20} /></button>
           </div>
           <div className="w-full h-64 bg-gray-100"><img src={selectedArticle.image} alt={selectedArticle.title} className="w-full h-full object-cover" /></div>
           <div className="px-4 py-6 border-b border-gray-100">
@@ -479,16 +479,16 @@ export default function SchoolPage() {
           <div className="flex gap-2"><button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"><Plus size={16} /></button><button className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"><Menu size={16} /></button></div>
         </div>
         <div className="flex items-center gap-2 mb-3">
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-gray-500"><GraduationCap size={14} className="text-orange-500" />{universityName}</span>
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-gray-500"><GraduationCap size={14} className="text-[#1E3A8A]" />{universityName}</span>
           <span className="text-gray-300">&gt;</span>
-          <select value={selectedGrade} onChange={(e) => setSelectedGrade(Number(e.target.value))} className="px-2 py-1 text-xs font-bold border border-orange-200 rounded-md bg-orange-50 text-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-200">
+          <select value={selectedGrade} onChange={(e) => setSelectedGrade(Number(e.target.value))} className="px-2 py-1 text-xs font-bold border border-[#B9C2DB] rounded-md bg-[#F2F4F8] text-[#11204C] focus:outline-none focus:ring-2 focus:ring-orange-200">
             {[1, 2, 3, 4, 5, 6].map((g) => (<option key={g} value={g}>{g}年生</option>))}
           </select>
         </div>
         <div className="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-          <button onClick={() => setActiveTab("timetable")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📅 時間割</button>
-          <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📋 シラバス</button>
-          <button onClick={() => setActiveTab("articles")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "articles" ? "bg-orange-500 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-orange-50"}`}>📚 勉強系記事</button>
+          <button onClick={() => setActiveTab("timetable")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "timetable" ? "bg-[#F2F4F8]0 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8]"}`}>📅 時間割</button>
+          <button onClick={() => setActiveTab("syllabus")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "syllabus" ? "bg-[#F2F4F8]0 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8]"}`}>📋 シラバス</button>
+          <button onClick={() => setActiveTab("articles")} className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "articles" ? "bg-[#F2F4F8]0 text-white shadow-md" : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8]"}`}>📚 勉強系記事</button>
         </div>
       </div>
 
@@ -513,7 +513,7 @@ export default function SchoolPage() {
                   return (
                     <div key={i} className="text-center flex flex-col items-center">
                       {isToday ? (
-                        <><span className="bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">{date.getDate()}</span><span className="text-orange-500 text-[10px] mt-0.5 font-bold">{DAYS[i]}</span></>
+                        <><span className="bg-[#F2F4F8]0 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">{date.getDate()}</span><span className="text-[#1E3A8A] text-[10px] mt-0.5 font-bold">{DAYS[i]}</span></>
                       ) : (
                         <><span className="text-gray-800 text-xs font-bold h-6 flex items-center justify-center">{date.getDate()}</span><span className="text-gray-500 text-[10px] mt-0.5">{DAYS[i]}</span></>
                       )}
@@ -523,7 +523,7 @@ export default function SchoolPage() {
               </div>
 
               {loading ? (
-                <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={30} /></div>
+                <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#1E3A8A]" size={30} /></div>
               ) : (
                 ROW_PERIODS.map((row) => {
                   const isLunch = row.value === 7;
@@ -603,7 +603,7 @@ export default function SchoolPage() {
           <div className="space-y-4">
             <div className="relative px-1">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Search className="h-4 w-4 text-gray-400" /></div>
-              <input type="text" placeholder="記事を検索..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 sm:text-sm transition-colors" />
+              <input type="text" placeholder="記事を検索..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#F2F4F8]0 sm:text-sm transition-colors" />
             </div>
             <div className="flex gap-2 overflow-x-auto px-1 pb-1 [&::-webkit-scrollbar]:hidden">
               {categories.map((category) => (
@@ -612,14 +612,15 @@ export default function SchoolPage() {
             </div>
             <div className="space-y-3 pb-6">
               {loading ? (
-                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-orange-500" size={30} /></div>
+                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[#1E3A8A]" size={30} /></div>
               ) : filteredArticles.length > 0 ? (
                 filteredArticles.map((article) => (
                   <div key={article.id} onClick={() => { setSelectedArticle(article); setView("articleDetail"); }} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex hover:shadow-md transition-shadow cursor-pointer">
-                    <img src={article.image} alt={article.title} className="w-28 h-28 object-cover shrink-0" />
+                    {/* サムネイル: 要件により半分に縮小 (w-28 h-28 → w-14 h-14) */}
+                    <img src={article.image} alt={article.title} className="w-14 h-14 object-cover shrink-0 rounded-lg m-3" />
                     <div className="p-3 flex flex-col justify-center min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-orange-500 font-bold px-1.5 py-0.5 bg-orange-50 rounded-sm">{article.category}</span>
+                        <span className="text-[10px] text-[#1E3A8A] font-bold px-1.5 py-0.5 bg-[#F2F4F8] rounded-sm">{article.category}</span>
                         <span className="text-[10px] text-gray-400">{article.date.replace(/-/g, "/")}</span>
                       </div>
                       <h4 className="text-sm font-bold text-gray-800 line-clamp-2 mb-1 leading-tight">{article.title}</h4>
@@ -639,7 +640,7 @@ export default function SchoolPage() {
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setDepartmentModal(null)}>
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-md shadow-xl animate-in slide-in-from-bottom-4 fade-in duration-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800 flex items-center gap-2"><Stethoscope size={16} className="text-orange-500" /> 診療科情報</h3>
+              <h3 className="font-bold text-gray-800 flex items-center gap-2"><Stethoscope size={16} className="text-[#1E3A8A]" /> 診療科情報</h3>
               <button onClick={() => setDepartmentModal(null)} className="text-gray-400 hover:text-gray-700"><X size={20} /></button>
             </div>
             <div className="px-5 py-5 space-y-4">
@@ -650,7 +651,7 @@ export default function SchoolPage() {
                 <p className="text-sm text-gray-500 italic">概要は未登録です。</p>
               )}
               {departmentModal.examMaterialsUrl && (
-                <a href={departmentModal.examMaterialsUrl} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-600 transition-colors">
+                <a href={departmentModal.examMaterialsUrl} target="_blank" rel="noopener noreferrer" className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-[#F2F4F8]0 text-white font-bold hover:bg-[#11204C] transition-colors">
                   <BookOpen size={16} /> 試験資料を開く <ExternalLink size={14} />
                 </a>
               )}

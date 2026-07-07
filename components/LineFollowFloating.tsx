@@ -6,8 +6,8 @@ import { MessageCircle, X } from "lucide-react";
 /**
  * LineFollowFloating
  * - 全画面共通で右下に常駐する LINE 公式アカウント友だち追加ボタン。
- * - モバイルでも邪魔にならないよう、初回 8 秒経過後に小さくフェードイン。
- * - X ボタンで一時的に閉じられる（再表示はリロード時）。
+ * - TestAPP のブラウザ風ボトムツールバー(高さ ~56px)と重ならないよう
+ *   ボトム位置は `bottom-6` を採用。
  *
  * 環境変数:
  *   NEXT_PUBLIC_LINE_ADD_FRIEND_URL : 友だち追加用 URL（例: https://lin.ee/xxxxxxx）
@@ -23,12 +23,15 @@ export function LineFollowFloating() {
 
   if (closed) return null;
 
-  const lineUrl = process.env.NEXT_PUBLIC_LINE_ADD_FRIEND_URL || "https://line.me/";
+  const lineUrl =
+    process.env.NEXT_PUBLIC_LINE_ADD_FRIEND_URL || "https://line.me/";
 
   return (
     <div
-      className={`fixed z-40 right-3 bottom-20 sm:bottom-6 transition-all duration-500 ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+      className={`fixed z-40 right-3 bottom-6 transition-all duration-500 ${
+        visible
+          ? "opacity-100 translate-y-0"
+          : "opacity-0 translate-y-4 pointer-events-none"
       }`}
     >
       <div className="relative">

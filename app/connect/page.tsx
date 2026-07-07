@@ -88,7 +88,7 @@ export default function ConnectPage() {
       {/* ============================================================
          sticky ヘッダー (タブ)
          ============================================================ */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-orange-100 px-4 py-4 shadow-sm">
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-4 shadow-sm">
         <h2 className="text-xl font-bold text-gray-800 mb-4">繋がり</h2>
 
         <div className="flex gap-2 overflow-x-auto hide-scrollbar">
@@ -124,9 +124,9 @@ export default function ConnectPage() {
         {/* === お問い合わせ === */}
         {activeTab === "contact" && (
           <div className="space-y-4 animate-fade-in">
-            <div className="bg-gradient-to-br from-orange-50 to-orange-50 rounded-2xl p-6 border border-orange-100">
+            <div className="bg-gradient-to-br from-[#F2F4F8] to-[#F2F4F8] rounded-2xl p-6 border border-[#B9C2DB]">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center shadow-md">
+                <div className="w-12 h-12 rounded-xl bg-[#F2F4F8]0 flex items-center justify-center shadow-md">
                   <MessageCircle className="text-white" size={24} />
                 </div>
                 <div>
@@ -142,7 +142,7 @@ export default function ConnectPage() {
 
             <form
               onSubmit={handleSubmit}
-              className="bg-white rounded-2xl shadow-sm border border-orange-50 p-6 space-y-5"
+              className="bg-white rounded-2xl shadow-sm border border-[#F2F4F8] p-6 space-y-5"
             >
               <div>
                 <label className="text-xs font-bold text-gray-600 mb-2 block">お名前 *</label>
@@ -152,7 +152,7 @@ export default function ConnectPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="山田 太郎"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] text-sm"
                 />
               </div>
 
@@ -166,7 +166,7 @@ export default function ConnectPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="example@email.com"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] text-sm"
                 />
               </div>
 
@@ -179,7 +179,7 @@ export default function ConnectPage() {
                     required
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm text-gray-700"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] text-sm text-gray-700"
                   >
                     <option value="" disabled>
                       選択してください
@@ -206,14 +206,14 @@ export default function ConnectPage() {
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   placeholder="お問い合わせ内容をご記入ください"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] text-sm resize-none"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-orange-400 to-orange-500 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl shadow-md hover:shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95"
+                className="w-full bg-gradient-to-r from-[#1E3A8A] to-[#11204C] disabled:opacity-60 text-white font-bold py-3.5 rounded-xl shadow-md hover:shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 {isSubmitting ? (
                   <>
@@ -276,10 +276,10 @@ export default function ConnectPage() {
 
             {loadingFaqs ? (
               <div className="flex justify-center py-20">
-                <Loader2 className="animate-spin text-orange-500" size={40} />
+                <Loader2 className="animate-spin text-[#1E3A8A]" size={40} />
               </div>
             ) : filteredFaqs.length === 0 ? (
-              <div className="text-center py-20 text-gray-400 font-bold bg-white rounded-2xl border border-orange-50">
+              <div className="text-center py-20 text-gray-400 font-bold bg-white rounded-2xl border border-[#F2F4F8]">
                 該当する質問がありません
               </div>
             ) : (
@@ -287,20 +287,20 @@ export default function ConnectPage() {
                 {filteredFaqs.map((faq) => (
                   <div
                     key={faq.id}
-                    className="bg-white rounded-2xl border border-orange-50 shadow-sm overflow-hidden transition-all"
+                    className="bg-white rounded-2xl border border-[#F2F4F8] shadow-sm overflow-hidden transition-all"
                   >
                     <button
                       onClick={() =>
                         setExpandedFaqId(expandedFaqId === faq.id ? null : faq.id)
                       }
-                      className="w-full px-5 py-4 text-left flex justify-between items-start hover:bg-orange-50/50 transition-colors"
+                      className="w-full px-5 py-4 text-left flex justify-between items-start hover:bg-[#F2F4F8]/50 transition-colors"
                     >
                       <div className="flex-1 pr-4">
                         <span className="inline-block bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded text-[10px] font-bold mb-2">
                           {faq.category}
                         </span>
                         <div className="flex items-start gap-2">
-                          <span className="text-orange-500 font-bold text-base leading-none mt-0.5">
+                          <span className="text-[#1E3A8A] font-bold text-base leading-none mt-0.5">
                             Q.
                           </span>
                           <h4 className="font-bold text-gray-800 text-sm leading-snug">
@@ -326,7 +326,7 @@ export default function ConnectPage() {
                       }`}
                     >
                       <div className="px-5 pb-5 pt-2 border-t border-gray-50">
-                        <div className="flex items-start gap-2 bg-orange-50/50 p-3 rounded-lg">
+                        <div className="flex items-start gap-2 bg-[#F2F4F8]/50 p-3 rounded-lg">
                           <span className="text-blue-500 font-bold text-base leading-none mt-0.5">
                             A.
                           </span>
@@ -341,11 +341,11 @@ export default function ConnectPage() {
               </div>
             )}
 
-            <div className="bg-white rounded-xl p-5 text-center mt-2 border border-orange-50">
+            <div className="bg-white rounded-xl p-5 text-center mt-2 border border-[#F2F4F8]">
               <p className="text-xs text-gray-600 mb-3">解決しない場合は</p>
               <button
                 onClick={() => setActiveTab("contact")}
-                className="bg-orange-500 text-white font-bold px-6 py-2.5 rounded-full text-sm shadow-sm hover:bg-orange-600 transition-colors active:scale-95"
+                className="bg-[#F2F4F8]0 text-white font-bold px-6 py-2.5 rounded-full text-sm shadow-sm hover:bg-[#11204C] transition-colors active:scale-95"
               >
                 お問い合わせする
               </button>
@@ -371,8 +371,8 @@ function TabPill({
       onClick={onClick}
       className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
         active
-          ? "bg-orange-500 text-white shadow-md"
-          : "bg-gray-50 text-gray-600 hover:bg-orange-50 border border-gray-100"
+          ? "bg-[#F2F4F8]0 text-white shadow-md"
+          : "bg-gray-50 text-gray-600 hover:bg-[#F2F4F8] border border-gray-100"
       }`}
     >
       {label}

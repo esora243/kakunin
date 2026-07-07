@@ -57,18 +57,18 @@ export default function SponsorDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFF9FA] flex items-center justify-center">
-        <Loader2 className="animate-spin text-orange-500" size={40} />
+      <div className="min-h-screen bg-[#F2F4F8] flex items-center justify-center">
+        <Loader2 className="animate-spin text-[#1E3A8A]" size={40} />
       </div>
     );
   }
 
   if (!sponsor) {
     return (
-      <div className="min-h-screen bg-[#FFF9FA] flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-[#F2F4F8] flex flex-col items-center justify-center p-6">
         <Building2 size={48} className="text-gray-300 mb-4" />
         <h2 className="text-xl font-bold text-gray-800 mb-2">企業情報が見つかりません</h2>
-        <button onClick={() => router.back()} className="mt-4 text-orange-500 font-bold underline">
+        <button onClick={() => router.back()} className="mt-4 text-[#1E3A8A] font-bold underline">
           戻る
         </button>
       </div>
@@ -82,10 +82,10 @@ export default function SponsorDetailPage() {
   const detailText = sponsor.detail || sponsor.description || "詳細情報がありません。";
 
   return (
-    <div className="min-h-screen bg-[#FFF9FA] pb-20 animate-in fade-in duration-300">
+    <div className="min-h-screen bg-[#F2F4F8] pb-20 animate-in fade-in duration-300">
       {/* ヘッダー */}
-      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-50 px-4 py-3 flex items-center gap-3 shadow-sm">
-        <button onClick={() => router.back()} className="text-gray-600 hover:text-orange-500 transition-colors">
+      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#F2F4F8] px-4 py-3 flex items-center gap-3 shadow-sm">
+        <button onClick={() => router.back()} className="text-gray-600 hover:text-[#1E3A8A] transition-colors">
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-base font-bold text-gray-800 flex-1 truncate">企業詳細</h1>
@@ -100,7 +100,7 @@ export default function SponsorDetailPage() {
             className="w-full h-full object-cover opacity-80"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6">
-            <span className="bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full w-max mb-3">
+            <span className="bg-[#F2F4F8]0 text-white text-[10px] font-bold px-3 py-1 rounded-full w-max mb-3">
               {sponsor.tier || "PARTNER"}
             </span>
             <h2 className="text-white text-3xl font-bold tracking-tight">{sponsor.name}</h2>
@@ -110,7 +110,7 @@ export default function SponsorDetailPage() {
         <div className="p-6">
           {/* 説明文 (detail を表示) */}
           <div className="mb-8">
-            <h3 className="text-lg font-bold text-gray-800 mb-3 border-b-2 border-orange-500 inline-block pb-1">
+            <h3 className="text-lg font-bold text-gray-800 mb-3 border-b-2 border-[#F2F4F8]0 inline-block pb-1">
               企業メッセージ
             </h3>
             {/* whitespace-pre-wrap により、CSV内の改行もそのまま綺麗に反映されます */}
@@ -122,7 +122,7 @@ export default function SponsorDetailPage() {
           {/* 動画セクション（URLがある場合のみ表示） */}
           {embedUrl && (
             <div className="mb-8">
-              <h3 className="text-lg font-bold text-gray-800 mb-3 border-b-2 border-orange-500 inline-block pb-1 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-800 mb-3 border-b-2 border-[#F2F4F8]0 inline-block pb-1 flex items-center gap-2">
                 <Play size={18} /> 紹介動画
               </h3>
               <div className="w-full aspect-video rounded-xl overflow-hidden shadow-md bg-black">
@@ -140,7 +140,7 @@ export default function SponsorDetailPage() {
 
           {/* 外部リンクへの巨大CTAボタン */}
           {sponsor.url && (
-            <div className="mt-10 p-6 bg-orange-50 rounded-2xl border border-orange-100 text-center">
+            <div className="mt-10 p-6 bg-[#F2F4F8] rounded-2xl border border-[#B9C2DB] text-center">
               <p className="text-sm text-gray-600 mb-4 font-bold">
                 詳しい情報やエントリーは公式サイトをご覧ください
               </p>
@@ -149,7 +149,7 @@ export default function SponsorDetailPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={handleExternalClick}
-                className="flex items-center justify-center gap-2 w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-6 rounded-xl shadow-md transition-all transform hover:-translate-y-1"
+                className="flex items-center justify-center gap-2 w-full bg-[#F2F4F8]0 hover:bg-[#11204C] text-white font-bold py-4 px-6 rounded-xl shadow-md transition-all transform hover:-translate-y-1"
               >
                 公式サイトへアクセス <ExternalLink size={20} />
               </a>

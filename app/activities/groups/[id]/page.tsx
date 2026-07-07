@@ -33,7 +33,7 @@ export default function GroupDetailPage() {
           </p>
           <button
             onClick={() => router.push("/activities")}
-            className="bg-orange-500 text-white font-bold px-6 py-3 rounded-full"
+            className="bg-[#F2F4F8]0 text-white font-bold px-6 py-3 rounded-full"
           >
             課外活動へ戻る
           </button>
@@ -45,10 +45,10 @@ export default function GroupDetailPage() {
   return (
     <div className="min-h-screen bg-white pb-20">
       <div className="w-full max-w-lg mx-auto">
-        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-100 px-4 py-3 flex items-center gap-3 shadow-sm">
+        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-3 flex items-center gap-3 shadow-sm">
           <button
             onClick={() => router.push("/activities")}
-            className="text-gray-600 hover:text-orange-500"
+            className="text-gray-600 hover:text-[#1E3A8A]"
             aria-label="戻る"
           >
             <ArrowLeft size={24} />
@@ -66,22 +66,22 @@ export default function GroupDetailPage() {
               />
             ) : null}
             <div className="absolute top-4 left-4">
-              <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
+              <span className="bg-[#F2F4F8]0 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
                 {group.category}
               </span>
             </div>
           </div>
 
-          <div className="px-4 py-6 border-b border-orange-50">
+          <div className="px-4 py-6 border-b border-[#F2F4F8]">
             <h1 className="text-2xl font-bold text-gray-800 mb-3">{group.name}</h1>
             <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-              <Users size={16} className="text-orange-400" />
+              <Users size={16} className="text-[#1E3A8A]" />
               <span>{group.members}名のメンバー</span>
             </div>
             <p className="text-sm text-gray-700 leading-relaxed">{group.description}</p>
           </div>
 
-          <div className="px-4 py-6 bg-[#FFF9FA]">
+          <div className="px-4 py-6 bg-[#F2F4F8]">
             <h3 className="text-base font-bold text-gray-800 mb-4">連絡先・SNS</h3>
             <div className="space-y-3">
               {group.social.instagram && (
@@ -89,7 +89,7 @@ export default function GroupDetailPage() {
                   href={`https://instagram.com/${group.social.instagram.replace("@", "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-4 bg-white rounded-xl border border-orange-50 hover:border-orange-200 hover:bg-orange-50/50 transition-all"
+                  className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#F2F4F8] hover:border-[#B9C2DB] hover:bg-[#F2F4F8]/50 transition-all"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-orange-400 flex items-center justify-center">
@@ -110,7 +110,7 @@ export default function GroupDetailPage() {
                   href={`https://twitter.com/${group.social.twitter.replace("@", "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-4 bg-white rounded-xl border border-orange-50 hover:border-orange-200 hover:bg-orange-50/50 transition-all"
+                  className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#F2F4F8] hover:border-[#B9C2DB] hover:bg-[#F2F4F8]/50 transition-all"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-blue-400 flex items-center justify-center">
@@ -129,7 +129,7 @@ export default function GroupDetailPage() {
               {group.social.mail && (
                 <a
                   href={`mailto:${group.social.mail}`}
-                  className="flex items-center justify-between p-4 bg-white rounded-xl border border-orange-50 hover:border-orange-200 hover:bg-orange-50/50 transition-all"
+                  className="flex items-center justify-between p-4 bg-white rounded-xl border border-[#F2F4F8] hover:border-[#B9C2DB] hover:bg-[#F2F4F8]/50 transition-all"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gray-400 flex items-center justify-center">
@@ -148,7 +148,7 @@ export default function GroupDetailPage() {
               {!group.social.instagram &&
               !group.social.twitter &&
               !group.social.mail ? (
-                <div className="bg-white rounded-xl border border-orange-50 p-4 text-sm text-gray-500">
+                <div className="bg-white rounded-xl border border-[#F2F4F8] p-4 text-sm text-gray-500">
                   連絡先情報はまだ登録されていません。
                 </div>
               ) : null}

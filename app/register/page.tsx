@@ -119,19 +119,19 @@ export default function RegisterPage() {
   const Icon = currentStep.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-[#F2F4F8] to-white flex flex-col">
       <div className="w-full max-w-lg mx-auto p-6 flex-1 flex flex-col animate-fade-in">
         {/* プログレスバー */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-gray-500">STEP {step} / 5</span>
-            <span className="text-xs font-semibold text-orange-500">
+            <span className="text-xs font-semibold text-[#1E3A8A]">
               {Math.round((step / 5) * 100)}%
             </span>
           </div>
           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all duration-500 ease-out rounded-full"
+              className="h-full bg-gradient-to-r from-[#1E3A8A] to-[#11204C] transition-all duration-500 ease-out rounded-full"
               style={{ width: `${(step / 5) * 100}%` }}
             />
           </div>
@@ -139,14 +139,14 @@ export default function RegisterPage() {
 
         {/* タイトル */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-[#1E3A8A] to-[#11204C] rounded-2xl flex items-center justify-center shadow-lg">
             <Icon className="text-white" size={32} strokeWidth={2} />
           </div>
           <h2 className="text-xl font-bold text-gray-800 leading-tight mb-2">
             {currentStep.title}
           </h2>
           {currentStep.optional ? (
-            <p className="text-xs text-orange-500 mt-2">※ スキップ可能</p>
+            <p className="text-xs text-[#1E3A8A] mt-2">※ スキップ可能</p>
           ) : null}
         </div>
 
@@ -157,7 +157,7 @@ export default function RegisterPage() {
               value={profile[currentStep.field]}
               onChange={(e) => updateProfile(currentStep.field, e.target.value)}
               placeholder={currentStep.placeholder}
-              className="w-full p-4 rounded-xl border-2 border-gray-200 bg-white text-gray-700 focus:border-orange-500 focus:outline-none"
+              className="w-full p-4 rounded-xl border-2 border-gray-200 bg-white text-gray-700 focus:border-[#F2F4F8]0 focus:outline-none"
             />
           ) : (
             currentStep.options?.map((option) => (
@@ -166,14 +166,14 @@ export default function RegisterPage() {
                 onClick={() => updateProfile(currentStep.field, option)}
                 className={`w-full p-4 rounded-xl border-2 transition-all text-left font-medium ${
                   profile[currentStep.field] === option
-                    ? "border-orange-500 bg-orange-50 text-orange-700 shadow-md"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-orange-200 hover:bg-orange-50/50"
+                    ? "border-[#F2F4F8]0 bg-[#F2F4F8] text-[#11204C] shadow-md"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-[#B9C2DB] hover:bg-[#F2F4F8]/50"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span>{option}</span>
                   {profile[currentStep.field] === option && (
-                    <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
+                    <div className="w-6 h-6 rounded-full bg-[#F2F4F8]0 flex items-center justify-center">
                       <svg
                         className="w-4 h-4 text-white"
                         fill="none"
@@ -210,7 +210,7 @@ export default function RegisterPage() {
             disabled={!canProceed()}
             className={`flex-1 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
               canProceed()
-                ? "bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-md hover:shadow-lg active:scale-95"
+                ? "bg-gradient-to-r from-[#1E3A8A] to-[#11204C] text-white shadow-md hover:shadow-lg active:scale-95"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >

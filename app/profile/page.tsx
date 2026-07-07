@@ -31,7 +31,7 @@ type UserProfile = {
 /**
  * マイページ(プロフィール)
  * - Hugmeid mock の Profile.tsx 準拠デザイン:
- *   1) 背景: bg-[#FFF9FA]
+ *   1) 背景: bg-[#F2F4F8]
  *   2) 上部: 大きな円形 グラデーションアバター(orange-300→orange-500)
  *   3) 基本情報カード: orange-50/50 ヘッダー + 4色のサブアイコン
  *   4) メニュー: 通知設定 / FAQ / 求人(独立メニュー) / 保存済み
@@ -56,14 +56,14 @@ export default function ProfilePage() {
   if (!isLoggedIn) {
     return (
       <div className="w-full max-w-lg mx-auto p-4 flex flex-col items-center justify-center min-h-[60vh]">
-        <User size={48} className="text-orange-200 mb-4" />
+        <User size={48} className="text-[#B9C2DB] mb-4" />
         <h2 className="text-xl font-bold text-gray-800 mb-2">マイページ</h2>
         <p className="text-sm text-gray-500 mb-6 text-center">
           プロフィールや設定を確認するにはログインが必要です
         </p>
         <button
           onClick={openLoginModal}
-          className="bg-orange-500 text-white font-bold py-3 px-8 rounded-full shadow-sm hover:bg-orange-600 transition-colors"
+          className="bg-[#F2F4F8]0 text-white font-bold py-3 px-8 rounded-full shadow-sm hover:bg-[#11204C] transition-colors"
         >
           LINEでログインする
         </button>
@@ -78,25 +78,25 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto bg-[#FFF9FA] min-h-screen pb-20 animate-fade-in">
+    <div className="w-full max-w-lg mx-auto bg-[#F2F4F8] min-h-screen pb-20 animate-fade-in">
       {/* ============================================================
           ヘッダー(プロフィールセクション)
          ============================================================ */}
-      <div className="bg-white px-6 py-8 border-b border-orange-100 shadow-sm relative">
+      <div className="bg-white px-6 py-8 border-b border-[#B9C2DB] shadow-sm relative">
         <div className="flex flex-col items-center">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-orange-300 to-orange-500 flex items-center justify-center text-white font-bold text-3xl shadow-md border-4 border-white mb-3">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#1E3A8A] to-[#11204C] flex items-center justify-center text-white font-bold text-3xl shadow-md border-4 border-white mb-3">
             {profile?.university?.[0] || "医"}
           </div>
           <h2 className="text-xl font-bold text-gray-800">
             {profile ? `${profile.university} ${profile.grade}` : "医学生"}
           </h2>
-          <p className="text-xs text-gray-500 mt-1 font-medium bg-orange-50 px-3 py-1 rounded-full border border-orange-100">
+          <p className="text-xs text-gray-500 mt-1 font-medium bg-[#F2F4F8] px-3 py-1 rounded-full border border-[#B9C2DB]">
             ID: HMD-123456
           </p>
           {!profile && (
             <button
               onClick={() => router.push("/register")}
-              className="mt-4 flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:bg-orange-600 active:scale-95 transition-all"
+              className="mt-4 flex items-center gap-2 bg-[#F2F4F8]0 text-white px-4 py-2 rounded-full text-sm font-bold shadow-sm hover:bg-[#11204C] active:scale-95 transition-all"
             >
               <Edit size={14} />
               プロフィールを登録する
@@ -108,7 +108,7 @@ export default function ProfilePage() {
           <button
             onClick={() => router.push("/profile/edit")}
             aria-label="プロフィール編集"
-            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-orange-500 transition-colors bg-gray-50 rounded-full"
+            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-[#1E3A8A] transition-colors bg-gray-50 rounded-full"
           >
             <Edit size={20} />
           </button>
@@ -120,10 +120,10 @@ export default function ProfilePage() {
          ============================================================ */}
       <div className="p-4 space-y-4 -mt-4">
         {profile && (
-          <div className="bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden">
-            <div className="bg-orange-50/50 px-4 py-3 border-b border-orange-100">
+          <div className="bg-white rounded-2xl shadow-sm border border-[#F2F4F8] overflow-hidden">
+            <div className="bg-[#F2F4F8]/50 px-4 py-3 border-b border-[#B9C2DB]">
               <h3 className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
-                <User size={16} className="text-orange-500" /> 基本情報
+                <User size={16} className="text-[#1E3A8A]" /> 基本情報
               </h3>
             </div>
             <div className="divide-y divide-gray-50">
@@ -160,15 +160,15 @@ export default function ProfilePage() {
         )}
 
         {/* 求人/保存済み への導線(Hugmeid mock ではナビから外しマイページ配下へ) */}
-        <div className="bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden divide-y divide-gray-50">
+        <div className="bg-white rounded-2xl shadow-sm border border-[#F2F4F8] overflow-hidden divide-y divide-gray-50">
           <Link
             href="/jobs"
-            className="w-full flex items-center justify-between p-4 hover:bg-orange-50/50 transition-colors group"
+            className="w-full flex items-center justify-between p-4 hover:bg-[#F2F4F8]/50 transition-colors group"
           >
             <div className="flex items-center gap-3">
               <Briefcase
                 size={18}
-                className="text-gray-400 group-hover:text-orange-500 transition-colors"
+                className="text-gray-400 group-hover:text-[#1E3A8A] transition-colors"
               />
               <span className="text-sm font-bold text-gray-700">求人を探す</span>
             </div>
@@ -176,12 +176,12 @@ export default function ProfilePage() {
           </Link>
           <Link
             href="/saved"
-            className="w-full flex items-center justify-between p-4 hover:bg-orange-50/50 transition-colors group"
+            className="w-full flex items-center justify-between p-4 hover:bg-[#F2F4F8]/50 transition-colors group"
           >
             <div className="flex items-center gap-3">
               <Bookmark
                 size={18}
-                className="text-gray-400 group-hover:text-orange-500 transition-colors"
+                className="text-gray-400 group-hover:text-[#1E3A8A] transition-colors"
               />
               <span className="text-sm font-bold text-gray-700">保存済み</span>
             </div>
@@ -189,12 +189,12 @@ export default function ProfilePage() {
           </Link>
           <Link
             href="/campaign"
-            className="w-full flex items-center justify-between p-4 hover:bg-orange-50/50 transition-colors group"
+            className="w-full flex items-center justify-between p-4 hover:bg-[#F2F4F8]/50 transition-colors group"
           >
             <div className="flex items-center gap-3">
               <Building2
                 size={18}
-                className="text-gray-400 group-hover:text-orange-500 transition-colors"
+                className="text-gray-400 group-hover:text-[#1E3A8A] transition-colors"
               />
               <span className="text-sm font-bold text-gray-700">キャンペーン・特典</span>
             </div>
@@ -203,12 +203,12 @@ export default function ProfilePage() {
         </div>
 
         {/* メニュー */}
-        <div className="bg-white rounded-2xl shadow-sm border border-orange-50 overflow-hidden divide-y divide-gray-50">
-          <button className="w-full flex items-center justify-between p-4 hover:bg-orange-50/50 transition-colors group">
+        <div className="bg-white rounded-2xl shadow-sm border border-[#F2F4F8] overflow-hidden divide-y divide-gray-50">
+          <button className="w-full flex items-center justify-between p-4 hover:bg-[#F2F4F8]/50 transition-colors group">
             <div className="flex items-center gap-3">
               <Bell
                 size={18}
-                className="text-gray-400 group-hover:text-orange-500 transition-colors"
+                className="text-gray-400 group-hover:text-[#1E3A8A] transition-colors"
               />
               <span className="text-sm font-bold text-gray-700">通知設定</span>
             </div>
@@ -217,12 +217,12 @@ export default function ProfilePage() {
 
           <Link
             href="/connect"
-            className="w-full flex items-center justify-between p-4 hover:bg-orange-50/50 transition-colors group"
+            className="w-full flex items-center justify-between p-4 hover:bg-[#F2F4F8]/50 transition-colors group"
           >
             <div className="flex items-center gap-3">
               <HelpCircle
                 size={18}
-                className="text-gray-400 group-hover:text-orange-500 transition-colors"
+                className="text-gray-400 group-hover:text-[#1E3A8A] transition-colors"
               />
               <span className="text-sm font-bold text-gray-700">
                 よくある質問 / お問い合わせ

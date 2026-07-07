@@ -2,8 +2,8 @@ import type { Config } from "tailwindcss";
 
 /**
  * Tailwind 設定
- * - Hugmeid mock デザインシステム反映:
- *   - ブランドカラー(orange/rose) を colors.brand に登録
+ * TestAPP デザインシステムを移植:
+ *   - ブランドカラー(navy #11204C / #1E3A8A / #B9C2DB) を colors.brand に登録
  *   - fade-in / slide-in 系アニメーション拡張
  */
 const config: Config = {
@@ -19,14 +19,16 @@ const config: Config = {
       },
       colors: {
         brand: {
-          // Hugmeid 主軸オレンジ
-          50: "#FFF9FA",
-          100: "#FFEDD5",
-          400: "#FB923C",
-          500: "#F97316",
-          600: "#EA580C",
-          // Hugmeid ロゴで使われる rose アクセント
-          accent: "#FB7185",
+          // HugNavi 主軸ネイビー (TestAPP 準拠)
+          50: "#F2F4F8",
+          100: "#E5E9F2",
+          200: "#B9C2DB",
+          400: "#1E3A8A",
+          500: "#1E3A8A",
+          600: "#17307A",
+          700: "#11204C",
+          // アクセント (ハイライト)
+          accent: "#11204C",
         },
       },
       keyframes: {

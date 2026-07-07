@@ -56,24 +56,24 @@ export default function AdminInquiriesPage() {
   );
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-[#FFF9FA] min-h-screen p-6">
+    <div className="w-full max-w-4xl mx-auto bg-[#F2F4F8] min-h-screen p-6">
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <Mail className="text-orange-500" /> お問い合わせ管理
+            <Mail className="text-[#1E3A8A]" /> お問い合わせ管理
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             ユーザーからのメッセージを確認・管理します
           </p>
         </div>
 
-        <div className="flex bg-white rounded-lg p-1 border border-orange-100">
+        <div className="flex bg-white rounded-lg p-1 border border-[#B9C2DB]">
           <button
             onClick={() => setFilter("unread")}
             className={`px-4 py-2 text-sm font-bold rounded-md transition-colors ${
               filter === "unread"
-                ? "bg-orange-50 text-orange-600"
-                : "text-gray-500 hover:bg-orange-50"
+                ? "bg-[#F2F4F8] text-[#11204C]"
+                : "text-gray-500 hover:bg-[#F2F4F8]"
             }`}
           >
             未読のみ
@@ -82,8 +82,8 @@ export default function AdminInquiriesPage() {
             onClick={() => setFilter("all")}
             className={`px-4 py-2 text-sm font-bold rounded-md transition-colors ${
               filter === "all"
-                ? "bg-orange-50 text-orange-600"
-                : "text-gray-500 hover:bg-orange-50"
+                ? "bg-[#F2F4F8] text-[#11204C]"
+                : "text-gray-500 hover:bg-[#F2F4F8]"
             }`}
           >
             すべて表示
@@ -94,7 +94,7 @@ export default function AdminInquiriesPage() {
       {loading ? (
         <div className="text-center py-20 text-gray-400 font-bold">読み込み中...</div>
       ) : displayInquiries.length === 0 ? (
-        <div className="bg-white rounded-2xl p-10 text-center border border-dashed border-orange-100 text-gray-500">
+        <div className="bg-white rounded-2xl p-10 text-center border border-dashed border-[#B9C2DB] text-gray-500">
           該当するお問い合わせはありません
         </div>
       ) : (
@@ -104,8 +104,8 @@ export default function AdminInquiriesPage() {
               key={iq.id}
               className={`bg-white rounded-2xl border overflow-hidden transition-all ${
                 iq.status === "unread"
-                  ? "border-l-4 border-l-orange-500 border-orange-50"
-                  : "border-orange-50 opacity-80"
+                  ? "border-l-4 border-l-orange-500 border-[#F2F4F8]"
+                  : "border-[#F2F4F8] opacity-80"
               }`}
             >
               <button
@@ -113,17 +113,17 @@ export default function AdminInquiriesPage() {
                   setExpandedId(expandedId === iq.id ? null : iq.id);
                   if (iq.status === "unread") markAsRead(iq.id, iq.status);
                 }}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-orange-50/30 text-left"
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-[#F2F4F8]/30 text-left"
               >
                 <div className="flex items-center gap-4">
                   {iq.status === "unread" ? (
-                    <Clock className="text-orange-500" size={20} />
+                    <Clock className="text-[#1E3A8A]" size={20} />
                   ) : (
                     <CheckCircle className="text-gray-400" size={20} />
                   )}
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-bold bg-orange-50 text-orange-600 px-2 py-0.5 rounded">
+                      <span className="text-xs font-bold bg-[#F2F4F8] text-[#11204C] px-2 py-0.5 rounded">
                         {iq.type}
                       </span>
                       <span className="text-xs text-gray-400">
@@ -147,7 +147,7 @@ export default function AdminInquiriesPage() {
               </button>
 
               {expandedId === iq.id && (
-                <div className="px-6 py-4 bg-orange-50/30 border-t border-orange-50 text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
+                <div className="px-6 py-4 bg-[#F2F4F8]/30 border-t border-[#F2F4F8] text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
                   {iq.content}
                 </div>
               )}

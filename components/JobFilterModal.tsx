@@ -5,10 +5,9 @@ import { X } from "lucide-react";
 import type { FilterOptions } from "@/lib/types";
 
 /**
- * JobFilterModal
- * - Hugmeid mock のモーダル(底部スライド) + orange CTA を採用。
+ * JobFilterModal - TestAPP デザイン準拠 (ネイビー):
+ *   底部スライドモーダル + ネイビーCTA (from-[#1E3A8A] to-[#11204C] グラデ)
  * - 雇用形態 / 業種 / 勤務地 / 最低時給 を絞り込み可能。
- * - 適用ボタンは orange-400 → orange-500 グラデーション。
  */
 type JobFilterModalProps = {
   isOpen: boolean;
@@ -58,50 +57,91 @@ export function JobFilterModal({
   };
 
   const handleReset = () => {
-    setLocalFilters({ employmentType: [], jobType: [], prefecture: [], salaryMin: "" });
+    setLocalFilters({
+      employmentType: [],
+      jobType: [],
+      prefecture: [],
+      salaryMin: "",
+    });
   };
 
   if (!isOpen) return null;
 
+  const chipClass = (active: boolean) =>
+    `px-4 py-2 rounded-full text-sm font-medium transition-all ${
+      active
+        ? "bg-[#1E3A8A] text-white shadow-md"
+        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+    }`;
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center animate-fade-in">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-hidden flex flex-col animate-slide-in-bottom">
-        <div className="flex items-center justify-between p-4 border-b border-orange-100">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h3 className="text-lg font-bold text-gray-800">絞り込み検索</h3>
           <button
             onClick={onClose}
             aria-label="閉じる"
-            className="p-2 hover:bg-orange-50 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X size={20} className="text-gray-600" />
           </button>
         </div>
 
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          <FilterSection
-            title="雇用形態"
-            items={employmentTypes}
-            selected={localFilters.employmentType}
-            onToggle={(v) => toggleFilter("employmentType", v)}
-          />
-          <FilterSection
-            title="業種"
-            items={jobTypes}
-            selected={localFilters.jobType}
-            onToggle={(v) => toggleFilter("jobType", v)}
-          />
-          <FilterSection
-            title="勤務地"
-            items={prefectures}
-            selected={localFilters.prefecture}
-            onToggle={(v) => toggleFilter("prefecture", v)}
-          />
+          <div>
+            <h4 className="text-sm font-bold text-gray-700 mb-3">雇用形態</h4>
+            <div className="flex flex-wrap gap-2">
+              {employmentTypes.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => toggleFilter("employmentType", type)}
+                  className={chipClass(localFilters.employmentType.includes(type))}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-bold text-gray-700 mb-3">業種</h4>
+            <div className="flex flex-wrap gap-2">
+              {jobTypes.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => toggleFilter("jobType", type)}
+                  className={chipClass(localFilters.jobType.includes(type))}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-bold text-gray-700 mb-3">勤務地</h4>
+            <div className="flex flex-wrap gap-2">
+              {prefectures.map((pref) => (
+                <button
+                  key={pref}
+                  onClick={() => toggleFilter("prefecture", pref)}
+                  className={chipClass(localFilters.prefecture.includes(pref))}
+                >
+                  {pref}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <h4 className="text-sm font-bold text-gray-700 mb-3">最低時給</h4>
             <select
               value={localFilters.salaryMin}
               onChange={(e) => toggleFilter("salaryMin", e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]"
             >
               <option value="">指定なし</option>
               <option value="1000">1,000円以上</option>
@@ -113,7 +153,8 @@ export function JobFilterModal({
           </div>
         </div>
 
-        <div className="p-4 border-t border-orange-100 flex gap-3">
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 flex gap-3">
           <button
             onClick={handleReset}
             className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition-colors"
@@ -122,44 +163,11 @@ export function JobFilterModal({
           </button>
           <button
             onClick={handleApply}
-            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold shadow-md hover:shadow-lg transition-all"
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#1E3A8A] to-[#11204C] text-white font-bold shadow-md hover:shadow-lg transition-all"
           >
             適用する
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function FilterSection({
-  title,
-  items,
-  selected,
-  onToggle,
-}: {
-  title: string;
-  items: string[];
-  selected: string[];
-  onToggle: (v: string) => void;
-}) {
-  return (
-    <div>
-      <h4 className="text-sm font-bold text-gray-700 mb-3">{title}</h4>
-      <div className="flex flex-wrap gap-2">
-        {items.map((item) => (
-          <button
-            key={item}
-            onClick={() => onToggle(item)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              selected.includes(item)
-                ? "bg-orange-500 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-orange-50 hover:text-orange-600"
-            }`}
-          >
-            {item}
-          </button>
-        ))}
       </div>
     </div>
   );

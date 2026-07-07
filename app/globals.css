@@ -1,6 +1,7 @@
 /* =========================================================
-   Hugmeid (HagNavi) デザインシステム
-   - Hugmeid mock の color palette / typography / animation を踏襲
+   HugNavi (旧 Hugmeid) デザインシステム
+   - TestAPP のカラーパレットに刷新:
+     ネイビー (#11204C / #1E3A8A) + ライトグレー (#B9C2DB / #F2F4F8)
    - Next.js 16 / Turbopack の仕様により @import は他ルールより前に配置すること
    ========================================================= */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -10,20 +11,22 @@
 @tailwind utilities;
 
 :root {
-  /* 全体背景：オレンジがかった淡いピンク */
-  --background: #FFF9FA;
-  --foreground: #1f2937;
+  /* 全体背景: TestAPP のライトグレー */
+  --background: #F2F4F8;
+  --foreground: #1A1C24;
 
-  /* ブランドカラー：オレンジ系 (Hugmeid mock のロゴ・タブ・CTAで使用) */
-  --brand-primary: #f97316;       /* orange-500 */
-  --brand-primary-light: #fb923c; /* orange-400 */
-  --brand-accent: #fb7185;        /* rose-400 */
+  /* ブランドカラー: ネイビー系 (TestAPP 準拠) */
+  --brand-primary: #1E3A8A;        /* 濃いネイビー (アクセント) */
+  --brand-primary-dark: #11204C;   /* さらに濃いネイビー (ヘッダー) */
+  --brand-primary-light: #B9C2DB;  /* ソフトなブルーグレー */
 
-  /* セカンダリ (FAQ ヘッダー / OB マッチング等) */
-  --info-blue: #3b82f6;
+  /* サブカラー */
+  --surface-card: #FFFFFF;
+  --surface-warm: #F8FAFD;
+  --line-color: #E5E9F2;
 
-  /* サブ背景: スポンサー用の温かみある白 */
-  --surface-warm: #fffcfc;
+  /* LINE ブランドカラー */
+  --line-green: #06C755;
 
   /* セーフエリア（モバイル用 ボトムナビ） */
   --pb-safe: env(safe-area-inset-bottom, 0px);
@@ -49,7 +52,7 @@ body {
   padding-bottom: var(--pb-safe);
 }
 
-/* スポンサーロゴカルーセル用アニメーション (Hugmeid mock 由来) */
+/* スポンサーロゴカルーセル用アニメーション */
 @keyframes scroll-left {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }

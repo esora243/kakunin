@@ -1,13 +1,12 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, ShieldCheck } from "lucide-react";
 import { siteConfig } from "@/lib/site";
 
 /**
- * LoginModal
- * - Hugmeid mock のデザイン準拠:
- *   1) 上部白パネル + オレンジリング H ロゴ
- *   2) 下部 orange-50/50 パネル + LINE 緑 (#06C755) CTA
+ * LoginModal - TestAPP デザイン準拠 (ネイビー系):
+ *   1) 上部白パネル + ネイビー "H" ロゴ
+ *   2) 下部 #F2F4F8/50 パネル + LINE 緑 (#06C755) CTA
  * - LINE LIFF / LINE OAuth のリンクを設定可能(siteConfig.lineLoginUrl)。
  */
 type LoginModalProps = {
@@ -38,9 +37,9 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
             <X size={20} />
           </button>
 
-          {/* グラデーションHロゴ (Hugmeid mock 準拠) */}
-          <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-3 bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-sm">
-            <span className="font-bold text-xl">H</span>
+          {/* サービス識別アイコン (ロゴ文字は要件により削除済み) */}
+          <div className="w-12 h-12 bg-[#B9C2DB]/30 text-[#1E3A8A] rounded-full mx-auto flex items-center justify-center mb-3">
+            <ShieldCheck size={22} />
           </div>
           <h2 className="text-xl font-bold text-gray-800">ログインが必要です</h2>
           <p className="text-sm text-gray-500 mt-2 leading-relaxed">
@@ -48,7 +47,7 @@ export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
           </p>
         </div>
 
-        <div className="p-6 bg-orange-50/50">
+        <div className="p-6 bg-[#F2F4F8]/50">
           <button
             onClick={handleLogin}
             className="w-full flex items-center justify-center gap-3 bg-[#06C755] hover:bg-[#05B34C] text-white py-3.5 px-4 rounded-xl font-semibold shadow-sm transition-all active:scale-[0.98]"

@@ -25,11 +25,11 @@ import { FloatingBanner } from "@/components/FloatingBanner";
  * 記事一覧ページ
  *
  * 要件:
- *  1. データソースは必ず articles.json（lib/articles.ts 経由）から取得。
- *     Supabase 取得は補助。失敗・空のときは JSON のみで動く。
- *  2. 上部に「お気に入り / すべて / 学習法」のタブUIを実装。
- *  3. 記事発信ボタン（簡易投稿フォーム）を設置。
- *  4. SavedItemsContext と連動して、お気に入りを切替可能。
+ * 1. データソースは必ず articles.json（lib/articles.ts 経由）から取得。
+ * Supabase 取得は補助。失敗・空のときは JSON のみで動く。
+ * 2. 上部に「お気に入り / すべて / 学習法」のタブUIを実装。
+ * 3. 記事発信ボタン（簡易投稿フォーム）を設置。
+ * 4. SavedItemsContext と連動して、お気に入りを切替可能。
  */
 
 type ArticleTab = "favorite" | "all" | "study";
@@ -45,11 +45,8 @@ export default function ArticlesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<ArticleTab>("all");
 
-  // --- 投稿フォーム ---
+  // --- 投稿フォーム表示制御 ---
   const [showComposer, setShowComposer] = useState(false);
-  const [composerTitle, setComposerTitle] = useState("");
-  const [composerCategory, setComposerCategory] = useState("学習法");
-  const [composerBody, setComposerBody] = useState("");
 
   // --- お気に入り ---
   const { isSaved, toggleSaved, hydrated } = useSavedItems();
@@ -146,53 +143,15 @@ export default function ArticlesPage() {
     }
   };
 
-  // 記事発信
-  const handleSubmitArticle = async () => {
-    if (!composerTitle.trim() || !composerBody.trim()) return;
-    const payload: Article = {
-      id: `user-${Date.now()}`,
-      type: composerCategory === "学習法" ? "school" : "activity",
-      title: composerTitle.trim(),
-      category: composerCategory,
-      date: new Date().toISOString().slice(0, 10),
-      image: "",
-      excerpt: composerBody.trim().slice(0, 80),
-      content: composerBody.trim(),
-    };
-
-    // Supabase に投稿（失敗してもローカルには反映する）
-    try {
-      await supabaseRestFetch({
-        path: "articles",
-        method: "POST",
-        body: {
-          title: payload.title,
-          category: payload.category,
-          excerpt: payload.excerpt,
-          content: payload.content,
-          publish_date: payload.date,
-          type: payload.type,
-        },
-      });
-    } catch (e) {
-      console.warn("Supabase への投稿はスキップしました:", e);
-    }
-
-    setExtraArticles((prev) => [payload, ...prev]);
-    setComposerTitle("");
-    setComposerBody("");
-    setShowComposer(false);
-  };
-
   return (
     <div className="w-full max-w-lg mx-auto pb-8 bg-white min-h-screen animate-fade-in">
       {/* sticky ヘッダー */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-orange-100 px-4 py-4 shadow-sm">
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#B9C2DB] px-4 py-4 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-800">記事</h2>
           <button
             onClick={() => setShowComposer((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-orange-500 text-white text-xs font-bold shadow-sm hover:bg-orange-600 transition-colors active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#F2F4F8]0 text-white text-xs font-bold shadow-sm hover:bg-[#11204C] transition-colors active:scale-95"
             aria-label="記事を発信する"
           >
             <PenSquare size={14} /> 記事を発信
@@ -209,12 +168,12 @@ export default function ArticlesPage() {
             placeholder="記事を検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 sm:text-sm transition-colors"
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#1E3A8A]/20 focus:border-[#F2F4F8]0 sm:text-sm transition-colors"
           />
         </div>
 
         {/* タブ UI: お気に入り / すべて / 学習法 */}
-        <div className="flex gap-2 bg-orange-50/60 p-1 rounded-xl">
+        <div className="flex gap-2 bg-[#F2F4F8]/60 p-1 rounded-xl">
           <TabButton
             active={activeTab === "favorite"}
             onClick={() => setActiveTab("favorite")}
@@ -236,12 +195,12 @@ export default function ArticlesPage() {
         </div>
       </div>
 
-      {/* 記事発信フォーム */}
+      {/* 記事発信フォームへの案内 */}
       {showComposer && (
-        <div className="mx-4 mt-4 bg-white border border-orange-200 rounded-2xl shadow-sm p-4 animate-fade-in">
+        <div className="mx-4 mt-4 bg-white border border-[#B9C2DB] rounded-2xl shadow-sm p-4 animate-fade-in">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">
-              <PenSquare size={16} className="text-orange-500" /> 記事を発信する
+              <PenSquare size={16} className="text-[#1E3A8A]" /> 記事を発信する
             </h3>
             <button
               onClick={() => setShowComposer(false)}
@@ -252,43 +211,22 @@ export default function ArticlesPage() {
             </button>
           </div>
 
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="タイトル"
-              value={composerTitle}
-              onChange={(e) => setComposerTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 focus:outline-none"
-            />
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              記事の投稿は専用のGoogleフォームから受け付けています。以下のボタンから投稿をお願いします。
+            </p>
 
-            <select
-              value={composerCategory}
-              onChange={(e) => setComposerCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold bg-white focus:ring-2 focus:ring-orange-100 focus:outline-none"
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSfhRcBD1v_jap8m1tK2U3scRHd0RdFsApq_wi-jwlj4IqpWzw/viewform"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 py-3 bg-[#F2F4F8]0 text-white rounded-xl font-bold hover:bg-[#11204C] transition-colors"
             >
-              <option value="学習法">学習法</option>
-              <option value="課外活動">課外活動</option>
-              <option value="お知らせ">お知らせ</option>
-              <option value="メモ">メモ</option>
-            </select>
+              <Send size={16} /> 投稿フォームを開く
+            </a>
 
-            <textarea
-              placeholder="本文（文字のみ。相互編集メモにも使えます）"
-              value={composerBody}
-              onChange={(e) => setComposerBody(e.target.value)}
-              rows={5}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm leading-relaxed focus:ring-2 focus:ring-orange-100 focus:outline-none resize-y"
-            />
-
-            <button
-              onClick={handleSubmitArticle}
-              disabled={!composerTitle.trim() || !composerBody.trim()}
-              className="w-full inline-flex items-center justify-center gap-2 py-3 bg-orange-500 text-white rounded-xl font-bold disabled:opacity-40 hover:bg-orange-600 transition-colors"
-            >
-              <Send size={16} /> 発信する
-            </button>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              ※ 文字のみ対応。投稿は記事タブの一覧に即時反映され、他端末とも相互に閲覧・編集できます。
+            <p className="text-[11px] text-gray-500 leading-relaxed mt-2">
+              ※ ブラウザが開き、外部サイト（Googleフォーム）へ移動します。
             </p>
           </div>
         </div>
@@ -308,7 +246,7 @@ export default function ArticlesPage() {
       <div className="px-4 pt-1 space-y-3 pb-6">
         {loading && !hydrated ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin text-orange-500" size={32} />
+            <Loader2 className="animate-spin text-[#1E3A8A]" size={32} />
           </div>
         ) : filteredArticles.length === 0 ? (
           <EmptyState
@@ -332,23 +270,24 @@ export default function ArticlesPage() {
                 <div className="relative">
                   <Link
                     href={getArticleHref(article)}
-                    className="block bg-white rounded-xl shadow-sm border border-orange-50 overflow-hidden hover:shadow-md transition-shadow"
+                    className="block bg-white rounded-xl shadow-sm border border-[#F2F4F8] overflow-hidden hover:shadow-md transition-shadow"
                   >
                     <div className="flex">
+                      {/* サムネイル: 要件により現状の半分程度 (w-28 h-28 → w-14 h-14) に縮小 */}
                       {article.image ? (
                         <img
                           src={article.image}
                           alt={article.title}
-                          className="w-28 h-28 object-cover shrink-0 bg-orange-50"
+                          className="w-14 h-14 object-cover shrink-0 bg-[#F2F4F8] rounded-lg m-3"
                         />
                       ) : (
-                        <div className="w-28 h-28 shrink-0 bg-gray-100 flex flex-col items-center justify-center text-gray-300">
-                          <ImageIcon size={24} />
+                        <div className="w-14 h-14 shrink-0 bg-gray-100 flex flex-col items-center justify-center text-gray-300 rounded-lg m-3">
+                          <ImageIcon size={16} />
                         </div>
                       )}
                       <div className="p-3 pr-10 flex flex-col justify-center min-w-0 flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-orange-500 font-bold px-1.5 py-0.5 bg-orange-50 rounded-sm truncate max-w-[60%]">
+                          <span className="text-[10px] text-[#1E3A8A] font-bold px-1.5 py-0.5 bg-[#F2F4F8] rounded-sm truncate max-w-[60%]">
                             {article.category || "未分類"}
                           </span>
                           <span className="text-[10px] text-gray-400 shrink-0">{formattedDate}</span>
@@ -367,7 +306,7 @@ export default function ArticlesPage() {
                   <button
                     onClick={() => toggleSaved("article", article.id)}
                     className={`absolute top-2 right-2 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center transition-colors active:scale-90 ${
-                      saved ? "bg-orange-500 text-white" : "bg-white/90 text-gray-400 hover:text-orange-500 border border-gray-200"
+                      saved ? "bg-[#F2F4F8]0 text-white" : "bg-white/90 text-gray-400 hover:text-[#1E3A8A] border border-gray-200"
                     }`}
                     aria-label={saved ? "お気に入りから外す" : "お気に入りに追加"}
                   >
@@ -376,10 +315,10 @@ export default function ArticlesPage() {
                 </div>
 
                 {showSponsor && sponsor?.name && sponsor?.url && (
-                  <div className="mt-3 bg-orange-50 border border-orange-100 rounded-xl p-3 flex items-center gap-3 shadow-sm">
-                    <Megaphone className="text-orange-500 shrink-0" size={20} />
+                  <div className="mt-3 bg-[#F2F4F8] border border-[#B9C2DB] rounded-xl p-3 flex items-center gap-3 shadow-sm">
+                    <Megaphone className="text-[#1E3A8A] shrink-0" size={20} />
                     <div className="flex-1 overflow-hidden">
-                      <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider mb-0.5">Sponsored</p>
+                      <p className="text-[10px] text-[#1E3A8A] font-bold uppercase tracking-wider mb-0.5">Sponsored</p>
                       <p className="text-sm font-bold text-gray-800 truncate">{sponsor.name}</p>
                     </div>
                     <a
@@ -387,7 +326,7 @@ export default function ArticlesPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => handleSponsorClick(sponsor.id)}
-                      className="text-orange-500 text-xs font-bold underline shrink-0"
+                      className="text-[#1E3A8A] text-xs font-bold underline shrink-0"
                     >
                       詳細へ
                     </a>
@@ -417,7 +356,7 @@ function TabButton({
     <button
       onClick={onClick}
       className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
-        active ? "bg-white text-orange-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+        active ? "bg-white text-[#11204C] shadow-sm" : "text-gray-500 hover:text-gray-700"
       }`}
     >
       {icon}
@@ -434,11 +373,11 @@ function EmptyState({ tab, onClearSearch }: { tab: ArticleTab; onClearSearch: ()
   };
 
   return (
-    <div className="text-center py-10 bg-white rounded-xl border border-dashed border-orange-100">
-      <Newspaper className="mx-auto text-orange-200 mb-2" size={32} />
+    <div className="text-center py-10 bg-white rounded-xl border border-dashed border-[#B9C2DB]">
+      <Newspaper className="mx-auto text-[#B9C2DB] mb-2" size={32} />
       <p className="text-gray-500 text-sm font-bold">{messageMap[tab]}</p>
       {tab !== "favorite" && (
-        <button onClick={onClearSearch} className="mt-2 text-orange-500 text-xs font-bold underline">
+        <button onClick={onClearSearch} className="mt-2 text-[#1E3A8A] text-xs font-bold underline">
           検索条件をクリア
         </button>
       )}

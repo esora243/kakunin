@@ -52,11 +52,11 @@ export default function SponsorsPage() {
   );
 
   return (
-    <div className="w-full max-w-4xl mx-auto pb-12 bg-[#FFF9FA] min-h-screen">
+    <div className="w-full max-w-4xl mx-auto pb-12 bg-[#F2F4F8] min-h-screen">
       {/* ============================================================
           sticky ヘッダー
          ============================================================ */}
-      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-50 px-4 py-4 shadow-sm">
+      <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#F2F4F8] px-4 py-4 shadow-sm">
         <h2 className="text-lg font-bold text-gray-800 tracking-tight">
           パートナー企業のご紹介
         </h2>
@@ -68,11 +68,11 @@ export default function SponsorsPage() {
       <div className="px-4 sm:px-6 pt-4">
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="animate-spin text-orange-500" size={40} />
+            <Loader2 className="animate-spin text-[#1E3A8A]" size={40} />
           </div>
         ) : sponsors.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-orange-100 p-10 text-center mt-6">
-            <Building2 className="mx-auto text-orange-200 mb-3" size={40} />
+          <div className="bg-white rounded-2xl border border-[#B9C2DB] p-10 text-center mt-6">
+            <Building2 className="mx-auto text-[#B9C2DB] mb-3" size={40} />
             <p className="text-gray-700 font-bold mb-2">スポンサー情報は未登録です</p>
             <p className="text-sm text-gray-500">
               Supabase の sponsors テーブルに本番データを追加してください。
@@ -84,7 +84,7 @@ export default function SponsorsPage() {
             {platinum.length > 0 && (
               <section>
                 <div className="flex flex-col items-center mb-6">
-                  <span className="text-orange-500 text-[10px] font-extrabold tracking-[0.2em] mb-1">
+                  <span className="text-[#1E3A8A] text-[10px] font-extrabold tracking-[0.2em] mb-1">
                     PLATINUM PARTNERS
                   </span>
                   <h3 className="text-2xl font-bold text-gray-800">プレミアムパートナー</h3>
@@ -99,7 +99,7 @@ export default function SponsorsPage() {
                     return (
                       <div
                         key={sponsor.id}
-                        className="bg-white rounded-3xl shadow-md border border-orange-100 overflow-hidden animate-fade-in"
+                        className="bg-white rounded-3xl shadow-md border border-[#B9C2DB] overflow-hidden animate-fade-in"
                       >
                         {/* ヒーロー */}
                         <Link
@@ -118,7 +118,7 @@ export default function SponsorsPage() {
                             </div>
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-6">
-                            <span className="bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full w-max mb-3 shadow-md">
+                            <span className="bg-[#F2F4F8]0 text-white text-[10px] font-bold px-3 py-1 rounded-full w-max mb-3 shadow-md">
                               PLATINUM
                             </span>
                             <h4 className="text-white text-2xl font-bold mb-2 tracking-tight">
@@ -133,11 +133,11 @@ export default function SponsorsPage() {
                         </Link>
 
                         {/* サブカード(PICK UP / VIDEO) 配置レイアウトは元のまま維持 */}
-                        <div className="p-6 bg-[#FDFBF7] grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-6 bg-[#F8FAFD] grid grid-cols-1 md:grid-cols-2 gap-6">
                           
                           {/* PICK UP */}
-                          <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all">
-                            <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
+                          <div className="border border-[#F2F4F8] bg-white rounded-2xl p-5 hover:border-[#B9C2DB] hover:shadow-md transition-all">
+                            <div className="flex items-center gap-2 text-[#1E3A8A] font-bold text-xs mb-3">
                               <Building2 size={14} /> PICK UP
                             </div>
                             <div className="rounded-2xl overflow-hidden h-32 mb-4 bg-gray-100 relative">
@@ -161,15 +161,15 @@ export default function SponsorsPage() {
                             </p>
                             <Link
                               href={`/sponsors/${sponsor.id}`}
-                              className="inline-flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600 transition-colors"
+                              className="inline-flex items-center gap-1 text-xs font-bold text-[#1E3A8A] hover:text-[#11204C] transition-colors"
                             >
                               詳細を見る <ExternalLink size={12} />
                             </Link>
                           </div>
 
                           {/* VIDEO */}
-                          <div className="border border-orange-50 bg-white rounded-2xl p-5 hover:border-orange-200 hover:shadow-md transition-all flex flex-col">
-                            <div className="flex items-center gap-2 text-orange-500 font-bold text-xs mb-3">
+                          <div className="border border-[#F2F4F8] bg-white rounded-2xl p-5 hover:border-[#B9C2DB] hover:shadow-md transition-all flex flex-col">
+                            <div className="flex items-center gap-2 text-[#1E3A8A] font-bold text-xs mb-3">
                               <Play size={14} /> VIDEO
                             </div>
                             <div className="relative rounded-2xl overflow-hidden aspect-video w-full mb-4 bg-gray-900 shrink-0">
@@ -206,7 +206,7 @@ export default function SponsorsPage() {
 
             {/* === GOLD === */}
             {gold.length > 0 && (
-              <section className="pt-2 border-t border-orange-100">
+              <section className="pt-2 border-t border-[#B9C2DB]">
                 <div className="flex flex-col items-center mb-6 mt-8">
                   <span className="text-gray-400 text-[10px] font-extrabold tracking-[0.2em] mb-1">
                     GOLD PARTNERS
@@ -222,7 +222,7 @@ export default function SponsorsPage() {
                       <Link
                         key={sponsor.id}
                         href={`/sponsors/${sponsor.id}`}
-                        className="block relative h-48 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group border border-orange-50 bg-gray-900"
+                        className="block relative h-48 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group border border-[#F2F4F8] bg-gray-900"
                       >
                         {heroImage ? (
                           <img
@@ -236,7 +236,7 @@ export default function SponsorsPage() {
                           </div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-5">
-                          <span className="text-[10px] text-orange-300 font-bold bg-black/40 px-2 py-0.5 rounded-sm w-max mb-2">
+                          <span className="text-[10px] text-[#B9C2DB] font-bold bg-black/40 px-2 py-0.5 rounded-sm w-max mb-2">
                             {sponsor.category || "GOLD"}
                           </span>
                           <h4 className="text-white font-bold text-sm mb-1">{sponsor.name}</h4>
@@ -255,7 +255,7 @@ export default function SponsorsPage() {
 
             {/* === SUPPORTER === */}
             {supporters.length > 0 && (
-              <section className="pt-2 border-t border-orange-100">
+              <section className="pt-2 border-t border-[#B9C2DB]">
                 <div className="flex flex-col items-center mb-4 mt-8">
                   <h3 className="text-lg font-bold text-gray-600">サポーター様</h3>
                 </div>
@@ -265,7 +265,7 @@ export default function SponsorsPage() {
                     <Link
                       key={sponsor.id}
                       href={`/sponsors/${sponsor.id}`}
-                      className="aspect-square bg-white rounded-xl border border-orange-50 p-4 flex flex-col items-center justify-center hover:border-orange-300 hover:shadow-md transition-all group"
+                      className="aspect-square bg-white rounded-xl border border-[#F2F4F8] p-4 flex flex-col items-center justify-center hover:border-[#1E3A8A]/60 hover:shadow-md transition-all group"
                     >
                       {sponsor.image_url ? (
                         <img
@@ -288,9 +288,9 @@ export default function SponsorsPage() {
             )}
 
             {/* === 営業 CTA === */}
-            <section className="bg-gradient-to-br from-orange-50 to-orange-50 rounded-3xl p-8 border border-orange-100 text-center shadow-sm mt-8">
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Building2 size={24} className="text-orange-500" />
+            <section className="bg-gradient-to-br from-[#F2F4F8] to-[#F2F4F8] rounded-3xl p-8 border border-[#B9C2DB] text-center shadow-sm mt-8">
+              <div className="w-12 h-12 bg-[#B9C2DB]/40 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Building2 size={24} className="text-[#1E3A8A]" />
               </div>
               <h3 className="text-lg font-bold text-gray-800 mb-2">
                 スポンサー/掲載企業様を募集しております
@@ -302,7 +302,7 @@ export default function SponsorsPage() {
               </p>
               <Link
                 href="/connect"
-                className="inline-flex items-center gap-2 bg-orange-500 text-white px-8 py-3.5 rounded-full font-bold text-sm shadow-md hover:bg-orange-600 transition-colors transform hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 bg-[#F2F4F8]0 text-white px-8 py-3.5 rounded-full font-bold text-sm shadow-md hover:bg-[#11204C] transition-colors transform hover:-translate-y-0.5"
               >
                 お問い合わせ・資料請求 <ExternalLink size={16} />
               </Link>
