@@ -130,7 +130,7 @@ export default function ArticlesPage() {
           
           {/* 「記事を作成」ボタンをマイページのお問い合わせフォームへ遷移させる */}
           <Link
-            href="/profile#contact"
+            href="/connect"
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#1E3A8A] text-white text-xs font-bold shadow-sm hover:bg-[#11204C] transition-colors active:scale-95"
             aria-label="記事を作成"
           >
