@@ -1,85 +1,56 @@
-export type TimetableDay = "月" | "火" | "水" | "木" | "金" | "土" | "日";
+import type { AdminTimetableRow } from "@/lib/timetable-admin.pseudo";
 
-/**
- * 時限種別
- * - "regular"  : 通常の1〜6限
- * - "lunch"    : 昼休み枠（学内活動を入れられる）
- * - "after"    : 放課後枠（学外活動・課外活動を入れられる）
- */
-export type SlotKind = "regular" | "lunch" | "after";
+const DAY_ORDER: Record<AdminTimetableRow["dayOfWeek"], number> = {
+  月: 1, 火: 2, 水: 3, 木: 4, 金: 5, 土: 6,
+};
 
-/**
- * 出席優先度。
- * - 0  : 切っても問題ない（自習扱い）
- * - 1  : 一応出席（軽め）
- * - 2  : 標準
- * - 3  : 必須（落単リスク・出席点が大きい）
- */
-export type AttendanceWeight = 0 | 1 | 2 | 3;
-
-/**
- * 時間割の1コマ。
- * 既存 (id, title, day, period, etc.) に加え、要件で追加された
- * 拡張プロパティを含む。
- */
-export type TimetableClassDto = {
-  id: string;
-  classKey: string;
-  title: string;
+export type PublicTimetableCell = {
+  dayOfWeek: AdminTimetableRow["dayOfWeek"];
+  period: number;
+  classTitle: string;
   instructor: string | null;
   room: string | null;
-  location: string | null;
-  day: TimetableDay;
-  /** 1〜6 = 通常 / 7 = 昼休み / 8 = 放課後 / 99 = 特別枠（旧 "special"） */
-  period: number;
-  slotKind: SlotKind;
-  startsAt: string | null;
-  endsAt: string | null;
-
-  // ★ここが追加された部分です：具体的な日付（例: "2026-04-13"）
-  date: string | null;
-
-  // === 学年・大学・学期 ===
-  /** 1〜6 年生 */
-  grade: number | null;
-  academicYear: number | null;
-  termNumber: number | null;
-  /** 例: "浜松医科大学" */
-  universityName: string | null;
-
-  // === 出席運用 ===
-  /** true なら切ってもよい授業（背景色を弱める） */
-  isCuttable: boolean;
-  /** 出席必須度 0〜3 */
-  attendanceWeight: AttendanceWeight;
-
-  // === 診療科情報（クリックでモーダル表示） ===
-  /** 例: "循環器内科" */
-  departmentName?: string | null;
-  /** 診療科の概要・実習で見るポイント等 */
-  departmentSummary?: string | null;
-  /** 過去問・試験対策資料へのリンク */
-  examMaterialsUrl?: string | null;
-
-  // === 課外活動の連携 ===
-  /** カレンダー上での種別（学内 / 学外） */
-  activityScope?: "intramural" | "extramural" | null;
-
-  sourceType: string;
-  isOfficial: boolean;
+  departmentLabel: string;
+  sourceUrl: string | null;
+  note: string | null;
 };
 
-export type TimetableGridDto = Record<TimetableDay, Record<number, TimetableClassDto>>;
-
-export type TimetableResponse = {
-  ok: true;
-  days: TimetableDay[];
-  periods: number[];
-  /** 表示用の各 period ラベル ("1限", "昼", "放課後" など) */
-  periodLabels: Record<number, string>;
-  items: TimetableClassDto[];
-  grid: TimetableGridDto;
-  /** 取得対象の学年 */
-  grade: number | null;
-  universityName: string | null;
+export type PublicTimetableMatrix = {
+  universityId: string;
+  universityName: string;
+  academicYear: number;
+  termNumber: number;
+  cells: PublicTimetableCell[];
 };
+
+export function buildPublicTimetableMatrix(
+  university: { id: string; name: string },
+  year: number,
+  term: number,
+  rows: AdminTimetableRow[],
+): PublicTimetableMatrix {
+  const cells: PublicTimetableCell[] = rows
+    .filter((row) => row.isActive)
+    .sort((left, right) => {
+      const dayDelta = DAY_ORDER[left.dayOfWeek] - DAY_ORDER[right.dayOfWeek];
+      if (dayDelta !== 0) return dayDelta;
+      return left.period - right.period;
+    })
+    .map((row) => ({
+      dayOfWeek: row.dayOfWeek,
+      period: row.period,
+      classTitle: row.classTitle,
+      instructor: row.instructor,
+      room: row.room,
+      departmentLabel: row.departmentLabel,
+      sourceUrl: row.sourceUrl,
+      note: row.note,
+    }));
+  return {
+    universityId: university.id,
+    universityName: university.name,
+    academicYear: year,
+    termNumber: term,
+    cells,
+  };
+}

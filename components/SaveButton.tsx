@@ -1,32 +1,40 @@
 "use client";
 
 import { BookmarkCheck, BookmarkPlus } from "lucide-react";
+import { cx } from "@/components/ui/cx";
 
-/**
- * SaveButton - TestAPP ネイビーテイスト:
- *   通常: 灰色 → ネイビー(#1E3A8A) hover。保存済み: ネイビー塗り or 白抜き。
- * - compact モードはカード右上のフローティング配置(求人カード等)。
- */
 type SaveButtonProps = {
   saved: boolean;
   onClick: () => void;
+  /** アイコンのみの小型表示。配置は呼び出し側が決める (自前で absolute しない)。 */
   compact?: boolean;
+  className?: string;
 };
 
-export function SaveButton({ saved, onClick, compact = false }: SaveButtonProps) {
+const FOCUS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2";
+
+export function SaveButton({ saved, onClick, compact = false, className }: SaveButtonProps) {
+  const label = saved ? "保存済みから外す" : "保存する";
+
   if (compact) {
     return (
       <button
+        type="button"
         onClick={onClick}
-        className={`absolute top-4 right-4 transition-colors active:scale-90 ${
-          saved ? "text-[#1E3A8A]" : "text-gray-300 hover:text-[#1E3A8A]"
-        }`}
-        aria-label={saved ? "保存済みから外す" : "保存する"}
+        aria-label={label}
+        aria-pressed={saved}
+        className={cx(
+          "inline-flex min-h-tap min-w-tap items-center justify-center rounded-pill transition-colors",
+          FOCUS,
+          saved ? "text-brand-500" : "text-brand-200 hover:text-brand-500",
+          className,
+        )}
       >
         {saved ? (
-          <BookmarkCheck size={22} strokeWidth={1.8} />
+          <BookmarkCheck size={22} strokeWidth={1.8} aria-hidden="true" />
         ) : (
-          <BookmarkPlus size={22} strokeWidth={1.5} />
+          <BookmarkPlus size={22} strokeWidth={1.5} aria-hidden="true" />
         )}
       </button>
     );
@@ -34,20 +42,25 @@ export function SaveButton({ saved, onClick, compact = false }: SaveButtonProps)
 
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex flex-col items-center justify-center w-16 shrink-0 rounded-xl border transition-colors active:scale-95 py-2 ${
+      aria-label={label}
+      aria-pressed={saved}
+      className={cx(
+        "flex w-16 shrink-0 flex-col items-center justify-center rounded-control border py-2 transition-colors",
+        FOCUS,
         saved
-          ? "bg-[#1E3A8A] text-white border-[#1E3A8A]"
-          : "bg-[#F2F4F8] text-[#1E3A8A] border-[#B9C2DB] hover:bg-[#B9C2DB]/30"
-      }`}
-      aria-label={saved ? "保存済みから外す" : "保存する"}
+          ? "border-brand-500 bg-brand-500 text-inverse"
+          : "border-subtle bg-brand-50 text-brand-500 hover:bg-brand-100",
+        className,
+      )}
     >
       {saved ? (
-        <BookmarkCheck size={20} className="mb-0.5" />
+        <BookmarkCheck size={20} className="mb-0.5" aria-hidden="true" />
       ) : (
-        <BookmarkPlus size={20} className="mb-0.5" />
+        <BookmarkPlus size={20} className="mb-0.5" aria-hidden="true" />
       )}
-      <span className="text-[10px] font-bold">{saved ? "保存済み" : "保存"}</span>
+      <span className="text-micro font-bold">{saved ? "保存済み" : "保存"}</span>
     </button>
   );
 }

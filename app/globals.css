@@ -1,71 +1,38 @@
-/* =========================================================
-   HugNavi (旧 Hugmeid) デザインシステム
-   - TestAPP のカラーパレットに刷新:
-     ネイビー (#11204C / #1E3A8A) + ライトグレー (#B9C2DB / #F2F4F8)
-   - Next.js 16 / Turbopack の仕様により @import は他ルールより前に配置すること
-   ========================================================= */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* 全体背景: TestAPP のライトグレー */
   --background: #F2F4F8;
   --foreground: #1A1C24;
 
-  /* ブランドカラー: ネイビー系 (TestAPP 準拠) */
-  --brand-primary: #1E3A8A;        /* 濃いネイビー (アクセント) */
-  --brand-primary-dark: #11204C;   /* さらに濃いネイビー (ヘッダー) */
-  --brand-primary-light: #B9C2DB;  /* ソフトなブルーグレー */
+  /* LIFF / ブラウザ UI のセーフエリア (ホスト側から上書きされる) */
+  --hugmeid-nav-top: 0px;
+  --hugmeid-browser-bottom: 0px;
 
-  /* サブカラー */
-  --surface-card: #FFFFFF;
-  --surface-warm: #F8FAFD;
-  --line-color: #E5E9F2;
+  /*
+   * AppShell の実寸をここに集約する。
+   * ページ側の sticky は必ず `top-sticky` (= --app-sticky-top) を使い、
+   * top-[10px] / top-[110px] のような画面ごとの手計算をしない。
+   */
+  --app-nav-h: 64px;
+  --app-sticky-top: calc(var(--hugmeid-nav-top, 0px) + var(--app-nav-h));
+}
 
-  /* LINE ブランドカラー */
-  --line-green: #06C755;
-
-  /* セーフエリア（モバイル用 ボトムナビ） */
-  --pb-safe: env(safe-area-inset-bottom, 0px);
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: 'Noto Sans JP', 'Inter', sans-serif;
 }
 
-/* スクロールバー非表示ユーティリティ */
+/* Hide scrollbar */
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* iPhone セーフエリア対応 */
-.pb-safe {
-  padding-bottom: var(--pb-safe);
-}
-
-/* スポンサーロゴカルーセル用アニメーション */
-@keyframes scroll-left {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-.animate-scroll-left {
-  animation: scroll-left 20s linear infinite;
-}
-
-/* FloatingBanner 出現アニメーション */
-@keyframes slide-in-from-top-2 {
-  0%   { transform: translateY(-8px); opacity: 0; }
-  100% { transform: translateY(0);    opacity: 1; }
-}
-.animate-slide-in-from-top {
-  animation: slide-in-from-top-2 0.3s ease-out;
 }

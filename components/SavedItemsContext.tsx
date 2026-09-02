@@ -1,105 +1,134 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { SavedEntry, SavedItemType } from "@/lib/types";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import { useAuth } from "@/components/AuthContext";
+import { readRequiredApiJson } from "@/lib/api-client";
+import { savedItemEntityId, type SavedItemDto, type SavedItemType } from "@/lib/saved-items";
 
-const STORAGE_KEY = "hugmeid_saved_items";
-
-/**
- * SavedItemsContext
- * - "job" / "campaign" / "article" の3種類のお気に入りを横断管理する。
- * - 記事 (article) は lib/articles.ts (articles.json) と id を文字列で揃えるため、
- *   常に String(id) で正規化して保存・比較する。
- */
 type SavedItemsContextType = {
-  savedItems: SavedEntry[];
+  savedItems: SavedItemDto[];
   hydrated: boolean;
-  isSaved: (type: SavedItemType, id: string | number) => boolean;
-  toggleSaved: (type: SavedItemType, id: string | number) => boolean;
-  removeSaved: (type: SavedItemType, id: string | number) => void;
-  /** 指定タイプに絞ったお気に入りID配列を返すヘルパ */
-  getSavedIds: (type: SavedItemType) => string[];
+  syncing: boolean;
+  error: string | null;
+  isSaved: (type: SavedItemType, id: string) => boolean;
+  toggleSaved: (type: SavedItemType, id: string) => Promise<boolean>;
+  removeSaved: (type: SavedItemType, id: string) => Promise<void>;
+  refreshSavedItems: (throwOnError?: boolean) => Promise<void>;
 };
+
+type BookmarksSuccess = { ok: true; items: SavedItemDto[] };
+type MutationSuccess = { ok: true; saved: boolean };
 
 const SavedItemsContext = createContext<SavedItemsContextType | undefined>(undefined);
 
+const SAVED_ITEM_LABELS: Record<SavedItemType, string> = {
+  job: "求人",
+  activity: "課外活動",
+  content: "コンテンツ",
+};
+
+function bookmarkPath(type: SavedItemType, id: string) {
+  const segment = type === "job" ? "jobs" : type === "activity" ? "activities" : "contents";
+  return `/api/me/bookmarks/${segment}/${encodeURIComponent(id)}`;
+}
+
 export function SavedItemsProvider({ children }: { children: ReactNode }) {
-  const [savedItems, setSavedItems] = useState<SavedEntry[]>([]);
+  const { hydrated: authHydrated, isLoggedIn, me, openLoginModal } = useAuth();
+  const userId = me?.id ?? null;
+  const [savedItems, setSavedItems] = useState<SavedItemDto[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const requestId = useRef(0);
+  const mutations = useRef(new Set<string>());
+  const activeUserId = useRef(userId);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as SavedEntry[];
-        // 過去フォーマットの不整合（type 欠落・id が number 等）を念のため正規化
-        const normalized = Array.isArray(parsed)
-          ? parsed
-              .filter((e) => e && (e.type === "job" || e.type === "campaign" || e.type === "article"))
-              .map((e) => ({ type: e.type, id: String(e.id), savedAt: e.savedAt ?? new Date().toISOString() }))
-          : [];
-        setSavedItems(normalized);
-      }
-    } catch {
+    activeUserId.current = userId;
+  }, [userId]);
+
+  const refreshSavedItems = useCallback(async (throwOnError = false) => {
+    const currentRequest = ++requestId.current;
+    if (!authHydrated || !isLoggedIn || !userId) {
       setSavedItems([]);
-    } finally {
-      setHydrated(true);
+      setError(null);
+      setHydrated(authHydrated);
+      return;
     }
-  }, []);
+    setSyncing(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/me/bookmarks", { cache: "no-store" });
+      const data = await readRequiredApiJson<BookmarksSuccess>(response, "保存済みアイテムの取得に失敗しました");
+      if (currentRequest !== requestId.current) return;
+      setSavedItems(data.items);
+    } catch (caught) {
+      if (currentRequest !== requestId.current) return;
+      const nextError = caught instanceof Error ? caught : new Error("保存済みアイテムの取得に失敗しました");
+      setError(nextError.message);
+      if (throwOnError) throw nextError;
+    } finally {
+      if (currentRequest === requestId.current) {
+        setHydrated(true);
+        setSyncing(false);
+      }
+    }
+  }, [authHydrated, isLoggedIn, userId]);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(savedItems));
-  }, [hydrated, savedItems]);
+  useEffect(() => { void refreshSavedItems(); }, [refreshSavedItems]);
 
   const isSaved = useCallback(
-    (type: SavedItemType, id: string | number) =>
-      savedItems.some((item) => item.type === type && item.id === String(id)),
+    (type: SavedItemType, id: string) => savedItems.some((item) => item.type === type && savedItemEntityId(item) === id),
     [savedItems],
   );
 
-  const toggleSaved = useCallback((type: SavedItemType, id: string | number) => {
-    const normalizedId = String(id);
-    let nextSaved = false;
+  const mutate = useCallback(async (type: SavedItemType, id: string, method: "POST" | "DELETE", mutationUserId: string) => {
+    const key = `${type}:${id}`;
+    if (mutations.current.has(key)) throw new Error("保存操作を処理中です");
+    mutations.current.add(key);
+    try {
+      const response = await fetch(bookmarkPath(type, id), { method });
+      await readRequiredApiJson<MutationSuccess>(response, "保存状態の更新に失敗しました");
+      if (activeUserId.current !== mutationUserId) return false;
+      await refreshSavedItems(true);
+      return activeUserId.current === mutationUserId;
+    } finally {
+      mutations.current.delete(key);
+    }
+  }, [refreshSavedItems]);
 
-    setSavedItems((current) => {
-      const exists = current.some((item) => item.type === type && item.id === normalizedId);
-      nextSaved = !exists;
+  const toggleSaved = useCallback(async (type: SavedItemType, id: string) => {
+    if (!isLoggedIn || !userId) { openLoginModal(); return false; }
+    const nextSaved = !isSaved(type, id);
+    try {
+      const applied = await mutate(type, id, nextSaved ? "POST" : "DELETE", userId);
+      if (!applied) return !nextSaved;
+      const label = SAVED_ITEM_LABELS[type];
+      toast.success(nextSaved ? `${label}を保存しました` : `${label}の保存を解除しました`);
+      return nextSaved;
+    } catch {
+      if (activeUserId.current === userId) toast.error("保存状態の更新に失敗しました");
+      return !nextSaved;
+    }
+  }, [isLoggedIn, isSaved, mutate, openLoginModal, userId]);
 
-      if (exists) {
-        return current.filter((item) => !(item.type === type && item.id === normalizedId));
-      }
-
-      return [{ type, id: normalizedId, savedAt: new Date().toISOString() }, ...current];
-    });
-
-    return nextSaved;
-  }, []);
-
-  const removeSaved = useCallback((type: SavedItemType, id: string | number) => {
-    const normalizedId = String(id);
-    setSavedItems((current) =>
-      current.filter((item) => !(item.type === type && item.id === normalizedId)),
-    );
-  }, []);
-
-  const getSavedIds = useCallback(
-    (type: SavedItemType) => savedItems.filter((s) => s.type === type).map((s) => s.id),
-    [savedItems],
-  );
-
-  const value = useMemo(
-    () => ({ savedItems, hydrated, isSaved, toggleSaved, removeSaved, getSavedIds }),
-    [savedItems, hydrated, isSaved, toggleSaved, removeSaved, getSavedIds],
-  );
-
+  const removeSaved = useCallback(async (type: SavedItemType, id: string) => {
+    if (!userId) return;
+    try {
+      const applied = await mutate(type, id, "DELETE", userId);
+      if (!applied) return;
+      toast.success(`${SAVED_ITEM_LABELS[type]}の保存を解除しました`);
+    } catch {
+      if (activeUserId.current === userId) toast.error("保存状態の更新に失敗しました");
+    }
+  }, [mutate, userId]);
+  const value = useMemo(() => ({ savedItems, hydrated, syncing, error, isSaved, toggleSaved, removeSaved, refreshSavedItems }), [savedItems, hydrated, syncing, error, isSaved, toggleSaved, removeSaved, refreshSavedItems]);
   return <SavedItemsContext.Provider value={value}>{children}</SavedItemsContext.Provider>;
 }
 
 export function useSavedItems() {
   const context = useContext(SavedItemsContext);
-  if (!context) {
-    throw new Error("useSavedItems must be used within a SavedItemsProvider");
-  }
+  if (!context) throw new Error("useSavedItems must be used within a SavedItemsProvider");
   return context;
 }

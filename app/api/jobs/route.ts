@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { parseNonNegativeNumberParam } from "@/lib/api-query";
-import { listJobs } from "@/lib/jobs";
-import { SupabaseConfigError } from "@/lib/supabase/rest";
+import { filterJobListItems } from "@/lib/jobs";
+import { publicCachedJsonRoute } from "@/lib/next-json-route";
+import { listCachedJobs } from "@/lib/public-cache";
 
 export const dynamic = "force-dynamic";
+const PUBLIC_JOBS_CACHE_CONTROL = "public, max-age=30, stale-while-revalidate=300";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,25 +13,24 @@ export async function GET(request: Request) {
   if (!parsedSalaryMin.ok) {
     return NextResponse.json(
       { ok: false, error: { code: "invalid_query", message: parsedSalaryMin.message } },
-      { status: 400 },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
 
-  try {
-    const items = await listJobs({
-      q: searchParams.get("q") ?? undefined,
-      category: searchParams.get("category") ?? undefined,
-      employmentType: searchParams.get("employmentType") ?? undefined,
-      prefecture: searchParams.get("prefecture") ?? undefined,
-      salaryMin: parsedSalaryMin.value,
-    });
+  return publicCachedJsonRoute(
+    { code: "jobs_fetch_failed", message: "求人の取得に失敗しました" },
+    PUBLIC_JOBS_CACHE_CONTROL,
+    async () => {
+      const filters = {
+        q: searchParams.get("q") ?? undefined,
+        category: searchParams.get("category") ?? undefined,
+        employmentType: searchParams.get("employmentType") ?? undefined,
+        prefecture: searchParams.get("prefecture") ?? undefined,
+        salaryMin: parsedSalaryMin.value,
+      };
+      const items = filterJobListItems(await listCachedJobs(), filters);
 
-    return NextResponse.json({ ok: true, items, nextCursor: null });
-  } catch (error) {
-    const status = error instanceof SupabaseConfigError ? 503 : 500;
-    return NextResponse.json(
-      { ok: false, error: { code: "jobs_fetch_failed", message: "求人の取得に失敗しました" } },
-      { status },
-    );
-  }
+      return { body: { ok: true, items } };
+    },
+  );
 }

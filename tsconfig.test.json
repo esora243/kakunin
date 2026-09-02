@@ -13,6 +13,11 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": ["lib/api-query.ts", "lib/timetable-core.ts", "lib/timetable-dto.ts", "tests/**/*.test.ts"],
+  "include": [
+    "lib/**/*.ts",
+    "app/api/**/route.ts",
+    "app/school/school-workspace-shared.ts",
+    "tests/**/*.test.ts"
+  ],
   "exclude": ["node_modules", ".next", ".test-dist"]
 }

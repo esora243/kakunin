@@ -1,76 +1,117 @@
 "use client";
 
-import { X, ShieldCheck } from "lucide-react";
-import { siteConfig } from "@/lib/site";
+import { MessageCircle } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useId, useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { LEGAL_CONSENT_VERSION, type LegalConsentVersion } from "@/lib/legal-consent";
 
-/**
- * LoginModal - TestAPP デザイン準拠 (ネイビー系):
- *   1) 上部白パネル + ネイビー "H" ロゴ
- *   2) 下部 #F2F4F8/50 パネル + LINE 緑 (#06C755) CTA
- * - LINE LIFF / LINE OAuth のリンクを設定可能(siteConfig.lineLoginUrl)。
- */
 type LoginModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: () => void;
+  onLogin: (legalConsentVersion: LegalConsentVersion) => Promise<void>;
+  error?: string | null;
 };
 
-export function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
-  if (!isOpen) return null;
+export function LoginModal({ isOpen, onClose, onLogin, error }: LoginModalProps) {
+  const [submitting, setSubmitting] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const consentId = useId();
 
-  const handleLogin = () => {
-    if (siteConfig.lineLoginUrl) {
-      window.open(siteConfig.lineLoginUrl, "_blank", "noopener,noreferrer");
+  useEffect(() => {
+    if (!isOpen) {
+      setAgreed(false);
+      setSubmitting(false);
     }
-    onLogin();
+  }, [isOpen]);
+
+  const handleLogin = async () => {
+    if (!agreed || submitting) return;
+    setSubmitting(true);
+    try {
+      await onLogin(LEGAL_CONSENT_VERSION);
+    } catch {
+      // AuthProvider owns the user-facing error message.
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-xl">
-        <div className="relative pt-6 pb-4 px-6 text-center border-b border-gray-100">
-          <button
-            onClick={onClose}
-            aria-label="閉じる"
-            className="absolute top-4 right-4 p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-          >
-            <X size={20} />
-          </button>
-
-          {/* サービス識別アイコン (ロゴ文字は要件により削除済み) */}
-          <div className="w-12 h-12 bg-[#B9C2DB]/30 text-[#1E3A8A] rounded-full mx-auto flex items-center justify-center mb-3">
-            <ShieldCheck size={22} />
-          </div>
-          <h2 className="text-xl font-bold text-gray-800">ログインが必要です</h2>
-          <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-            保存機能や応募、詳細なコンテンツの閲覧にはLINE連携ログインが必要です。
-          </p>
-        </div>
-
-        <div className="p-6 bg-[#F2F4F8]/50">
-          <button
-            onClick={handleLogin}
-            className="w-full flex items-center justify-center gap-3 bg-[#06C755] hover:bg-[#05B34C] text-white py-3.5 px-4 rounded-xl font-semibold shadow-sm transition-all active:scale-[0.98]"
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-              <path d="M22.5 10.4c0-4.4-4.5-8-10.1-8-5.6 0-10.2 3.6-10.2 8 0 4 3.7 7.4 8.7 7.9.3.1.8.3.9.7.1.3-.1 1.2-.2 1.4-.1.3-.4 1.4 1 1s4.5-2.7 6.4-4.8c2.2-2.3 3.5-4.4 3.5-6.2z" />
-            </svg>
-            LINEでログイン・登録
-          </button>
-
-          {!siteConfig.lineLoginUrl && (
-            <p className="text-xs text-center text-amber-600 mt-3">
-              現在はデモログインとして動作します。実運用時は <code>NEXT_PUBLIC_LINE_LOGIN_URL</code> を設定してください。
-            </p>
-          )}
-
-          <p className="text-xs text-center text-gray-400 mt-4">
-            登録することで、利用規約とプライバシーポリシーに
-            <br />
-            同意したものとみなされます。
-          </p>
-        </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="ログインが必要です"
+      closeLabel="ログイン画面を閉じる"
+      size="sm"
+    >
+      <div className="px-6 pb-4 pt-5 text-center">
+        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-pill bg-brand-100 text-lead font-bold text-brand-500">
+          H
+        </span>
+        <p className="text-body leading-relaxed text-secondary">
+          保存機能や応募、詳細なコンテンツの閲覧にはログインが必要です。
+        </p>
       </div>
-    </div>
+
+      <div className="bg-brand-50 p-6">
+        <div className="mb-4 rounded-control border border-subtle bg-surface-card p-4 text-left">
+          <p className="text-body leading-relaxed text-secondary">
+            続行する前に、
+            <Link
+              href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-brand-600 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              利用規約
+            </Link>
+            と
+            <Link
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-brand-600 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              プライバシーポリシー
+            </Link>
+            をご確認ください。
+          </p>
+          <label
+            htmlFor={consentId}
+            className="mt-3 flex min-h-tap cursor-pointer select-none items-start gap-2.5 rounded-control py-2 text-body leading-relaxed text-primary focus-within:ring-2 focus-within:ring-brand-500"
+          >
+            <input
+              id={consentId}
+              type="checkbox"
+              checked={agreed}
+              onChange={(event) => setAgreed(event.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 accent-brand-500"
+            />
+            <span>利用規約およびプライバシーポリシーに同意します。</span>
+          </label>
+        </div>
+
+        {/* LINE ログインは LINE 連携そのものなので line variant を使う。 */}
+        <Button
+          variant="line"
+          size="lg"
+          fullWidth
+          disabled={submitting || !agreed}
+          onClick={() => void handleLogin()}
+        >
+          <MessageCircle size={22} aria-hidden="true" />
+          {submitting ? "確認中..." : "LINEでログイン・登録"}
+        </Button>
+
+        {error ? (
+          <p role="alert" className="mt-3 text-center text-caption leading-relaxed text-danger-700">
+            {error}
+          </p>
+        ) : null}
+
+      </div>
+    </Modal>
   );
 }

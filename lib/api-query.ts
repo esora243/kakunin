@@ -1,4 +1,4 @@
-export type NumberQueryParseResult =
+type NumberQueryParseResult =
   | { ok: true; value: number | undefined }
   | { ok: false; message: string };
 

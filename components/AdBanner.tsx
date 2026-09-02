@@ -1,67 +1,40 @@
-"use client";
-
+import { Megaphone } from "lucide-react";
 import Link from "next/link";
+import { Container } from "@/components/ui/Container";
+import { getSponsorSlot, type SponsorPlacementKey } from "@/lib/sponsors";
 
 /**
- * AdBanner
- * - 汎用広告バナー (header / footer / infeed)
- * - TestAPP デザイン準拠: ネイビー(#1E3A8A) PRバッジ + #F2F4F8 系グラデーション背景
+ * ヘッダー直下のスポンサー枠。
+ *
+ * - 実スポンサー設定 (環境変数) が無いときは **何も描画しない**。
+ * - 全幅の帯だが、内容は Container で本文と同じ左右基準に揃える。
+ *   以前は広告帯だけ内容が左端に寄り、PR 帯は中央寄せで揃っていなかった。
+ * - 1 ルートにつき 1 枠。本文差し込み枠は廃止した。
  */
-export type AdBannerProps = {
-  type: "header" | "footer" | "infeed";
-  campaignId: string;
-  title: string;
-  imageUrl: string;
-  sponsorName: string;
-};
-
-const HEIGHT_MAP: Record<AdBannerProps["type"], string> = {
-  header: "h-20",
-  footer: "h-20",
-  infeed: "h-32",
-};
-
-export function AdBanner({
-  type,
-  campaignId,
-  title,
-  imageUrl,
-  sponsorName,
-}: AdBannerProps) {
-  const containerClass =
-    type === "infeed" ? "w-full max-w-lg mx-auto px-4" : "w-full";
+export function AdBanner({ placement }: { placement: SponsorPlacementKey }) {
+  const slot = getSponsorSlot(placement);
+  if (!slot) return null;
 
   return (
-    <div className={containerClass}>
-      <Link
-        href={`/campaign/${campaignId}`}
-        className="block relative w-full rounded-xl overflow-hidden shadow-sm group cursor-pointer border border-[#B9C2DB]"
-      >
-        <div
-          className={`relative ${HEIGHT_MAP[type]} bg-gradient-to-r from-[#F2F4F8] to-[#F2F4F8]`}
+    <aside aria-label="スポンサー" className="border-b border-subtle bg-brand-50">
+      <Container>
+        <Link
+          href={slot.href}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="flex min-h-tap items-center gap-3 py-2.5 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
         >
-          <img
-            src={imageUrl}
-            alt={title}
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/30 to-transparent flex items-center px-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="bg-[#1E3A8A]/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm">
-                  PR
-                </span>
-                <span className="text-white/90 text-[10px] font-medium">
-                  {sponsorName}
-                </span>
-              </div>
-              <h3 className="text-white font-bold text-sm leading-tight">
-                {title}
-              </h3>
-            </div>
-          </div>
-        </div>
-      </Link>
-    </div>
+          <Megaphone className="shrink-0 text-brand-700" size={20} aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-micro font-bold uppercase tracking-wider text-brand-700">{slot.badge}</span>
+            <span className="block truncate text-body font-bold text-primary">{slot.name}</span>
+            {slot.description ? (
+              <span className="block truncate text-caption text-secondary">{slot.description}</span>
+            ) : null}
+          </span>
+          <span className="shrink-0 text-caption font-bold text-brand-700 underline">詳細へ</span>
+        </Link>
+      </Container>
+    </aside>
   );
 }

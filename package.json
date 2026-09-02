@@ -1,38 +1,52 @@
 {
   "name": "hugmeid-nextjs",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint",
-    "test": "npm run test:compile && node --test .test-dist/tests/**/*.test.js",
-    "test:compile": "tsc -p tsconfig.test.json",
-    "test:coverage": "npm run test:compile && node --test --experimental-test-coverage .test-dist/tests/**/*.test.js",
+    "lint": "eslint .",
+    "analyze": "ANALYZE=true next build --webpack",
+    "test": "npm run test:compile && node scripts/run-node-tests.mjs",
+    "test:compile": "rm -rf .test-dist && tsc -p tsconfig.test.json",
+    "test:cloudsql": "node scripts/cloudsql-integration-test.mjs",
+    "test:coverage": "npm run test:compile && c8 node scripts/run-node-tests.mjs",
+    "db:migrate": "node scripts/cloudsql-migrate.mjs",
+    "db:preserve": "node scripts/cloudsql-preservation.mjs",
+    "db:verify": "node scripts/cloudsql-verify.mjs",
     "typecheck": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "dependencies": {
-    "clsx": "^2.1.1",
+    "@line/liff": "^2.28.0",
     "lucide-react": "^0.487.0",
-    "next": "^16.2.6",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "sonner": "^2.0.3",
-    "tailwind-merge": "^3.2.0"
+    "next": "16.2.11",
+    "pg": "^8.21.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "server-only": "^0.0.1",
+    "sonner": "^2.0.3"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@next/bundle-analyzer": "^16.2.6",
+    "c8": "^12.0.0",
+    "@types/node": "^22",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
     "autoprefixer": "^10.4.20",
-    "eslint": "^9.18.0",
+    "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
-    "postcss": "^8.5.10",
+    "postcss": "8.5.23",
+    "postcss-load-config": "^6.0.1",
     "tailwindcss": "^3.4.13",
-    "typescript": "^5.7.0"
+    "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.23",
+    "sharp": "0.35.3"
   }
 }

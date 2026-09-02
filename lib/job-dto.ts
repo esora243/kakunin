@@ -31,6 +31,9 @@ export type JobDetailDto = JobListItemDto & {
   };
 };
 
-export type JobsResponse = { ok: true; items: JobListItemDto[]; nextCursor: string | null };
-export type JobResponse = { ok: true; item: JobDetailDto };
-export type ApiErrorResponse = { ok: false; error: { code: string; message: string } };
+export type BookmarkDto = {
+  id: string;
+  type: "job";
+  job: JobListItemDto;
+  savedAt: string;
+};

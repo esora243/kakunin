@@ -1,9 +1,9 @@
-import type { JobDetailDto, JobListItemDto } from "@/lib/job-dto";
-import { supabaseRestFetch } from "@/lib/supabase/rest";
+import type { JobDetailDto, JobListItemDto } from "./job-dto";
+import { normalizeExternalHttpsUrl } from "./security/url";
 
 type RelationRow = { code: string; name: string };
 
-type JobRow = {
+export type JobRow = {
   id: string;
   slug: string | null;
   title: string;
@@ -29,33 +29,6 @@ type JobRow = {
   job_categories: RelationRow | null;
   employment_types: RelationRow | null;
 };
-
-const JOB_SELECT = [
-  "id",
-  "slug",
-  "title",
-  "location_pref",
-  "location_detail",
-  "summary",
-  "description_md",
-  "published_at",
-  "salary_min",
-  "salary_display",
-  "work_schedule",
-  "company_name",
-  "company_type",
-  "requirements_summary",
-  "requirements_list",
-  "benefits",
-  "apply_url",
-  "external_source",
-  "external_id",
-  "external_slug",
-  "source_last_modified_at",
-  "synced_at",
-  "job_categories(code,name)",
-  "employment_types(code,name)",
-].join(",");
 
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -83,13 +56,13 @@ export function mapJobListItem(row: JobRow, isSaved = false): JobListItemDto {
   };
 }
 
-export function mapJobDetail(row: JobRow, isSaved = false): JobDetailDto {
+function mapJobDetail(row: JobRow, isSaved = false): JobDetailDto {
   return {
     ...mapJobListItem(row, isSaved),
     description: row.description_md,
     requirementsList: asStringArray(row.requirements_list),
     benefits: asStringArray(row.benefits),
-    applyUrl: row.apply_url,
+    applyUrl: normalizeExternalHttpsUrl(row.apply_url),
     source: {
       externalSource: row.external_source,
       externalId: row.external_id,
@@ -125,22 +98,102 @@ function matchesFilters(job: JobListItemDto, filters: JobFilters) {
 }
 
 async function fetchActiveJobRows() {
-  const params = new URLSearchParams({
-    select: JOB_SELECT,
-    is_active: "eq.true",
-    or: `(published_at.is.null,published_at.lte.${new Date().toISOString()})`,
-    order: "published_at.desc.nullslast",
-  });
-  return supabaseRestFetch<JobRow[]>({ path: `jobs?${params.toString()}` });
+  const { dbQuery } = await import("./db/postgres");
+  const { rows } = await dbQuery<JobRow>(`
+    select
+      j.id::text,
+      j.slug,
+      j.title,
+      j.location_pref,
+      j.location_detail,
+      j.summary,
+      j.description_md,
+      j.published_at::text,
+      j.salary_min,
+      j.salary_display,
+      j.work_schedule,
+      j.company_name,
+      j.company_type,
+      j.requirements_summary,
+      j.requirements_list,
+      j.benefits,
+      j.apply_url,
+      j.external_source,
+      j.external_id,
+      j.external_slug,
+      j.source_last_modified_at::text,
+      j.synced_at::text,
+      json_build_object('code', jc.code, 'name', jc.name) as job_categories,
+      json_build_object('code', et.code, 'name', et.name) as employment_types
+    from jobs j
+    join job_categories jc on jc.id = j.job_category_id
+    join employment_types et on et.id = j.employment_type_id
+    where j.is_active = true
+      and j.published_at is not null
+      and j.published_at <= now()
+    order by j.published_at desc nulls last
+  `);
+  return rows;
+}
+
+export async function getActiveJobRowById(jobId: string) {
+  const { dbQuery } = await import("./db/postgres");
+  const { rows } = await dbQuery<JobRow>(
+    `
+      select
+        j.id::text,
+        j.slug,
+        j.title,
+        j.location_pref,
+        j.location_detail,
+        j.summary,
+        j.description_md,
+        j.published_at::text,
+        j.salary_min,
+        j.salary_display,
+        j.work_schedule,
+        j.company_name,
+        j.company_type,
+        j.requirements_summary,
+        j.requirements_list,
+        j.benefits,
+        j.apply_url,
+        j.external_source,
+        j.external_id,
+        j.external_slug,
+        j.source_last_modified_at::text,
+        j.synced_at::text,
+        json_build_object('code', jc.code, 'name', jc.name) as job_categories,
+        json_build_object('code', et.code, 'name', et.name) as employment_types
+      from jobs j
+      join job_categories jc on jc.id = j.job_category_id
+      join employment_types et on et.id = j.employment_type_id
+      where j.id = $1
+        and j.is_active = true
+        and j.published_at is not null
+        and j.published_at <= now()
+      limit 1
+    `,
+    [jobId],
+  );
+  return rows[0] ?? null;
 }
 
 export async function listJobs(filters: JobFilters = {}) {
   const rows = await fetchActiveJobRows();
-  return rows.map((row) => mapJobListItem(row)).filter((job) => matchesFilters(job, filters));
+  return filterJobListItems(rows.map((row) => mapJobListItem(row)), filters);
 }
 
-export async function getJobBySlugOrId(slugOrId: string) {
+export function findJobRowByPublicSlug(rows: JobRow[], slug: string) {
+  return rows.find((item) => item.slug === slug) ?? rows.find((item) => item.slug === null && item.id === slug);
+}
+
+export async function getJobBySlug(slug: string) {
   const rows = await fetchActiveJobRows();
-  const row = rows.find((item) => item.slug === slugOrId || item.id === slugOrId);
+  const row = findJobRowByPublicSlug(rows, slug);
   return row ? mapJobDetail(row) : null;
+}
+
+export function filterJobListItems(jobs: JobListItemDto[], filters: JobFilters = {}) {
+  return jobs.filter((job) => matchesFilters(job, filters));
 }
