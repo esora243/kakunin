@@ -46,6 +46,7 @@ const CONTENT_COLUMNS = `
   approved_by_admin_id::text,
   approved_at::text,
   is_active,
+  click_count,
   created_by_admin_id::text,
   updated_by_admin_id::text,
   created_at::text,

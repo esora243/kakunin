@@ -1,6 +1,6 @@
 import type { TimetableClassDto, TimetableDay, TimetableGridDto } from "@/lib/timetable-dto";
 
-export type SchoolWorkspaceTab = "timetable" | "syllabus";
+export type SchoolWorkspaceTab = "timetable" | "syllabus" | "shared";
 export type SchoolWorkspaceView = "main" | "detail";
 export type SchoolClassSource = "personal" | "shared";
 export type TimetableAuthSnapshot = {

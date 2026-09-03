@@ -1,3 +1,5 @@
+"use client";
+
 import { Megaphone } from "lucide-react";
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
@@ -22,6 +24,15 @@ export function AdBanner({ placement }: { placement: SponsorPlacementKey }) {
           href={slot.href}
           target="_blank"
           rel="noopener noreferrer sponsored"
+          onClick={() => {
+            // 広告クリックを記録する。失敗しても遷移には影響させない。
+            void fetch("/api/tracking/sponsor-click", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ placement, href: slot.href }),
+              keepalive: true,
+            }).catch(() => {});
+          }}
           className="flex min-h-tap items-center gap-3 py-2.5 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
         >
           <Megaphone className="shrink-0 text-brand-700" size={20} aria-hidden="true" />

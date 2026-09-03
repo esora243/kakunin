@@ -31,6 +31,7 @@ export type AdminContentRow = {
   approved_by_admin_id: string | null;
   approved_at: string | null;
   is_active: boolean;
+  click_count: number;
   created_by_admin_id: string | null;
   updated_by_admin_id: string | null;
   created_at: string;

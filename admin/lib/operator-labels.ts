@@ -27,6 +27,11 @@ const ACTION_LABELS: Record<string, string> = {
   "content.create": "記事を作成",
   "content.update": "記事を更新",
   "content.publish": "記事を公開",
+  "content.click": "記事がクリックされました",
+  "sponsor.click": "広告がクリックされました",
+  "shared_timetable.create": "共有時間割に追加",
+  "shared_timetable.update": "共有時間割を更新",
+  "shared_timetable.delete": "共有時間割から削除",
   "content.schedule_publish": "記事の公開を予約",
   "content.unpublish": "記事を非公開に変更",
   "content.deactivate": "記事を利用停止",
@@ -55,6 +60,8 @@ const ACTION_LABELS: Record<string, string> = {
 
 const RESOURCE_LABELS: Record<string, string> = {
   contents: "記事",
+  sponsor_click_counts: "広告クリック",
+  shared_timetable_entries: "共有時間割",
   jobs: "求人",
   activities: "課外活動",
   inquiries: "お問い合わせ",
