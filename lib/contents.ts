@@ -1,6 +1,6 @@
 import type { ContentDetailDto, ContentListItemDto, ContentType, FaqItemDto } from "./content-dto";
 import { normalizeExternalHttpsUrl } from "./security/url";
-
+export { normalizeExternalHttpsUrl }; // 
 type RelationRow = { code: string; name: string };
 
 export type ContentRow = {

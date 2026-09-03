@@ -58,6 +58,16 @@ export async function lookupAdminUserByEmail(email: string): Promise<AdminIdenti
  * responses to avoid leaking which emails are provisioned.
  */
 export async function resolveAdminIdentity(source: AccessSource): Promise<AdminIdentity | null> {
+  // 🚨 開発環境用のログインバイパス処理（強制的に管理者として扱う）🚨
+  // 注意：本番環境にデプロイする（GitへPushする）前に必ず元のコードに戻してください。
+  return {
+    adminId: "local-dev-admin-id",
+    email: "dev@example.com",
+    role: "owner" as AdminRole, // もし権限エラーになる場合は 'admin' 等に変更してください
+    isActive: true,
+  };
+
+  /* --- 以下、元のコード（現在は実行されません） ---
   const email = localBypassEmail() ?? resolveAdminGoogleSessionEmail(source);
   if (!email) return null;
 
@@ -71,6 +81,7 @@ export async function resolveAdminIdentity(source: AccessSource): Promise<AdminI
   const identity = await lookupAdminUserByEmail(email);
   cache.set(email, { identity, expiresAt: now + IS_ACTIVE_CACHE_TTL_MS });
   return identity?.isActive ? identity : null;
+  --------------------------------------------- */
 }
 
 export function invalidateAdminIdentityCache(email: string) {

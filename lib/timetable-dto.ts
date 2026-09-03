@@ -1,4 +1,4 @@
-import type { AdminTimetableRow } from "@/lib/timetable-admin.pseudo";
+import type { AdminTimetableRow } from "@/admin/lib/timetable-admin";
 
 const DAY_ORDER: Record<AdminTimetableRow["dayOfWeek"], number> = {
   月: 1, 火: 2, 水: 3, 木: 4, 金: 5, 土: 6,
