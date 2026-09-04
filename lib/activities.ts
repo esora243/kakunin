@@ -139,7 +139,7 @@ async function fetchActiveActivityRows() {
 }
 
 export async function getActiveActivityRowById(activityId: string) {
-  const { dbQuery } = await import("./db/lib/postgres");
+  const { dbQuery } = await import("./db/postgres");
   const { rows } = await dbQuery<ActivityRow>(
     `
       select

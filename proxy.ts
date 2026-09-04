@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_SESSION_COOKIE, SESSION_HINT_COOKIE, SESSION_HINT_VALUE } from "@/lib/auth/session-hint";
-
+import { AUTH_SESSION_COOKIE, SESSION_HINT_COOKIE, SESSION_HINT_VALUE } from "./lib/auth/session-hint";
 function configuredHttpsOrigin(value: string | undefined) {
   const text = value?.trim();
   if (!text) return null;

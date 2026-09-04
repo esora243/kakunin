@@ -169,6 +169,7 @@ export default async function DashboardPage() {
       <MetricSection title="記事の公開状況" description="記事が公開工程のどこにあるかを確認できます" action={<Link href="/contents" className="text-xs font-medium text-orange-700 hover:underline">記事一覧へ</Link>}>
         <MetricLink label="全記事" value={dashboard.contents.total} href="/contents" />
         <MetricLink label="有効な記事" value={dashboard.contents.total - dashboard.contents.deactivated} href="/contents" />
+        <MetricLink label="記事クリック数" value={dashboard.contents.clicks} href="/contents" />
         {CONTENT_STATE_ORDER.map((state) => <MetricLink key={state} label={PUBLISH_STATE_LABEL[state]} value={dashboard.contents[state]} href={`/contents?state=${state}`} attention={state === "review" || state === "scheduled"} />)}
       </MetricSection>
 
@@ -184,6 +185,7 @@ export default async function DashboardPage() {
         <MetricLink label="課外活動" value={dashboard.activities.total} href="/activities" />
         <MetricLink label="画像・ファイル" value={dashboard.assets.total} href="/assets" />
         <MetricLink label="削除済みファイル" value={dashboard.assets.deleted} href="/assets?deleted=1" />
+        <MetricLink label="広告クリック数" value={dashboard.sponsorClicks.total} href="/" />
       </MetricSection>
 
       {isOwner ? (

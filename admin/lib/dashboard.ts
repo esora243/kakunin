@@ -13,7 +13,9 @@ export type DashboardCounts = {
     scheduled: number;
     published: number;
     deactivated: number;
+    clicks: number;
   };
+  sponsorClicks: { total: number; placements: number };
   inquiries: { open: number; inProgress: number; closed: number };
   assets: { total: number; deleted: number };
   adminUsers: { activeOwners: number; activeEditors: number; inactiveTotal: number };
@@ -47,6 +49,9 @@ export async function loadDashboardData(): Promise<DashboardData> {
       contentsScheduled,
       contentsPublished,
       contentsDeactivated,
+      contentsClicks,
+      sponsorClickTotal,
+      sponsorClickPlacements,
       inquiriesOpen,
       inquiriesInProgress,
       inquiriesClosed,
@@ -68,6 +73,9 @@ export async function loadDashboardData(): Promise<DashboardData> {
       countRows("select count(*) from contents where is_active = true and published_at is not null and published_at > now()"),
       countRows("select count(*) from contents where is_active = true and published_at is not null and published_at <= now()"),
       countRows("select count(*) from contents where is_active = false"),
+      countRows("select coalesce(sum(click_count), 0) from contents"),
+      countRows("select coalesce(sum(click_count), 0) from sponsor_click_counts"),
+      countRows("select count(*) from sponsor_click_counts"),
       countRows("select count(*) from inquiries where status = 'open'"),
       countRows("select count(*) from inquiries where status = 'in_progress'"),
       countRows("select count(*) from inquiries where status = 'closed'"),
@@ -90,7 +98,9 @@ export async function loadDashboardData(): Promise<DashboardData> {
         scheduled: contentsScheduled,
         published: contentsPublished,
         deactivated: contentsDeactivated,
+        clicks: contentsClicks,
       },
+      sponsorClicks: { total: sponsorClickTotal, placements: sponsorClickPlacements },
       inquiries: { open: inquiriesOpen, inProgress: inquiriesInProgress, closed: inquiriesClosed },
       assets: { total: assetsTotal, deleted: assetsDeleted },
       adminUsers: { activeOwners, activeEditors, inactiveTotal: inactiveAdminTotal },
