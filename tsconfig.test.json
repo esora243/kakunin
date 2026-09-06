@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "incremental": false,
+    "isolatedModules": false,
+    "jsx": "react-jsx",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "outDir": ".test-dist",
+    "rootDir": ".",
+    "target": "ES2022",
+    "types": ["node"]
+  },
+  "include": [
+    "lib/**/*.ts",
+    "app/api/**/route.ts",
+    "app/school/school-workspace-shared.ts",
+    "tests/**/*.test.ts"
+  ],
+  "exclude": ["node_modules", ".next", ".test-dist"]
+}

@@ -1,0 +1,19 @@
+{
+  "all": true,
+  "include": [
+    ".test-dist/lib/**/*.js",
+    ".test-dist/app/api/**/route.js",
+    ".test-dist/app/school/school-workspace-shared.js"
+  ],
+  "exclude": [
+    ".test-dist/tests/**/*.js"
+  ],
+  "reporter": [
+    "text"
+  ],
+  "check-coverage": true,
+  "lines": 30,
+  "branches": 70,
+  "functions": 55,
+  "statements": 30
+}

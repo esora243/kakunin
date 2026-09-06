@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F2F4F8;
+  --foreground: #1A1C24;
+
+  /* LIFF / ブラウザ UI のセーフエリア (ホスト側から上書きされる) */
+  --hugmeid-nav-top: 0px;
+  --hugmeid-browser-bottom: 0px;
+
+  /*
+   * AppShell の実寸をここに集約する。
+   * ページ側の sticky は必ず `top-sticky` (= --app-sticky-top) を使い、
+   * top-[10px] / top-[110px] のような画面ごとの手計算をしない。
+   */
+  --app-nav-h: 64px;
+  --app-sticky-top: calc(var(--hugmeid-nav-top, 0px) + var(--app-nav-h));
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* Hide scrollbar */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -1,0 +1,416 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  public-verify:
+    name: Public verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: hugmeid_ci
+          POSTGRES_PASSWORD: hugmeid-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hugmeid_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage gates
+        run: npm run test:coverage
+
+      - name: Verify Cloud SQL baseline
+        run: npm run test:cloudsql
+        env:
+          HUGMEID_DB_TEST_ALLOW_DESTRUCTIVE: "1"
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGDATABASE: hugmeid_ci
+          PGUSER: postgres
+          PGPASSWORD: hugmeid-ci-only
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          HUGMEID_DEPLOY_ENV: staging
+          HUGMEID_DATABASE_ENV: staging
+          IMAGE_ALLOWED_REMOTE_HOSTS: assets-ci.example
+          NEXT_PUBLIC_SITE_URL: https://public-ci.example
+          NEXT_PUBLIC_CONTACT_EMAIL: contact@public-ci.example
+          NEXT_PUBLIC_LIFF_ID: ci-liff-id
+          REVALIDATE_ADMIN_SECRET: ci-only-revalidation-secret
+          GCS_PUBLIC_ASSET_BUCKET: hugmeid-public-assets-ci
+
+  admin-verify:
+    name: Admin verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: admin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage gates
+        run: npm run test:coverage
+
+      - name: Run asset backfill script tests
+        run: node --test scripts/backfill-asset-variants.test.mjs
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          HUGMEID_DEPLOY_ENV: staging
+          HUGMEID_DATABASE_ENV: staging
+          PGHOST: 127.0.0.1
+          PGDATABASE: hugmeid_ci
+          PGUSER: postgres
+          PGPASSWORD: hugmeid-ci-only
+          GOOGLE_OAUTH_CLIENT_ID: ci-client-id
+          GOOGLE_OAUTH_CLIENT_SECRET: ci-client-secret
+          GOOGLE_OAUTH_REDIRECT_URI: https://admin-ci.example/auth/callback
+          ADMIN_SESSION_SECRET: ci-only-session-secret-at-least-32-characters
+          REVALIDATE_ADMIN_SECRET: ci-only-revalidation-secret
+          GCS_PUBLIC_ASSET_BUCKET: hugmeid-public-assets-ci
+          GCS_PUBLIC_ASSET_BASE_URL: https://public-ci.example/api/assets/public
+          PUBLIC_APP_REVALIDATE_URL: https://public-ci.example/api/admin/revalidate
+
+  deploy-production:
+    name: Deploy production
+    needs:
+      - public-verify
+      - admin-verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: production-cloud-run
+      cancel-in-progress: false
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+        with:
+          version: ">= 390.0.0"
+
+      - name: Capture current production traffic
+        id: current-production
+        run: |
+          traffic_before="$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --format=json)"
+          previous_revision="$(jq -r \
+            '[.status.traffic[]? | select((.percent // 0) == 100) | .revisionName] | unique | if length == 1 then .[0] else empty end' \
+            <<<"$traffic_before")"
+          ingress="$(jq -r '.metadata.annotations["run.googleapis.com/ingress"] // "all"' <<<"$traffic_before")"
+          default_url_disabled="$(jq -r '.metadata.annotations["run.googleapis.com/default-url-disabled"] // "false"' <<<"$traffic_before")"
+          test -n "$previous_revision"
+          if test "$ingress" != internal-and-cloud-load-balancing || test "$default_url_disabled" != true; then
+            echo "::error::Production must remain behind the external load balancer with its default run.app URL disabled."
+            exit 1
+          fi
+          curl --fail --silent --show-error \
+            --connect-timeout 10 --max-time 20 \
+            --retry 2 --retry-delay 3 --retry-all-errors \
+            "$PRODUCTION_URL/api/health"
+          printf 'Previous production traffic: %s\n' "$(jq -c '.status.traffic' <<<"$traffic_before")"
+          printf 'previous_revision=%s\n' "$previous_revision" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy candidate without production traffic
+        id: candidate
+        run: |
+          candidate_suffix="${GITHUB_SHA:0:7}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          candidate_revision="$CLOUD_RUN_SERVICE-$candidate_suffix"
+          gcloud run deploy "$CLOUD_RUN_SERVICE" \
+            --source . \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --revision-suffix "$candidate_suffix" \
+            --no-traffic \
+            --update-build-env-vars "^|^HUGMEID_DEPLOY_ENV=production|IMAGE_ALLOWED_REMOTE_HOSTS=${{ vars.IMAGE_ALLOWED_REMOTE_HOSTS }}|NEXT_PUBLIC_APP_NAME=Hugmeid|NEXT_PUBLIC_APP_DESCRIPTION=医学生向けプラットフォーム|NEXT_PUBLIC_SITE_URL=$PRODUCTION_URL|NEXT_PUBLIC_CONTACT_EMAIL=${{ vars.NEXT_PUBLIC_CONTACT_EMAIL }}|NEXT_PUBLIC_LIFF_ID=${{ vars.NEXT_PUBLIC_LIFF_ID }}|NEXT_PUBLIC_LINE_LOGIN_URL=${{ vars.NEXT_PUBLIC_LINE_LOGIN_URL }}" \
+            --update-env-vars "^|^HUGMEID_RELEASE_SHA=$GITHUB_SHA|IMAGE_ALLOWED_REMOTE_HOSTS=${{ vars.IMAGE_ALLOWED_REMOTE_HOSTS }}|NEXT_PUBLIC_APP_NAME=Hugmeid|NEXT_PUBLIC_APP_DESCRIPTION=医学生向けプラットフォーム|NEXT_PUBLIC_SITE_URL=$PRODUCTION_URL|NEXT_PUBLIC_CONTACT_EMAIL=${{ vars.NEXT_PUBLIC_CONTACT_EMAIL }}|NEXT_PUBLIC_LIFF_ID=${{ vars.NEXT_PUBLIC_LIFF_ID }}|NEXT_PUBLIC_LINE_LOGIN_URL=${{ vars.NEXT_PUBLIC_LINE_LOGIN_URL }}" \
+            --quiet
+          revision="$(gcloud run revisions describe "$candidate_revision" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --format=json)"
+          ready_status="$(jq -r \
+            '[.status.conditions[]? | select(.type == "Ready")][0].status // empty' \
+            <<<"$revision")"
+          test "$ready_status" = True
+          service="$(gcloud run services describe "$CLOUD_RUN_SERVICE" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --format=json)"
+          created_revision="$(jq -r '.status.latestCreatedRevisionName // empty' <<<"$service")"
+          test "$created_revision" = "$candidate_revision"
+          printf 'candidate_revision=%s\n' "$candidate_revision" >> "$GITHUB_OUTPUT"
+
+      - name: Canary rollout and promote
+        env:
+          CANDIDATE_REVISION: ${{ steps.candidate.outputs.candidate_revision }}
+          PREVIOUS_REVISION: ${{ steps.current-production.outputs.previous_revision }}
+        run: |
+          describe_service() {
+            for attempt in $(seq 1 5); do
+              if gcloud run services describe "$CLOUD_RUN_SERVICE" \
+                --region "$GCP_REGION" \
+                --project "$GCP_PROJECT_ID" \
+                --format=json; then
+                return 0
+              fi
+              sleep 2
+            done
+            return 1
+          }
+
+          traffic_is_previous_only() {
+            jq -e --arg previous "$PREVIOUS_REVISION" \
+              '[.status.traffic[]? | select((.percent // 0) > 0)] as $active
+              | ($active | length) == 1
+              and any($active[]; .revisionName == $previous and .percent == 100)' \
+              >/dev/null <<<"$1"
+          }
+
+          traffic_is_canary() {
+            jq -e \
+              --arg candidate "$CANDIDATE_REVISION" \
+              --arg previous "$PREVIOUS_REVISION" \
+              '[.status.traffic[]? | select((.percent // 0) > 0)] as $active
+              | ($active | length) == 2
+              and any($active[]; .revisionName == $candidate and .percent == 10)
+              and any($active[]; .revisionName == $previous and .percent == 90)' \
+              >/dev/null <<<"$1"
+          }
+
+          traffic_is_candidate_only() {
+            jq -e --arg candidate "$CANDIDATE_REVISION" \
+              '[.status.traffic[]? | select((.percent // 0) > 0)] as $active
+              | ($active | length) == 1
+              and any($active[]; .revisionName == $candidate and .percent == 100)' \
+              >/dev/null <<<"$1"
+          }
+
+          rollback_to_previous() {
+            expected_traffic="$1"
+            current_service="$(describe_service)" || return 2
+            rollback_required=true
+            case "$expected_traffic" in
+              canary)
+                traffic_is_canary "$current_service" || return 2
+                ;;
+              promoted)
+                traffic_is_candidate_only "$current_service" || return 2
+                ;;
+              previous-or-canary)
+                if traffic_is_previous_only "$current_service"; then
+                  rollback_required=false
+                elif ! traffic_is_canary "$current_service"; then
+                  return 2
+                fi
+                ;;
+              canary-or-promoted)
+                if ! traffic_is_canary "$current_service" && ! traffic_is_candidate_only "$current_service"; then
+                  return 2
+                fi
+                ;;
+              *)
+                return 2
+                ;;
+            esac
+
+            if test "$rollback_required" = false; then
+              curl --fail --silent --show-error \
+                --connect-timeout 10 --max-time 20 \
+                --retry 5 --retry-delay 3 --retry-all-errors \
+                "$PRODUCTION_URL/api/health" >/dev/null
+              return
+            fi
+
+            if ! gcloud run services update-traffic "$CLOUD_RUN_SERVICE" \
+              --region "$GCP_REGION" \
+              --project "$GCP_PROJECT_ID" \
+              --to-revisions="$PREVIOUS_REVISION=100" \
+              --quiet; then
+              return 1
+            fi
+            service="$(describe_service)" || return 1
+            if ! traffic_is_previous_only "$service"; then
+              return 1
+            fi
+            curl --fail --silent --show-error \
+              --connect-timeout 10 --max-time 20 \
+              --retry 5 --retry-delay 3 --retry-all-errors \
+              "$PRODUCTION_URL/api/health" >/dev/null
+          }
+
+          fail_with_rollback() {
+            reason="$1"
+            expected_traffic="$2"
+            echo "::error::$reason; rolling back to $PREVIOUS_REVISION"
+            if rollback_to_previous "$expected_traffic"; then
+              echo "Rollback completed and the production health check passed."
+            else
+              rollback_status=$?
+              if test "$rollback_status" = 2; then
+                echo "::error::Rollback skipped because this workflow no longer owns the active traffic allocation."
+              else
+                echo "::error::Rollback did not restore verified production service."
+              fi
+            fi
+            exit 1
+          }
+
+          fail_without_rollback() {
+            echo "::error::$1; traffic was not changed because this workflow no longer owns the active allocation."
+            exit 1
+          }
+
+          service_before_canary="$(describe_service)" || {
+            echo "::error::Could not inspect production traffic before the canary."
+            exit 1
+          }
+          if ! traffic_is_previous_only "$service_before_canary"; then
+            echo "::error::Production traffic changed after capture; refusing to start the canary."
+            exit 1
+          fi
+
+          if ! gcloud run services update-traffic "$CLOUD_RUN_SERVICE" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --to-revisions="$CANDIDATE_REVISION=10,$PREVIOUS_REVISION=90" \
+            --quiet; then
+            fail_with_rollback "Canary traffic update failed" "previous-or-canary"
+          fi
+
+          canary_service="$(describe_service)" || \
+            fail_with_rollback "Could not inspect traffic after the canary cutover" "canary"
+          if ! traffic_is_canary "$canary_service"; then
+            fail_without_rollback "Canary traffic did not settle at candidate=10%, previous=90%"
+          fi
+
+          candidate_observations=0
+          for attempt in $(seq 1 100); do
+            if ! status="$(curl --silent --show-error \
+              --connect-timeout 10 --max-time 20 \
+              --dump-header /tmp/hugmeid-canary-headers \
+              --output /tmp/hugmeid-canary-body \
+              --write-out '%{http_code}' \
+              "$PRODUCTION_URL/api/health")"; then
+              fail_with_rollback "Canary request failed on attempt $attempt" "canary"
+            fi
+            observed_sha="$(awk 'BEGIN { IGNORECASE=1 } /^X-Hugmeid-Release-SHA:/ { gsub("\\r", "", $2); print $2 }' /tmp/hugmeid-canary-headers | tail -1)"
+            if test "$observed_sha" = "$GITHUB_SHA"; then
+              if test "$status" != 200; then
+                fail_with_rollback "Candidate health check returned HTTP $status on attempt $attempt" "canary"
+              fi
+              candidate_observations=$((candidate_observations + 1))
+              if test "$candidate_observations" -ge 3; then
+                break
+              fi
+            elif test "$status" != 200; then
+              fail_with_rollback "Canary health check returned HTTP $status on attempt $attempt" "canary"
+            fi
+            sleep 1
+          done
+          if test "$candidate_observations" -lt 3; then
+            fail_with_rollback "Candidate release SHA was not observed three times in 100 attempts" "canary"
+          fi
+
+          service_before_promotion="$(describe_service)" || \
+            fail_with_rollback "Could not inspect traffic before promotion" "canary"
+          if ! traffic_is_canary "$service_before_promotion"; then
+            fail_without_rollback "Production traffic changed during the canary"
+          fi
+
+          if ! gcloud run services update-traffic "$CLOUD_RUN_SERVICE" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT_ID" \
+            --to-revisions="$CANDIDATE_REVISION=100" \
+            --quiet; then
+            fail_with_rollback "Candidate promotion command failed" "canary-or-promoted"
+          fi
+
+          promoted_service="$(describe_service)" || \
+            fail_with_rollback "Could not inspect traffic after promotion" "promoted"
+          if ! traffic_is_candidate_only "$promoted_service"; then
+            fail_without_rollback "Production traffic did not settle on the candidate revision"
+          fi
+
+          if ! curl --fail --silent --show-error \
+            --connect-timeout 10 --max-time 20 \
+            --retry 5 --retry-delay 3 --retry-all-errors \
+            "$PRODUCTION_URL/api/health"; then
+            fail_with_rollback "Canonical production health check failed after promotion" "promoted"
+          fi

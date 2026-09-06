@@ -1,0 +1,66 @@
+name: Branch flow
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+jobs:
+  branch-flow:
+    name: Branch flow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate pull request route
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          working_branch='^[^/]+/[^/]+$'
+          hotfix_branch='^[^/]+/hotfix-[^/]+$'
+
+          if [[ "$BASE_REF" == "develop" ]]; then
+            if [[ "$HEAD_REF" == "main" || "$HEAD_REF" =~ $working_branch ]]; then
+              exit 0
+            fi
+
+            echo "develop には main の同期PR、または <担当者>/<目的> の作業PRだけを作成できます。"
+            exit 1
+          fi
+
+          if [[ "$BASE_REF" == "main" ]]; then
+            if [[ "$HEAD_REF" == "develop" ]]; then
+              exit 0
+            fi
+
+            if [[ ! "$HEAD_REF" =~ $hotfix_branch ]]; then
+              echo "main には develop の本番反映PR、または <担当者>/hotfix-<目的> のHotfix PRだけを作成できます。"
+              exit 1
+            fi
+
+            git init --quiet
+            git remote add origin "${{ github.server_url }}/${{ github.repository }}.git"
+            git fetch --quiet --no-tags --depth=1 origin "$BASE_SHA" "$HEAD_SHA"
+
+            if ! git merge-base --is-ancestor "$BASE_SHA" "$HEAD_SHA"; then
+              echo "Hotfix ブランチはPR作成時点の最新 main を含んでいる必要があります。"
+              exit 1
+            fi
+
+            exit 0
+          fi
+
+          echo "このワークフローは develop または main 向けPRだけを対象とします。"
+          exit 1

@@ -1,0 +1,52 @@
+{
+  "name": "hugmeid-nextjs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint .",
+    "analyze": "ANALYZE=true next build --webpack",
+    "test": "npm run test:compile && node scripts/run-node-tests.mjs",
+    "test:compile": "rm -rf .test-dist && tsc -p tsconfig.test.json",
+    "test:cloudsql": "node scripts/cloudsql-integration-test.mjs",
+    "test:coverage": "npm run test:compile && c8 node scripts/run-node-tests.mjs",
+    "db:migrate": "node scripts/cloudsql-migrate.mjs",
+    "db:preserve": "node scripts/cloudsql-preservation.mjs",
+    "db:verify": "node scripts/cloudsql-verify.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@line/liff": "^2.28.0",
+    "lucide-react": "^0.487.0",
+    "next": "16.2.11",
+    "pg": "^8.21.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "server-only": "^0.0.1",
+    "sonner": "^2.0.3"
+  },
+  "devDependencies": {
+    "@next/bundle-analyzer": "^16.2.6",
+    "c8": "^12.0.0",
+    "@types/node": "^22",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.6",
+    "postcss": "8.5.23",
+    "postcss-load-config": "^6.0.1",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.23",
+    "sharp": "0.35.3"
+  }
+}

@@ -1,0 +1,37 @@
+name: Dependency audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - package-lock.json
+      - admin/package-lock.json
+  schedule:
+    - cron: "0 0 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Audit Public dependencies
+        run: npm audit --omit=dev --audit-level=moderate
+
+      - name: Audit Admin dependencies
+        working-directory: admin
+        run: npm audit --omit=dev --audit-level=moderate

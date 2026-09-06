@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-stone-100 text-stone-900;
+}
+
+dialog::backdrop {
+  background-color: rgb(0 0 0 / 0.4);
+}
