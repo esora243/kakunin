@@ -24,10 +24,19 @@ type TimedQueryDependencies = {
   acquireClient?: () => Promise<PoolClient>;
 };
 
+// --- ここからすべてのデータベース処理をダミー化 ---
+
 export async function dbQuery<T extends object = Record<string, unknown>>(
   text: string,
   values: readonly unknown[] = [],
 ): Promise<DbQueryResult<T>> {
+  return {
+    command: "MOCK",
+    rowCount: 0,
+    oid: 0,
+    fields: [],
+    rows: [],
+  } as unknown as DbQueryResult<T>;
   return {
     command: "MOCK",
     rowCount: 0,
@@ -50,9 +59,23 @@ export async function dbQueryWithStatementTimeout<T extends object = Record<stri
     fields: [],
     rows: [],
   } as unknown as DbQueryResult<T>;
+  return {
+    command: "MOCK",
+    rowCount: 0,
+    oid: 0,
+    fields: [],
+    rows: [],
+  } as unknown as DbQueryResult<T>;
 }
 
 export async function dbTransaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
+  const dummyClient = {
+    query: async () => ({ rows: [], command: "MOCK", rowCount: 0, oid: 0, fields: [] }),
+    release: () => {},
+  } as unknown as PoolClient;
+  
+  return callback(dummyClient);
+}
   const dummyClient = {
     query: async () => ({ rows: [], command: "MOCK", rowCount: 0, oid: 0, fields: [] }),
     release: () => {},
