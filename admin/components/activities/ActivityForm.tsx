@@ -9,6 +9,7 @@ import { publishStateOf, type PublishState } from "@/lib/publishing";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { FormSection, FieldLabel, TextInput, TextArea, SelectInput, FieldHint } from "@/components/ui/Form";
+import { MarkdownEditor } from "@/components/contents/MarkdownEditor";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/StatusBadge";
@@ -20,8 +21,6 @@ const ACTION_LABEL: Record<ActivityActionType, string> = { apply: "応募する"
 
 const STATE_LABEL: Record<PublishState, string> = {
   draft: "ドラフト",
-  review: "レビュー中",
-  approved: "承認済み",
   scheduled: "予約公開",
   published: "公開中",
   deactivated: "無効化",
@@ -29,8 +28,6 @@ const STATE_LABEL: Record<PublishState, string> = {
 
 const STATE_BADGE_VARIANT: Record<PublishState, StatusBadgeVariant> = {
   draft: "neutral",
-  review: "warning",
-  approved: "warning",
   scheduled: "info",
   published: "success",
   deactivated: "danger",
@@ -62,6 +59,7 @@ type FormState = {
   benefitsJson: string;
   sourceName: string;
   sourceUrl: string;
+  thumbnailImageUrl: string;
 };
 
 function lines(value: unknown): string {
@@ -93,6 +91,7 @@ function toFormState(activity: ActivityDetailRow | null, kinds: ActivityKindRow[
     benefitsJson: lines(activity?.benefits_json),
     sourceName: activity?.source_name ?? "",
     sourceUrl: activity?.source_url ?? "",
+    thumbnailImageUrl: activity?.thumbnail_image_url ?? "",
   };
 }
 
@@ -117,6 +116,7 @@ function toBody(form: FormState) {
     benefitsJson: form.benefitsJson.split("\n"),
     sourceName: form.sourceName || null,
     sourceUrl: form.sourceUrl || null,
+    thumbnailImageUrl: form.thumbnailImageUrl.trim() || null,
   };
 }
 
@@ -142,6 +142,8 @@ export function ActivityForm({
   const [activity, setActivity] = useState(initialActivity);
   const [form, setForm] = useState(() => toFormState(initialActivity, kinds));
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const uploadInFlightRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [slugEdited, setSlugEdited] = useState(false);
@@ -158,6 +160,53 @@ export function ActivityForm({
       if (key === "title" && mode === "create" && !slugEdited) next.slug = operatorSlug(String(value));
       return next;
     });
+  }
+
+  async function handleImageUpload(file: File) {
+    if (uploadInFlightRef.current) return;
+    uploadInFlightRef.current = true;
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/assets/upload", { method: "POST", body });
+      if (!response.ok) {
+        setError(await parseError(response, "画像の追加に失敗しました"));
+        return;
+      }
+      const uploaded = (await response.json()) as { publicUrl: string };
+      update("thumbnailImageUrl", uploaded.publicUrl);
+    } catch {
+      setError("通信エラーにより画像を追加できませんでした");
+    } finally {
+      uploadInFlightRef.current = false;
+      setUploading(false);
+    }
+  }
+
+  async function handleBodyImageUpload(file: File): Promise<string | null> {
+    if (uploadInFlightRef.current) return null;
+    uploadInFlightRef.current = true;
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/assets/upload", { method: "POST", body });
+      if (!response.ok) {
+        setError(await parseError(response, "画像の追加に失敗しました"));
+        return null;
+      }
+      const uploaded = (await response.json()) as { publicUrl: string };
+      return uploaded.publicUrl;
+    } catch {
+      setError("通信エラーにより画像を追加できませんでした");
+      return null;
+    } finally {
+      uploadInFlightRef.current = false;
+      setUploading(false);
+    }
   }
 
   async function save() {
@@ -379,12 +428,15 @@ export function ActivityForm({
             </div>
             <div className="sm:col-span-2">
               <FieldLabel htmlFor="activity-description">詳細説明</FieldLabel>
-              <TextArea
-                id="activity-description"
-                rows={8}
+              <MarkdownEditor
                 value={form.descriptionMd}
-                onChange={(event) => update("descriptionMd", event.target.value)}
+                onChange={(value) => update("descriptionMd", value)}
+                onUploadImage={handleBodyImageUpload}
+                uploadDisabled={uploading}
               />
+              <FieldHint>
+                見出しや箇条書きにはMarkdown記法を利用でき、画像を挿入できます。
+              </FieldHint>
             </div>
             <div className="sm:col-span-2">
               <FieldLabel htmlFor="activity-requirements">応募要件</FieldLabel>
@@ -405,6 +457,27 @@ export function ActivityForm({
                 onChange={(event) => update("benefitsJson", event.target.value)}
               />
               <FieldHint>1行に1件ずつ入力してください。</FieldHint>
+            </div>
+          </FormSection>
+
+          <FormSection title="サムネイル画像" description="一覧と詳細に表示されます">
+            <div className="sm:col-span-2 space-y-2">
+              {form.thumbnailImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.thumbnailImageUrl} alt="現在のサムネイル画像" className="h-32 w-auto rounded-md border border-stone-200 object-cover" />
+              ) : null}
+              <input
+                aria-label="サムネイル画像を選択"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={uploading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void handleImageUpload(file);
+                }}
+                className="block text-sm text-stone-600 file:mr-3 file:rounded-md file:border file:border-stone-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-50"
+              />
+              {uploading ? <FieldHint>画像を追加しています...</FieldHint> : <FieldHint>画像を選ぶと現在のサムネイルを差し替えます。</FieldHint>}
             </div>
           </FormSection>
 

@@ -20,6 +20,7 @@ export type AdminContentRow = {
   dek: string | null;
   body_md: string | null;
   hero_image_url: string | null;
+  thumbnail_image_url: string | null;
   related_activity_id: string | null;
   related_job_id: string | null;
   published_at: string | null;
@@ -30,6 +31,7 @@ export type AdminContentRow = {
   approved_by_admin_id: string | null;
   approved_at: string | null;
   is_active: boolean;
+  click_count: number;
   created_by_admin_id: string | null;
   updated_by_admin_id: string | null;
   created_at: string;
@@ -52,6 +54,7 @@ export type ContentInput = {
   bodyMd: string;
   dek: string | null;
   heroImageUrl: string | null;
+  thumbnailImageUrl: string | null;
   relatedActivityId: string | null;
   relatedJobId: string | null;
 };
@@ -61,4 +64,10 @@ export type ContentFilters = {
   type?: string;
   category?: string;
   state?: string;
+};
+
+/** Patch fields for the dedicated thumbnail endpoint. */
+export type ContentThumbnailPatch = {
+  thumbnailImageUrl: string | null;
+  expectedUpdatedAt?: string;
 };

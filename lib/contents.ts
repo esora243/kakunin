@@ -1,6 +1,6 @@
 import type { ContentDetailDto, ContentListItemDto, ContentType, FaqItemDto } from "./content-dto";
 import { normalizeExternalHttpsUrl } from "./security/url";
-
+export { normalizeExternalHttpsUrl }; // 
 type RelationRow = { code: string; name: string };
 
 export type ContentRow = {
@@ -12,6 +12,7 @@ export type ContentRow = {
   dek: string | null;
   body_md: string | null;
   hero_image_url: string | null;
+  thumbnail_image_url: string | null;
   related_activity_id: string | null;
   related_job_id: string | null;
   related_activity_slug?: string | null;
@@ -26,14 +27,37 @@ export type ContentFilters = {
   category?: string;
 };
 
-export function contentListImageUrl(value: string | null): string | null {
-  const normalized = normalizeExternalHttpsUrl(value);
+export type ThumbnailVariant = {
+  publicUrl: string;
+  width: number;
+  height: number;
+  contentType: string;
+};
+
+/**
+ * Picks the most efficient managed webp variant for a list thumbnail. The
+ * upload pipeline writes 320 / 640 / 1280 px width renditions; we map a
+ * callers' pixel budget onto the closest rendition so the browser does not
+ * pull a 1280-wide image for a 96-wide card.
+ */
+export function pickBestThumbnailVariant(
+  thumbnailUrl: string | null,
+  targetPx: number,
+): string | null {
+  const normalized = normalizeExternalHttpsUrl(thumbnailUrl);
   if (!normalized) return null;
-  const match = normalized.match(
-    /\/api\/assets\/public\/contents\/variants\/[0-9a-f-]{36}\/w(\d+)\.webp$/,
-  );
-  if (!match || Number(match[1]) <= 640) return normalized;
-  return normalized.replace(/\/w\d+\.webp$/, "/w640.webp");
+  const match = normalized.match(/\/api\/assets\/public\/contents\/variants\/[0-9a-f-]{36}\/w(\d+)\.webp$/);
+  if (!match) return normalized;
+  const widths = [1280, 640, 320];
+  // thumbnail_image_url already references the largest variant; pick the
+  // smallest variant that still covers the requested pixel budget.
+  const orderedDown = [...widths].reverse();
+  const chosen = orderedDown.find((width) => width >= targetPx) ?? widths[0];
+  return normalized.replace(/\/w\d+\.webp$/, `/w${chosen}.webp`);
+}
+
+export function contentListImageUrl(value: string | null): string | null {
+  return pickBestThumbnailVariant(value, 320);
 }
 
 export function mapContentListItem(row: ContentRow, isSaved = false): ContentListItemDto {
@@ -44,19 +68,16 @@ export function mapContentListItem(row: ContentRow, isSaved = false): ContentLis
     category: { code: row.content_categories?.code ?? row.category, name: row.content_categories?.name ?? row.category },
     title: row.title,
     dek: row.dek,
-    heroImageUrl: contentListImageUrl(row.hero_image_url),
+    heroImageUrl: contentListImageUrl(row.thumbnail_image_url ?? row.hero_image_url),
     publishedAt: row.published_at,
     isSaved,
   };
 }
 
-// 【修正】詳細DTOも一覧と同じ contentListImageUrl で正規化する
-// 旧: normalizeExternalHttpsUrl で実URLをそのまま返していたため、
-// next/image の remotePatterns に含まれないホストだと 400 を返し画像だけ消える
 function mapContentDetail(row: ContentRow, isSaved = false): ContentDetailDto {
   return {
     ...mapContentListItem(row, isSaved),
-    heroImageUrl: contentListImageUrl(row.hero_image_url),
+    heroImageUrl: pickBestThumbnailVariant(row.thumbnail_image_url ?? row.hero_image_url, 1280),
     body: row.body_md,
     relatedActivitySlug: row.related_activity_slug ?? null,
     relatedJobSlug: row.related_job_slug ?? null,
@@ -105,6 +126,7 @@ async function fetchActiveContentRows() {
       c.dek,
       c.body_md,
       c.hero_image_url,
+      c.thumbnail_image_url,
       c.related_activity_id::text,
       c.related_job_id::text,
       related_activity.slug as related_activity_slug,
@@ -136,6 +158,7 @@ export async function getActiveContentRowById(contentId: string) {
         c.dek,
         c.body_md,
         c.hero_image_url,
+        c.thumbnail_image_url,
         c.related_activity_id::text,
         c.related_job_id::text,
         related_activity.slug as related_activity_slug,

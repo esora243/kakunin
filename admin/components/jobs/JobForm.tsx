@@ -9,6 +9,7 @@ import { publishStateOf, type PublishState } from "@/lib/publishing";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { FormSection, FieldLabel, TextInput, TextArea, SelectInput, FieldHint } from "@/components/ui/Form";
+import { MarkdownEditor } from "@/components/contents/MarkdownEditor";
 import { Banner } from "@/components/ui/Banner";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/StatusBadge";
@@ -17,8 +18,6 @@ import { isSafePublicUrl, japanLocalDateTimeToIso, operatorSlug } from "@/lib/op
 
 const STATE_LABEL: Record<PublishState, string> = {
   draft: "ドラフト",
-  review: "レビュー中",
-  approved: "承認済み",
   scheduled: "予約公開",
   published: "公開中",
   deactivated: "無効化",
@@ -26,8 +25,6 @@ const STATE_LABEL: Record<PublishState, string> = {
 
 const STATE_BADGE_VARIANT: Record<PublishState, StatusBadgeVariant> = {
   draft: "neutral",
-  review: "warning",
-  approved: "warning",
   scheduled: "info",
   published: "success",
   deactivated: "danger",
@@ -58,6 +55,7 @@ type FormState = {
   benefits: string;
   slug: string;
   applyUrl: string;
+  thumbnailImageUrl: string;
   externalSource: string;
   externalId: string;
   externalSlug: string;
@@ -87,6 +85,7 @@ function toFormState(job: JobDetailRow | null, categories: JobCategoryRow[], emp
     benefits: lines(job?.benefits),
     slug: job?.slug ?? "",
     applyUrl: job?.apply_url ?? "",
+    thumbnailImageUrl: job?.thumbnail_image_url ?? "",
     externalSource: job?.external_source ?? "admin",
     externalId: job?.external_id ?? "",
     externalSlug: job?.external_slug ?? "",
@@ -120,6 +119,7 @@ function toBody(form: FormState) {
     benefits: form.benefits.split("\n"),
     slug: form.slug || null,
     applyUrl: form.applyUrl || null,
+    thumbnailImageUrl: form.thumbnailImageUrl.trim() || null,
     externalSource: form.externalSource || null,
     externalId: form.externalId || null,
     externalSlug: form.externalSlug || null,
@@ -156,6 +156,8 @@ export function JobForm({
   const [warning, setWarning] = useState<string | null>(null);
   const [slugEdited, setSlugEdited] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const uploadInFlightRef = useRef(false);
   const saveInFlightRef = useRef(false);
   const state = job ? publishStateOf(job) : "draft";
   const isPublished = state === "published";
@@ -169,6 +171,53 @@ export function JobForm({
       if (key === "title" && mode === "create" && !slugEdited) next.slug = operatorSlug(String(value));
       return next;
     });
+  }
+
+  async function handleImageUpload(file: File) {
+    if (uploadInFlightRef.current) return;
+    uploadInFlightRef.current = true;
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/assets/upload", { method: "POST", body });
+      if (!response.ok) {
+        setError(await parseError(response, "画像の追加に失敗しました"));
+        return;
+      }
+      const uploaded = (await response.json()) as { publicUrl: string };
+      update("thumbnailImageUrl", uploaded.publicUrl);
+    } catch {
+      setError("通信エラーにより画像を追加できませんでした");
+    } finally {
+      uploadInFlightRef.current = false;
+      setUploading(false);
+    }
+  }
+
+  async function handleBodyImageUpload(file: File): Promise<string | null> {
+    if (uploadInFlightRef.current) return null;
+    uploadInFlightRef.current = true;
+    setUploading(true);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/assets/upload", { method: "POST", body });
+      if (!response.ok) {
+        setError(await parseError(response, "画像の追加に失敗しました"));
+        return null;
+      }
+      const uploaded = (await response.json()) as { publicUrl: string };
+      return uploaded.publicUrl;
+    } catch {
+      setError("通信エラーにより画像を追加できませんでした");
+      return null;
+    } finally {
+      uploadInFlightRef.current = false;
+      setUploading(false);
+    }
   }
 
   async function save() {
@@ -326,6 +375,27 @@ export function JobForm({
                   </option>
                 ))}
               </SelectInput>
+            </div>
+          </FormSection>
+
+          <FormSection title="求人画像" description="一覧と求人詳細に表示されます">
+            <div className="sm:col-span-2 space-y-2">
+              {form.thumbnailImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.thumbnailImageUrl} alt="現在の求人画像" className="h-32 w-auto rounded-md border border-stone-200 object-cover" />
+              ) : null}
+              <input
+                aria-label="求人画像を選択"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={uploading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void handleImageUpload(file);
+                }}
+                className="block text-sm text-stone-600 file:mr-3 file:rounded-md file:border file:border-stone-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-50"
+              />
+              {uploading ? <FieldHint>画像を追加しています...</FieldHint> : <FieldHint>画像を選ぶと現在の画像を差し替えます。</FieldHint>}
             </div>
           </FormSection>
 

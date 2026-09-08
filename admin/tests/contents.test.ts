@@ -19,6 +19,8 @@ function contentRow(overrides: Partial<AdminContentRow> = {}): AdminContentRow {
     dek: null,
     body_md: "Body",
     hero_image_url: null,
+    thumbnail_image_url: null,
+    click_count: 0,
     related_activity_id: null,
     related_job_id: null,
     published_at: null,
@@ -53,9 +55,8 @@ function fakeClient(responses: QueryResponse[]) {
 
 test("content workflow mutations lock the content row with FOR UPDATE", async () => {
   const publishAt = new Date("2026-07-20T00:00:00.000Z");
-  const before = contentRow({ approval_status: "approved" });
+  const before = contentRow();
   const after = contentRow({
-    approval_status: "approved",
     published_at: publishAt.toISOString(),
     first_published_at: publishAt.toISOString(),
   });
@@ -147,7 +148,7 @@ test("stale publish and reactivation stop before asset locks or mutation writes"
     }),
   ]) {
     const { client, calls } = fakeClient([
-      { rows: [contentRow({ approval_status: "approved" })] },
+      { rows: [contentRow()] },
       { rows: [{ matches: false }] },
     ]);
     await assert.rejects(
@@ -160,7 +161,7 @@ test("stale publish and reactivation stop before asset locks or mutation writes"
 });
 
 test("hero snapshot mismatch stops publish after row lock but before the asset advisory lock", async () => {
-  const before = contentRow({ approval_status: "approved", hero_image_url: "https://assets.example/new.webp" });
+  const before = contentRow({ hero_image_url: "https://assets.example/new.webp" });
   const { client, calls } = fakeClient([
     { rows: [before] },
     { rows: [{ matches: true }] },
@@ -181,15 +182,10 @@ test("hero snapshot mismatch stops publish after row lock but before the asset a
   assert.doesNotMatch(calls.map((call) => call.text).join("\n"), /pg_advisory|update contents/i);
 });
 
-test("material edits reset approval metadata for an approved unpublished content", async () => {
-  const before = contentRow({
-    approval_status: "approved",
-    approval_requested_by_admin_id: "admin-2",
-    approval_requested_at: "2026-07-08T01:00:00.000Z",
-    approved_by_admin_id: "admin-1",
-    approved_at: "2026-07-08T02:00:00.000Z",
-  });
-  const after = contentRow({ title: "Changed", approval_status: "draft" });
+test("publishing no longer requires approval: setPublishedAt publishes a draft directly", async () => {
+  const before = contentRow();
+  const publishAt = new Date("2026-07-20T00:00:00.000Z");
+  const after = contentRow({ published_at: publishAt.toISOString(), first_published_at: publishAt.toISOString() });
   const { client, calls } = fakeClient([
     { rows: [before] },
     { rows: [] },
@@ -199,23 +195,16 @@ test("material edits reset approval metadata for an approved unpublished content
     { rows: [] },
   ]);
 
-  await updateContent(client, "content-1", { title: "Changed" }, "admin-2");
+  await setPublishedAt(client, "content-1", publishAt, "admin-1");
 
-  assert.match(calls[3]?.text ?? "", /approval_status = 'draft'/i);
-  assert.match(calls[3]?.text ?? "", /approval_requested_by_admin_id = null/i);
-  assert.match(calls[3]?.text ?? "", /approved_by_admin_id = null/i);
-  assert.doesNotMatch(calls[3]?.text ?? "", /published_at = null/i);
+  assert.doesNotMatch(calls.map((call) => call.text).join("\n"), /approval_required/i);
+  assert.equal(calls[3]?.values?.[0], publishAt);
 });
 
-test("material edits cancel a scheduled publish and require approval again", async () => {
+test("material edits keep a scheduled publish in place without approval resets", async () => {
   const scheduledAt = "2099-07-20T00:00:00.000Z";
-  const before = contentRow({
-    approval_status: "approved",
-    published_at: scheduledAt,
-    approved_by_admin_id: "admin-1",
-    approved_at: "2026-07-08T02:00:00.000Z",
-  });
-  const after = contentRow({ body_md: "Changed", approval_status: "draft", published_at: null });
+  const before = contentRow({ published_at: scheduledAt });
+  const after = contentRow({ body_md: "Changed", published_at: scheduledAt });
   const { client, calls } = fakeClient([
     { rows: [before] },
     { rows: [] },
@@ -227,75 +216,8 @@ test("material edits cancel a scheduled publish and require approval again", asy
 
   await updateContent(client, "content-1", { bodyMd: "Changed" }, "admin-2");
 
-  assert.match(calls[3]?.text ?? "", /published_at = null/i);
-  assert.match(calls[3]?.text ?? "", /approval_status = 'draft'/i);
-});
-
-test("material edits reset in-review content but preserve changes-requested workflow", async () => {
-  for (const [approvalStatus, shouldReset] of [
-    ["in_review", true],
-    ["changes_requested", false],
-  ] as const) {
-    const before = contentRow({ approval_status: approvalStatus });
-    const after = contentRow({ title: "Changed", approval_status: shouldReset ? "draft" : approvalStatus });
-    const { client, calls } = fakeClient([
-      { rows: [before] },
-      { rows: [] },
-      { rows: [] },
-      { rows: [after] },
-      { rows: [] },
-      { rows: [] },
-    ]);
-
-    await updateContent(client, "content-1", { title: "Changed" }, "admin-2");
-
-    assert.equal(/approval_status = 'draft'/i.test(calls[3]?.text ?? ""), shouldReset);
-  }
-});
-
-test("normalized no-op edits keep approval and scheduled publication bound to the same revision", async () => {
-  const before = contentRow({
-    approval_status: "approved",
-    published_at: "2099-07-20T00:00:00.000Z",
-    approved_by_admin_id: "admin-1",
-    approved_at: "2026-07-08T02:00:00.000Z",
-  });
-  const { client, calls } = fakeClient([
-    { rows: [before] },
-    { rows: [] },
-    { rows: [] },
-    { rows: [before] },
-    { rows: [] },
-    { rows: [] },
-  ]);
-
-  await updateContent(client, "content-1", { title: `  ${before.title}  ` }, "admin-2");
-
-  assert.doesNotMatch(calls[3]?.text ?? "", /approval_status = 'draft'/i);
   assert.doesNotMatch(calls[3]?.text ?? "", /published_at = null/i);
-});
-
-test("live edits preserve the approval metadata and published timestamp", async () => {
-  const before = contentRow({
-    approval_status: "approved",
-    published_at: "2020-07-20T00:00:00.000Z",
-    approved_by_admin_id: "admin-1",
-    approved_at: "2020-07-19T00:00:00.000Z",
-  });
-  const after = contentRow({ ...before, title: "Live change" });
-  const { client, calls } = fakeClient([
-    { rows: [before] },
-    { rows: [] },
-    { rows: [] },
-    { rows: [after] },
-    { rows: [] },
-    { rows: [] },
-  ]);
-
-  await updateContent(client, "content-1", { title: "Live change" }, "admin-2");
-
   assert.doesNotMatch(calls[3]?.text ?? "", /approval_status = 'draft'/i);
-  assert.doesNotMatch(calls[3]?.text ?? "", /published_at = null/i);
 });
 
 test("content version restore preserves deactivated state", async () => {
@@ -315,8 +237,8 @@ test("content version restore preserves deactivated state", async () => {
   const result = await restoreContentVersion(client, "content-1", 2, "admin-1");
 
   assert.equal(result.after.is_active, false);
-  assert.equal(calls[4]?.values?.[10], false);
-  assert.match(calls[4]?.text ?? "", /is_active = \$11/);
+  assert.equal(calls[4]?.values?.[11], false);
+  assert.match(calls[4]?.text ?? "", /is_active = \$12/);
 });
 
 test("content version restore maps slug collisions to ConflictError", async () => {
@@ -343,16 +265,24 @@ test("content form prompts for scheduled or historically published slug changes"
   assert.doesNotMatch(source, /isPublished && slugChanged/);
 });
 
-test("content PATCH reports approval resets and the form explains required follow-up", () => {
+test("content PATCH reports schedule cancellations and the form explains required follow-up", () => {
   const routeSource = readFileSync(join(process.cwd(), "app/api/contents/[id]/route.ts"), "utf8");
   const formSource = readFileSync(join(process.cwd(), "components/contents/ContentForm.tsx"), "utf8");
 
-  assert.match(routeSource, /approvalReset:/);
+  assert.doesNotMatch(routeSource, /approvalReset/);
   assert.match(routeSource, /scheduleCancelled:/);
   assert.match(formSource, /result\.scheduleCancelled/);
-  assert.match(formSource, /もう一度承認・予約してください/);
-  assert.match(formSource, /result\.approvalReset/);
-  assert.match(formSource, /もう一度確認を依頼してください/);
+  assert.doesNotMatch(formSource, /approvalReset/);
+  assert.doesNotMatch(formSource, /handleApproval/);
+  assert.doesNotMatch(formSource, /公開を承認/);
   assert.match(formSource, /warnings\.push\("公開サイトへの反映に失敗/);
   assert.match(formSource, /setWarning\(warnings\.join/);
+});
+
+test("content form supports thumbnail and body image uploads", () => {
+  const formSource = readFileSync(join(process.cwd(), "components/contents/ContentForm.tsx"), "utf8");
+
+  assert.match(formSource, /thumbnailImageUrl/);
+  assert.match(formSource, /サムネイル画像/);
+  assert.match(formSource, /api\/assets\/upload/);
 });

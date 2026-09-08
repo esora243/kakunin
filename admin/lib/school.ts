@@ -347,3 +347,16 @@ export async function updateSyllabusClassEntry(
   });
   return { before, after };
 }
+
+export type ActiveUniversityOption = {
+  id: string;
+  name: string;
+};
+
+/** Active universities for the timetable manager's selectors. */
+export async function listActiveUniversities(): Promise<ActiveUniversityOption[]> {
+  const { rows } = await dbQuery<ActiveUniversityOption>(
+    `select id::text, name from universities where is_active = true order by name asc`,
+  );
+  return rows;
+}

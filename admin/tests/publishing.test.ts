@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ConflictError } from "../lib/errors";
-import { assertApprovalStatusMutable, isPubliclyVisible, parseScheduledAt, publishStateOf } from "../lib/publishing";
+import { isPubliclyVisible, parseScheduledAt, publishStateOf } from "../lib/publishing";
 
 test("publishStateOf treats is_active=false as deactivated regardless of published_at", () => {
   assert.equal(publishStateOf({ is_active: false, published_at: new Date(Date.now() - 1000).toISOString() }), "deactivated");
@@ -14,32 +13,21 @@ test("publishStateOf treats null published_at as draft", () => {
 
 test("publishStateOf has no separate unpublished state", () => {
   const states = [
-    publishStateOf({ is_active: true, published_at: null, approval_status: "draft" }),
-    publishStateOf({ is_active: true, published_at: null, approval_status: "changes_requested" }),
+    publishStateOf({ is_active: true, published_at: null }),
+    publishStateOf({ is_active: true, published_at: null }),
   ];
   assert.deepEqual(states, ["draft", "draft"]);
 });
 
-test("publishStateOf treats approval and future published_at as workflow states", () => {
+test("publishStateOf treats future published_at as scheduled and null as draft", () => {
   const future = new Date(Date.now() + 60_000).toISOString();
-  assert.equal(publishStateOf({ is_active: true, published_at: null, approval_status: "in_review" }), "review");
-  assert.equal(publishStateOf({ is_active: true, published_at: null, approval_status: "approved" }), "approved");
+  assert.equal(publishStateOf({ is_active: true, published_at: null }), "draft");
   assert.equal(publishStateOf({ is_active: true, published_at: future }), "scheduled");
 });
 
 test("publishStateOf treats past published_at with is_active=true as published", () => {
   const past = new Date(Date.now() - 60_000).toISOString();
   assert.equal(publishStateOf({ is_active: true, published_at: past }), "published");
-});
-
-test("assertApprovalStatusMutable blocks any scheduled or previously published content", () => {
-  const past = new Date(Date.now() - 60_000).toISOString();
-  const future = new Date(Date.now() + 60_000).toISOString();
-  assert.throws(() => assertApprovalStatusMutable({ is_active: true, published_at: past }), ConflictError);
-  assert.throws(() => assertApprovalStatusMutable({ is_active: true, published_at: future }), ConflictError);
-  assert.throws(() => assertApprovalStatusMutable({ is_active: false, published_at: past }), ConflictError);
-  assert.doesNotThrow(() => assertApprovalStatusMutable({ is_active: true, published_at: null }));
-  assert.doesNotThrow(() => assertApprovalStatusMutable({ is_active: false, published_at: null }));
 });
 
 test("isPubliclyVisible matches publishStateOf === published exactly", () => {

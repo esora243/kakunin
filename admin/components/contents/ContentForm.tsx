@@ -28,6 +28,7 @@ type FormState = {
   dek: string;
   bodyMd: string;
   heroImageUrl: string;
+  thumbnailImageUrl: string;
   relatedActivityId: string;
   relatedJobId: string;
 };
@@ -35,17 +36,8 @@ type FormState = {
 const STATE_BADGE_VARIANT: Record<PublishState, StatusBadgeVariant> = {
   published: "success",
   scheduled: "info",
-  review: "warning",
-  approved: "warning",
   draft: "neutral",
   deactivated: "danger",
-};
-
-const APPROVAL_LABEL: Record<AdminContentRow["approval_status"], string> = {
-  draft: "未確認",
-  in_review: "確認待ち",
-  approved: "承認済み",
-  changes_requested: "修正待ち",
 };
 
 function formatDateTime(value: string): string {
@@ -64,6 +56,7 @@ function toFormState(content: AdminContentRow | null, categories: ContentCategor
     dek: content?.dek ?? "",
     bodyMd: content?.body_md ?? "",
     heroImageUrl: content?.hero_image_url ?? "",
+    thumbnailImageUrl: content?.thumbnail_image_url ?? "",
     relatedActivityId: content?.related_activity_id ?? "",
     relatedJobId: content?.related_job_id ?? "",
   };
@@ -78,6 +71,7 @@ function toRequestBody(form: FormState) {
     bodyMd: form.bodyMd,
     dek: form.dek.trim() || null,
     heroImageUrl: form.heroImageUrl.trim() || null,
+    thumbnailImageUrl: form.thumbnailImageUrl.trim() || null,
     relatedActivityId: form.relatedActivityId.trim() || null,
     relatedJobId: form.relatedJobId.trim() || null,
   };
@@ -123,7 +117,6 @@ export function ContentForm({
   const isPublished = publishState === "published";
   const isScheduled = publishState === "scheduled";
   const slugChangeRequiresConfirmation = Boolean(content?.first_published_at || content?.published_at);
-  const canChangeApproval = content ? content.is_active && !content.published_at : false;
   const slugChanged = content ? form.slug.trim() !== content.slug : false;
   const firstPublishedAt = content?.first_published_at || content?.published_at;
 
@@ -143,7 +136,7 @@ export function ContentForm({
     });
   }
 
-  async function handleHeroUpload(file: File) {
+  async function handleImageUpload(file: File, key: "heroImageUrl" | "thumbnailImageUrl") {
     if (uploadInFlightRef.current) return;
     uploadInFlightRef.current = true;
     setUploading(true);
@@ -157,7 +150,7 @@ export function ContentForm({
         return;
       }
       const uploaded = (await response.json()) as { publicUrl: string };
-      update("heroImageUrl", uploaded.publicUrl);
+      update(key, uploaded.publicUrl);
     } catch {
       setError("通信エラーにより画像を追加できませんでした");
     } finally {
@@ -237,16 +230,13 @@ export function ContentForm({
       const result = (await response.json()) as {
         content: AdminContentRow;
         cacheWarning: boolean;
-        approvalReset?: boolean;
         scheduleCancelled?: boolean;
       };
       setContent(result.content);
       setForm(toFormState(result.content, categories));
       const warnings: string[] = [];
       if (result.scheduleCancelled) {
-        warnings.push("変更を保存し、公開予約を取り消しました。内容を再確認してから、もう一度承認・予約してください。");
-      } else if (result.approvalReset) {
-        warnings.push("変更を保存しました。内容が変わったため確認状態を下書きに戻しました。もう一度確認を依頼してください。");
+        warnings.push("変更を保存し、公開予約を取り消しました。");
       }
       if (result.cacheWarning) {
         warnings.push("公開サイトへの反映に失敗しました。管理責任者が運営ホームから再試行できます。");
@@ -306,31 +296,6 @@ export function ContentForm({
     }
   }
 
-  async function handleApproval(status: "in_review" | "approved" | "changes_requested") {
-    if (!content) return;
-    setError(null);
-    setWarning(null);
-    setSaving(true);
-    try {
-      const response = await fetch(`/api/contents/${content.id}/approval`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!response.ok) {
-        setError(await parseErrorMessage(response, "Approval update failed"));
-        return;
-      }
-      const result = (await response.json()) as { content: AdminContentRow };
-      setContent(result.content);
-    } catch {
-      setError("Approval update failed: network error");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const showApprovalSection = Boolean(content && canChangeApproval);
   const showPublishSection = Boolean(content && content.is_active);
   const showDangerZone = Boolean(content && identity.role === "owner");
 
@@ -371,14 +336,6 @@ export function ContentForm({
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 px-6 py-4">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <StatusBadge variant={STATE_BADGE_VARIANT[publishState]}>{PUBLISH_STATE_LABEL[publishState]}</StatusBadge>
-            {content ? (
-              <span className="text-sm text-stone-500">
-                確認状態: <span className="font-medium text-stone-700">{APPROVAL_LABEL[content.approval_status]}</span>
-              </span>
-            ) : null}
-            {content?.approved_at ? (
-              <span className="text-sm text-stone-500">承認日時: {formatDateTime(content.approved_at)}</span>
-            ) : null}
             {firstPublishedAt ? <span className="text-sm text-stone-500">初回公開: {formatDateTime(firstPublishedAt)}</span> : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -464,11 +421,32 @@ export function ContentForm({
                 disabled={uploading}
                 onChange={(event) => {
                   const file = event.target.files?.[0];
-                  if (file) void handleHeroUpload(file);
+                  if (file) void handleImageUpload(file, "heroImageUrl");
                 }}
                 className="block text-sm text-stone-600 file:mr-3 file:rounded-md file:border file:border-stone-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-50"
               />
               {uploading ? <FieldHint>画像を追加しています...</FieldHint> : <FieldHint>画像を選ぶと現在の画像を差し替えます。</FieldHint>}
+            </div>
+          </FormSection>
+
+          <FormSection title="サムネイル画像" description="一覧に表示される画像です。未設定の場合は記事画像が使われます。">
+            <div className="sm:col-span-2 space-y-2">
+              {form.thumbnailImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={form.thumbnailImageUrl} alt="現在のサムネイル画像" className="h-32 w-auto rounded-md border border-stone-200 object-cover" />
+              ) : null}
+              <input
+                aria-label="サムネイル画像を選択"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={uploading}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void handleImageUpload(file, "thumbnailImageUrl");
+                }}
+                className="block text-sm text-stone-600 file:mr-3 file:rounded-md file:border file:border-stone-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-stone-700 hover:file:bg-stone-50"
+              />
+              {uploading ? <FieldHint>画像を追加しています...</FieldHint> : <FieldHint>画像を選ぶと現在のサムネイルを差し替えます。</FieldHint>}
             </div>
           </FormSection>
 
@@ -503,42 +481,6 @@ export function ContentForm({
         </div>
       </Card>
 
-      {showApprovalSection ? (
-        <div className="mt-6">
-          <Card title="公開前の確認" description="別の運営メンバーが内容を確認してから公開します。">
-            <div className="flex flex-wrap gap-2">
-              {content && content.approval_status !== "in_review" ? (
-                <Button type="button" variant="secondary" disabled={saving} onClick={() => void handleApproval("in_review")}>
-                  確認を依頼
-                </Button>
-              ) : null}
-              {content && identity.role === "owner" && content.approval_status !== "approved" ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={saving}
-                  onClick={() => void handleApproval("approved")}
-                  className="border-sky-300 text-sky-700 hover:bg-sky-50"
-                >
-                  公開を承認
-                </Button>
-              ) : null}
-              {content && identity.role === "owner" && content.approval_status === "in_review" ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={saving}
-                  onClick={() => void handleApproval("changes_requested")}
-                  className="border-amber-300 text-amber-700 hover:bg-amber-50"
-                >
-                  修正を依頼
-                </Button>
-              ) : null}
-            </div>
-          </Card>
-        </div>
-      ) : null}
-
       {showPublishSection ? (
         <div className="mt-6">
           <Card title="公開操作" description="公開日時の予約・公開の停止を行います。">
@@ -554,8 +496,7 @@ export function ContentForm({
                   />
                   <Button
                     type="button"
-                    disabled={saving || content.approval_status !== "approved"}
-                    title={content.approval_status !== "approved" ? "公開前の承認が必要です" : undefined}
+                    disabled={saving}
                     onClick={() => void handleAction("publish")}
                   >
                     {scheduledAt ? "公開を予約" : "今すぐ公開"}

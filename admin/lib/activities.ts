@@ -15,6 +15,7 @@ export type ActivityListRow = {
   action_type: string;
   location_pref: string | null;
   deadline_at: string | null;
+  thumbnail_image_url: string | null;
   is_active: boolean;
   published_at: string | null;
   updated_at: string;
@@ -68,6 +69,7 @@ export type ActivityInput = {
   benefitsJson?: string[];
   sourceName?: string | null;
   sourceUrl?: string | null;
+  thumbnailImageUrl?: string | null;
 };
 
 const LIST_SELECT = `
@@ -78,6 +80,7 @@ const LIST_SELECT = `
     a.action_type,
     a.location_pref,
     a.deadline_at::text,
+    a.thumbnail_image_url,
     a.is_active,
     a.published_at::text,
     a.updated_at::text,
@@ -114,6 +117,7 @@ export async function getActivityRowById(id: string): Promise<ActivityDetailRow 
         a.action_type,
         a.location_pref,
         a.deadline_at::text,
+        a.thumbnail_image_url,
         a.is_active,
         a.published_at::text,
         a.updated_at::text,
@@ -164,6 +168,13 @@ function optionalUrl(value: unknown, field: string): string | null {
   return url;
 }
 
+function optionalThumbnailUrl(value: unknown): string | null {
+  const url = stringOrNull(value);
+  if (!url) return null;
+  if (!/^https:\/\//i.test(url)) throw new ValidationError("thumbnailImageUrl must be an https URL");
+  return url;
+}
+
 function optionalTimestamp(value: unknown, field: string): string | null {
   const text = stringOrNull(value);
   if (!text) return null;
@@ -205,7 +216,12 @@ export function pickActivityInputFields(body: Record<string, unknown>): Activity
     benefitsJson: optionalStringArray(body.benefitsJson),
     sourceName: stringOrNull(body.sourceName),
     sourceUrl: optionalUrl(body.sourceUrl, "Source URL"),
+    thumbnailImageUrl: optionalThumbnailUrl(body.thumbnailImageUrl),
   };
+}
+
+export function pickActivityThumbnailPatch(body: Record<string, unknown>): { thumbnailImageUrl: string | null } {
+  return { thumbnailImageUrl: optionalThumbnailUrl(body.thumbnailImageUrl) };
 }
 
 async function getActivityRowByIdForUpdate(client: PoolClient, id: string): Promise<ActivityDetailRow | null> {
@@ -218,6 +234,7 @@ async function getActivityRowByIdForUpdate(client: PoolClient, id: string): Prom
         a.action_type,
         a.location_pref,
         a.deadline_at::text,
+        a.thumbnail_image_url,
         a.is_active,
         a.published_at::text,
         a.updated_at::text,
@@ -260,9 +277,9 @@ export async function createActivity(client: PoolClient, input: ActivityInput, a
           slug, kind, title, host_name, summary, description_md, action_type, action_url,
           target_audience, location_pref, location_detail, starts_at, ends_at, deadline_at,
           capacity_display, requirements_json, benefits_json, source_name, source_url,
-          source_last_modified_at, synced_at
+          thumbnail_image_url, source_last_modified_at, synced_at
         )
-        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::timestamptz, $13::timestamptz, $14::timestamptz, $15, $16::jsonb, $17::jsonb, $18, $19, now(), now())
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::timestamptz, $13::timestamptz, $14::timestamptz, $15, $16::jsonb, $17::jsonb, $18, $19, $20, now(), now())
         returning id::text
       `,
       [
@@ -285,6 +302,7 @@ export async function createActivity(client: PoolClient, input: ActivityInput, a
         JSON.stringify(input.benefitsJson ?? []),
         input.sourceName,
         input.sourceUrl,
+        input.thumbnailImageUrl ?? null,
       ],
     ));
   } catch (error) {
@@ -338,6 +356,7 @@ export async function updateActivity(
           benefits_json = $18::jsonb,
           source_name = $19,
           source_url = $20,
+          thumbnail_image_url = $21,
           source_last_modified_at = now(),
           synced_at = now()
         where id = $1
@@ -363,6 +382,7 @@ export async function updateActivity(
         JSON.stringify(input.benefitsJson ?? []),
         input.sourceName,
         input.sourceUrl,
+        input.thumbnailImageUrl ?? null,
       ],
     );
   } catch (error) {
@@ -377,6 +397,39 @@ export async function updateActivity(
   const after = await getActivityRowByIdForUpdate(client, id);
   if (!after) throw new NotFoundError("Activity not found after update");
   await writeAuditLog(client, { actorAdminId, action: "activity.update", resourceType: "activities", resourceId: id, beforeSnapshot: before, afterSnapshot: after });
+  return { before, after };
+}
+
+export async function updateActivityThumbnail(
+  client: PoolClient,
+  id: string,
+  thumbnailImageUrl: string | null,
+  actorAdminId: string,
+  expectedUpdatedAt?: string,
+): Promise<{ before: ActivityDetailRow; after: ActivityDetailRow }> {
+  const before = await getActivityRowByIdForUpdate(client, id);
+  if (!before) throw new NotFoundError("Activity not found");
+  if (expectedUpdatedAt !== undefined && !(await timestampsMatch(client, before.updated_at, expectedUpdatedAt))) {
+    throw new ConflictError("別の管理者が更新しました。再読み込みしてください", "stale_write");
+  }
+  await client.query(
+    `update activities set
+       thumbnail_image_url = $2,
+       synced_at = now()
+     where id = $1`,
+    [id, thumbnailImageUrl],
+  );
+  const after = await getActivityRowByIdForUpdate(client, id);
+  if (!after) throw new NotFoundError("Activity not found after thumbnail update");
+  await writeAuditLog(client, {
+    actorAdminId,
+    action: "activity.thumbnail_update",
+    resourceType: "activities",
+    resourceId: id,
+    beforeSnapshot: before,
+    afterSnapshot: after,
+    metadata: { field: "thumbnail_image_url" },
+  });
   return { before, after };
 }
 

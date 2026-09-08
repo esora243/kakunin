@@ -23,8 +23,6 @@ export const metadata: Metadata = {
 const STATE_BADGE_VARIANT: Record<PublishState, StatusBadgeVariant> = {
   published: "success",
   scheduled: "info",
-  review: "warning",
-  approved: "warning",
   draft: "neutral",
   deactivated: "danger",
 };

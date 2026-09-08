@@ -18,8 +18,6 @@ export const dynamic = "force-dynamic";
 
 const STATE_LABEL: Record<PublishState, string> = {
   draft: "ドラフト",
-  review: "レビュー中",
-  approved: "承認済み",
   scheduled: "予約公開",
   published: "公開中",
   deactivated: "無効化",
@@ -27,8 +25,6 @@ const STATE_LABEL: Record<PublishState, string> = {
 
 const STATE_BADGE_VARIANT: Record<PublishState, StatusBadgeVariant> = {
   draft: "neutral",
-  review: "warning",
-  approved: "warning",
   scheduled: "info",
   published: "success",
   deactivated: "danger",

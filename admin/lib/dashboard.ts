@@ -1,19 +1,18 @@
 import "server-only";
 
 import { listPendingCacheInvalidationRetries } from "./cache-invalidate";
-import { CONTENT_DRAFT_APPROVAL_STATUSES } from "./content-workflow";
 import { dbQuery, DatabaseConfigError } from "./db/postgres";
 
 export type DashboardCounts = {
   contents: {
     total: number;
     draft: number;
-    review: number;
-    approved: number;
     scheduled: number;
     published: number;
     deactivated: number;
+    clicks: number;
   };
+  sponsorClicks: { total: number; placements: number };
   inquiries: { open: number; inProgress: number; closed: number };
   assets: { total: number; deleted: number };
   adminUsers: { activeOwners: number; activeEditors: number; inactiveTotal: number };
@@ -42,11 +41,12 @@ export async function loadDashboardData(): Promise<DashboardData> {
     const [
       contentsTotal,
       contentsDraft,
-      contentsReview,
-      contentsApproved,
       contentsScheduled,
       contentsPublished,
       contentsDeactivated,
+      contentsClicks,
+      sponsorClickTotal,
+      sponsorClickPlacements,
       inquiriesOpen,
       inquiriesInProgress,
       inquiriesClosed,
@@ -60,14 +60,13 @@ export async function loadDashboardData(): Promise<DashboardData> {
       pendingCacheRetries,
     ] = await Promise.all([
       countRows("select count(*) from contents"),
-      countRows(
-        `select count(*) from contents where is_active = true and published_at is null and approval_status in (${CONTENT_DRAFT_APPROVAL_STATUSES.map((status) => `'${status}'`).join(", ")})`,
-      ),
-      countRows("select count(*) from contents where is_active = true and published_at is null and approval_status = 'in_review'"),
-      countRows("select count(*) from contents where is_active = true and published_at is null and approval_status = 'approved'"),
+      countRows("select count(*) from contents where is_active = true and published_at is null"),
       countRows("select count(*) from contents where is_active = true and published_at is not null and published_at > now()"),
       countRows("select count(*) from contents where is_active = true and published_at is not null and published_at <= now()"),
       countRows("select count(*) from contents where is_active = false"),
+      countRows("select coalesce(sum(click_count), 0) from contents"),
+      countRows("select coalesce(sum(click_count), 0) from sponsor_click_counts"),
+      countRows("select count(*) from sponsor_click_counts"),
       countRows("select count(*) from inquiries where status = 'open'"),
       countRows("select count(*) from inquiries where status = 'in_progress'"),
       countRows("select count(*) from inquiries where status = 'closed'"),
@@ -85,12 +84,12 @@ export async function loadDashboardData(): Promise<DashboardData> {
       contents: {
         total: contentsTotal,
         draft: contentsDraft,
-        review: contentsReview,
-        approved: contentsApproved,
         scheduled: contentsScheduled,
         published: contentsPublished,
         deactivated: contentsDeactivated,
+        clicks: contentsClicks,
       },
+      sponsorClicks: { total: sponsorClickTotal, placements: sponsorClickPlacements },
       inquiries: { open: inquiriesOpen, inProgress: inquiriesInProgress, closed: inquiriesClosed },
       assets: { total: assetsTotal, deleted: assetsDeleted },
       adminUsers: { activeOwners, activeEditors, inactiveTotal: inactiveAdminTotal },

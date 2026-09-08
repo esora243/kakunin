@@ -71,7 +71,7 @@ async function checkDatabaseReachable(): Promise<boolean> {
   }
 }
 
-const CONTENT_STATE_ORDER: PublishState[] = ["review", "scheduled", "draft", "approved", "published", "deactivated"];
+const CONTENT_STATE_ORDER: PublishState[] = ["scheduled", "draft", "published", "deactivated"];
 
 function MetricLink({ label, value, href, attention = false }: { label: string; value: number; href: string; attention?: boolean }) {
   return (
@@ -156,11 +156,10 @@ export default async function DashboardPage() {
           <span className="text-xs text-stone-500">優先して確認する項目</span>
         </div>
         <div className="overflow-hidden rounded-lg border border-stone-200 bg-white">
-          {dashboard.contents.review > 0 ? <ActionItem icon={<TriangleAlert className="h-5 w-5" />} label="確認待ちの記事" detail="内容を確認して承認または修正依頼を行います" count={dashboard.contents.review} href="/contents?state=review" /> : null}
           {dashboard.inquiries.open > 0 ? <ActionItem icon={<MessageSquareWarning className="h-5 w-5" />} label="未対応のお問い合わせ" detail="新しく届いた内容を確認します" count={dashboard.inquiries.open} href="/inquiries?status=open" /> : null}
           {dashboard.contents.scheduled > 0 ? <ActionItem icon={<CalendarClock className="h-5 w-5" />} label="公開予約中の記事" detail="公開日時と内容を確認します" count={dashboard.contents.scheduled} href="/contents?state=scheduled" /> : null}
           {isOwner && dashboard.pendingCacheRetries.length > 0 ? <ActionItem icon={<RefreshCw className="h-5 w-5" />} label="公開サイトへの反映エラー" detail="保存内容の反映を再試行します" count={dashboard.pendingCacheRetries.length} href="#cache-retries" /> : null}
-          {dashboard.contents.review === 0 && dashboard.inquiries.open === 0 && dashboard.contents.scheduled === 0 && (!isOwner || dashboard.pendingCacheRetries.length === 0) ? (
+          {dashboard.inquiries.open === 0 && dashboard.contents.scheduled === 0 && (!isOwner || dashboard.pendingCacheRetries.length === 0) ? (
             <div className="flex items-center gap-3 px-4 py-4 text-sm text-stone-600"><Check className="h-5 w-5 text-emerald-600" />現在対応が必要な項目はありません</div>
           ) : null}
         </div>
@@ -169,7 +168,8 @@ export default async function DashboardPage() {
       <MetricSection title="記事の公開状況" description="記事が公開工程のどこにあるかを確認できます" action={<Link href="/contents" className="text-xs font-medium text-orange-700 hover:underline">記事一覧へ</Link>}>
         <MetricLink label="全記事" value={dashboard.contents.total} href="/contents" />
         <MetricLink label="有効な記事" value={dashboard.contents.total - dashboard.contents.deactivated} href="/contents" />
-        {CONTENT_STATE_ORDER.map((state) => <MetricLink key={state} label={PUBLISH_STATE_LABEL[state]} value={dashboard.contents[state]} href={`/contents?state=${state}`} attention={state === "review" || state === "scheduled"} />)}
+        <MetricLink label="記事クリック数" value={dashboard.contents.clicks} href="/contents" />
+        {CONTENT_STATE_ORDER.map((state) => <MetricLink key={state} label={PUBLISH_STATE_LABEL[state]} value={dashboard.contents[state]} href={`/contents?state=${state}`} attention={state === "scheduled"} />)}
       </MetricSection>
 
       <MetricSection title="お問い合わせ" description="受付後の対応状況です" action={<Link href="/inquiries" className="text-xs font-medium text-orange-700 hover:underline">お問い合わせ一覧へ</Link>}>
@@ -184,6 +184,7 @@ export default async function DashboardPage() {
         <MetricLink label="課外活動" value={dashboard.activities.total} href="/activities" />
         <MetricLink label="画像・ファイル" value={dashboard.assets.total} href="/assets" />
         <MetricLink label="削除済みファイル" value={dashboard.assets.deleted} href="/assets?deleted=1" />
+        <MetricLink label="広告クリック数" value={dashboard.sponsorClicks.total} href="/" />
       </MetricSection>
 
       {isOwner ? (

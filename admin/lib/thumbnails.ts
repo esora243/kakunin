@@ -29,7 +29,7 @@ export async function assertThumbnailUrlSafe(
   if (typeof url !== "string") {
     throw new ValidationError("Thumbnail URL must be a string", "thumbnail_url_invalid");
   }
-  if (!isManagedPublicAssetUrl(url, options)) {
+  if (!isManagedPublicAssetUrl(url, options.env ?? process.env)) {
     throw new ValidationError(
       "Thumbnail must reference a managed public asset uploaded via /admin/api/assets/upload",
       "thumbnail_url_unmanaged",

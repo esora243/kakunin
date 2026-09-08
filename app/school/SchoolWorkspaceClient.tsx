@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, FileText, type LucideIcon } from "lucide-react";
+import { CalendarDays, FileText, Users, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { AuthBoundary } from "@/components/AuthBoundary";
 import { useAuth } from "@/components/AuthContext";
@@ -19,6 +19,7 @@ import type {
 import { SchoolClassDetailView } from "./SchoolClassDetailView";
 import { SchoolSyllabusTab } from "./SchoolSyllabusTab";
 import { SchoolTimetableTab } from "./SchoolTimetableTab";
+import { SharedTimetableTab } from "./SharedTimetableTab";
 import {
   emptyTimetableGrid,
   isCurrentTimetableRequest,
@@ -39,6 +40,7 @@ type SchoolPageClientProps = {
 const TAB_BUTTONS: Array<{ key: SchoolWorkspaceTab; label: string; icon: LucideIcon }> = [
   { key: "timetable", label: "次の情報＋時間割", icon: CalendarDays },
   { key: "syllabus", label: "シラバス", icon: FileText },
+  { key: "shared", label: "共有時間割", icon: Users },
 ];
 
 function SchoolWorkspaceInner({
@@ -318,6 +320,14 @@ function SchoolWorkspaceInner({
             onToggleClass={(classId, inMyTimetable) =>
               void mutateClass(classId, inMyTimetable ? "remove" : "add")
             }
+          />
+        ) : null}
+
+        {activeTab === "shared" ? (
+          <SharedTimetableTab
+            authHydrated={authHydrated}
+            isLoggedIn={isLoggedIn}
+            onLogin={openLoginModal}
           />
         ) : null}
       </Container>

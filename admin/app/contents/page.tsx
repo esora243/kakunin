@@ -20,8 +20,6 @@ type SearchParams = Record<string, string | string[] | undefined>;
 const STATE_BADGE_VARIANT: Record<PublishState, StatusBadgeVariant> = {
   published: "success",
   scheduled: "info",
-  review: "warning",
-  approved: "warning",
   draft: "neutral",
   deactivated: "danger",
 };
@@ -99,11 +97,12 @@ export default async function ContentsPage({ searchParams }: { searchParams: Pro
             <Th>種類</Th>
             <Th>カテゴリ</Th>
             <Th>公開状態</Th>
+            <Th align="right">クリック数</Th>
             <Th align="right">更新日時</Th>
           </THead>
           <tbody>
             <tr>
-              <td colSpan={5}>
+              <td colSpan={6}>
                 <EmptyState
                   icon={FileText}
                   title={hasFilters ? "条件に一致する記事がありません" : "記事がまだありません"}
@@ -131,6 +130,7 @@ export default async function ContentsPage({ searchParams }: { searchParams: Pro
             <Th>種類</Th>
             <Th>カテゴリ</Th>
             <Th>公開状態</Th>
+            <Th align="right">クリック数</Th>
             <Th align="right">更新日時</Th>
           </THead>
           <tbody>
@@ -151,6 +151,7 @@ export default async function ContentsPage({ searchParams }: { searchParams: Pro
                   <Td>
                     <StatusBadge variant={STATE_BADGE_VARIANT[state]}>{PUBLISH_STATE_LABEL[state]}</StatusBadge>
                   </Td>
+                  <TdMono align="right">{row.click_count ?? 0}</TdMono>
                   <TdMono align="right">{formatDateTime(row.updated_at)}</TdMono>
                 </Tr>
               );

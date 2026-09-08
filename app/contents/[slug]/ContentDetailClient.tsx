@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect } from "react";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { SaveButton } from "@/components/SaveButton";
 import { useSavedItems } from "@/components/SavedItemsContext";
@@ -10,6 +11,16 @@ import type { ContentDetailDto } from "@/lib/content-dto";
 
 export function ContentDetailClient({ item }: { item: ContentDetailDto }) {
   const { isSaved, toggleSaved } = useSavedItems();
+
+  // 記事クリック（閲覧）を記録する。失敗しても表示には影響させない。
+  useEffect(() => {
+    void fetch("/api/tracking/content-click", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contentId: item.id }),
+      keepalive: true,
+    }).catch(() => {});
+  }, [item.id]);
 
   return (
     <DetailScaffold

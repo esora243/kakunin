@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { AdminContentRow } from "../lib/content-dto";
 import {
-  assertContentApprovalTransitionAllowed,
   assertContentSlugChangeAllowed,
-  CONTENT_DRAFT_APPROVAL_STATUSES,
   CONTENT_STATE_OPTIONS,
   reactivateContent,
 } from "../lib/content-workflow";
@@ -20,6 +18,8 @@ function contentRow(overrides: Partial<AdminContentRow> = {}): AdminContentRow {
     dek: null,
     body_md: "Body",
     hero_image_url: null,
+    thumbnail_image_url: null,
+    click_count: 0,
     related_activity_id: null,
     related_job_id: null,
     published_at: null,
@@ -37,22 +37,6 @@ function contentRow(overrides: Partial<AdminContentRow> = {}): AdminContentRow {
     ...overrides,
   };
 }
-
-test("approval transition helper forbids non-owner approve and request-changes while allowing editor review requests", () => {
-  assert.doesNotThrow(() => assertContentApprovalTransitionAllowed({ role: "editor" }, "in_review"));
-  for (const status of ["approved", "changes_requested"] as const) {
-    assert.throws(
-      () => assertContentApprovalTransitionAllowed({ role: "editor" }, status),
-      (error) =>
-        error instanceof ForbiddenError &&
-        error.status === 403 &&
-        error.code === "owner_approval_required",
-    );
-  }
-  assert.doesNotThrow(() => assertContentApprovalTransitionAllowed({ role: "owner" }, "approved"));
-  assert.doesNotThrow(() => assertContentApprovalTransitionAllowed({ role: "owner" }, "changes_requested"));
-  assert.throws(() => assertContentApprovalTransitionAllowed({ role: "owner" }, "invalid"), ValidationError);
-});
 
 test("reactivateContent invokes the production route dependencies with setActive true and returns cache warning shape", async () => {
   const after = contentRow({ is_active: true });
@@ -117,13 +101,10 @@ test("reactivateContent completes external preflight before starting the mutatio
   assert.deepEqual(calls, ["probe-start", "probe-complete", `mutation:${current.updated_at}`]);
 });
 
-test("contents state options expose only reachable publish states", () => {
-  assert.deepEqual(CONTENT_STATE_OPTIONS, ["draft", "review", "approved", "scheduled", "published", "deactivated"]);
-  assert.equal(CONTENT_STATE_OPTIONS.includes("unpublished" as never), false);
-});
-
-test("dashboard draft approval statuses match publishStateOf draft semantics for changes requested", () => {
-  assert.deepEqual(CONTENT_DRAFT_APPROVAL_STATUSES, ["draft", "changes_requested"]);
+test("contents state options expose only reachable publish states without approval states", () => {
+  assert.deepEqual(CONTENT_STATE_OPTIONS, ["draft", "scheduled", "published", "deactivated"]);
+  assert.equal(CONTENT_STATE_OPTIONS.includes("review" as never), false);
+  assert.equal(CONTENT_STATE_OPTIONS.includes("approved" as never), false);
 });
 
 test("slug changes for previously published content remain owner-confirmed while deactivated", () => {

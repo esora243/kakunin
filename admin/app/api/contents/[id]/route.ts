@@ -7,6 +7,7 @@ import { mutateWithPublicCacheInvalidation } from "@/lib/cache-invalidate";
 import { requireUuidParam } from "@/lib/query-params";
 import { requireExpectedUpdatedAt } from "@/lib/concurrency";
 import { assertManagedPublicAssetReadable } from "@/lib/gcs";
+import { assertThumbnailUrlSafe } from "@/lib/thumbnails";
 
 export const GET = adminApiRoute("any", async (_identity, request) => {
   const id = requireUuidParam(new URL(request.url).pathname.split("/").pop(), "Content id");
@@ -30,6 +31,17 @@ export const PATCH = adminApiRoute("any", async (identity, request) => {
     && patch.heroImageUrl !== current.hero_image_url;
   if (replacingPublishedHero) await assertManagedPublicAssetReadable(patch.heroImageUrl ?? null);
 
+  const replacingPublishedThumbnail = isPubliclyVisible(current)
+    && "thumbnailImageUrl" in patch
+    && patch.thumbnailImageUrl !== current.thumbnail_image_url;
+  if (replacingPublishedThumbnail) {
+    await assertThumbnailUrlSafe(patch.thumbnailImageUrl ?? null);
+  } else if (patch.thumbnailImageUrl === null && current.thumbnail_image_url) {
+    // Clearing a thumbnail never needs a probe.
+  } else if (typeof patch.thumbnailImageUrl === "string") {
+    validateThumbnailSyntax(patch.thumbnailImageUrl);
+  }
+
   const { value: { before, after }, cacheResult } = await mutateWithPublicCacheInvalidation(
     identity.adminId,
     (client) =>
@@ -49,7 +61,14 @@ export const PATCH = adminApiRoute("any", async (identity, request) => {
   return {
     content: after,
     cacheWarning: !cacheResult.ok,
-    approvalReset: before.approval_status !== "draft" && after.approval_status === "draft",
     scheduleCancelled: before.published_at !== null && after.published_at === null,
   };
 });
+
+function validateThumbnailSyntax(url: string): void {
+  // Minimal syntax guard for the inline edit; the dedicated thumbnail
+  // endpoint performs the full managed-URL probe below.
+  if (!/^https:\/\//i.test(url)) {
+    throw new ValidationError("thumbnailImageUrl must be an https URL", "thumbnail_url_invalid");
+  }
+}

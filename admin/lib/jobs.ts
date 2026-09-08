@@ -20,6 +20,7 @@ export type JobListRow = {
 };
 
 export type JobDetailRow = JobListRow & {
+  thumbnail_image_url: string | null;
   external_source: string;
   external_id: string;
   external_slug: string | null;
@@ -70,6 +71,7 @@ export type JobInput = {
   benefits?: string[];
   slug?: string | null;
   applyUrl?: string | null;
+  thumbnailImageUrl?: string | null;
   externalSource?: string | null;
   externalId?: string | null;
   externalSlug?: string | null;
@@ -134,6 +136,7 @@ export async function getJobRowById(id: string): Promise<JobDetailRow | null> {
         j.updated_at::text,
         jc.name as job_category_name,
         et.name as employment_type_name,
+        j.thumbnail_image_url,
         j.external_source,
         j.external_id,
         j.external_slug,
@@ -202,6 +205,13 @@ function optionalUrl(value: unknown, field: string): string | null {
   }
 }
 
+function optionalThumbnailUrl(value: unknown): string | null {
+  const url = stringOrNull(value);
+  if (!url) return null;
+  if (!/^https:\/\//i.test(url)) throw new ValidationError("thumbnailImageUrl must be an https URL");
+  return url;
+}
+
 export function assertJobApplyReady(applyUrl: string | null | undefined): void {
   if (!optionalUrl(applyUrl, "Apply URL")) {
     throw new ValidationError("A valid HTTPS apply URL is required before publishing", "apply_url_required");
@@ -242,6 +252,7 @@ export function pickJobInputFields(body: Record<string, unknown>): JobInput {
     benefits: optionalStringArray(body.benefits),
     slug: stringOrNull(body.slug),
     applyUrl: optionalUrl(body.applyUrl, "Apply URL"),
+    thumbnailImageUrl: optionalThumbnailUrl(body.thumbnailImageUrl),
     externalSource: stringOrNull(body.externalSource),
     externalId: stringOrNull(body.externalId),
     externalSlug: stringOrNull(body.externalSlug),
@@ -261,6 +272,7 @@ async function getJobRowByIdForUpdate(client: PoolClient, id: string): Promise<J
         j.updated_at::text,
         jc.name as job_category_name,
         et.name as employment_type_name,
+        j.thumbnail_image_url,
         j.external_source,
         j.external_id,
         j.external_slug,
@@ -308,9 +320,9 @@ export async function createJob(client: PoolClient, input: JobInput, actorAdminI
           external_source, external_id, external_slug, title, job_category_id, employment_type_id, university_id,
           location_pref, location_detail, summary, description_md, company_name, company_type, salary_min,
           salary_display, work_schedule, requirements_summary, requirements_list, benefits, slug, apply_url,
-          source_last_modified_at, synced_at
+          thumbnail_image_url, source_last_modified_at, synced_at
         )
-        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19::jsonb, $20, $21, now(), now())
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19::jsonb, $20, $21, $22, now(), now())
         returning id::text
       `,
       [
@@ -335,6 +347,7 @@ export async function createJob(client: PoolClient, input: JobInput, actorAdminI
         JSON.stringify(input.benefits ?? []),
         input.slug,
         input.applyUrl,
+        input.thumbnailImageUrl ?? null,
       ],
     ));
   } catch (error) {
@@ -395,9 +408,10 @@ export async function updateJob(
           benefits = $17::jsonb,
           slug = $18,
           apply_url = $19,
-          external_source = $20,
-          external_id = $21,
-          external_slug = $22,
+          thumbnail_image_url = $20,
+          external_source = $21,
+          external_id = $22,
+          external_slug = $23,
           source_last_modified_at = now(),
           synced_at = now()
         where id = $1
@@ -422,6 +436,7 @@ export async function updateJob(
         JSON.stringify(input.benefits ?? []),
         input.slug,
         input.applyUrl,
+        input.thumbnailImageUrl ?? null,
         input.externalSource ?? before.external_source,
         input.externalId ?? before.external_id,
         input.externalSlug,
