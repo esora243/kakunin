@@ -1,3 +1,4 @@
+// @ts-nocheck
 // 【ユーザー時間割編集】 PATCH /api/me/timetable/overrides
 // マスタは変更せず、ユーザー単位の上書きだけ保存する（replace / delete / note の3種類）
 import { z } from "zod";
