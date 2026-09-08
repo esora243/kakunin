@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import Image from "next/image";
 import { MarkdownContent } from "@/components/MarkdownContent";
 import { SaveButton } from "@/components/SaveButton";
 import { useSavedItems } from "@/components/SavedItemsContext";
@@ -10,16 +10,6 @@ import type { ContentDetailDto } from "@/lib/content-dto";
 
 export function ContentDetailClient({ item }: { item: ContentDetailDto }) {
   const { isSaved, toggleSaved } = useSavedItems();
-
-  // 記事クリック（閲覧）を記録する。失敗しても表示には影響させない。
-  useEffect(() => {
-    void fetch("/api/tracking/content-click", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ contentId: item.id }),
-      keepalive: true,
-    }).catch(() => {});
-  }, [item.id]);
 
   return (
     <DetailScaffold
@@ -31,7 +21,20 @@ export function ContentDetailClient({ item }: { item: ContentDetailDto }) {
       }
     >
       <article>
-        <span className="text-meta font-bold text-brand-600">{item.category.name}</span>
+        {item.heroImageUrl ? (
+          <div className="-mx-4 sm:-mx-6">
+            <Image
+              src={item.heroImageUrl}
+              alt={item.title}
+              width={1200}
+              height={630}
+              priority
+              sizes="(max-width: 768px) 100vw, 1200px"
+              className="aspect-[16/9] w-full object-cover"
+            />
+          </div>
+        ) : null}
+        <span className="mt-6 block text-meta font-bold text-brand-600">{item.category.name}</span>
         <h1 className="mt-2 text-h1 font-bold leading-snug text-primary">{item.title}</h1>
         {item.dek ? <p className="mt-3 text-lead text-secondary">{item.dek}</p> : null}
 

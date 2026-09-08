@@ -1,0 +1,130 @@
+diff --git a/admin/.env.example b/admin/.env.example
+index 7794d0f..80aa9e3 100644
+--- a/admin/.env.example
++++ b/admin/.env.example
+@@ -37,6 +37,11 @@ ADMIN_SESSION_SECRET=
+ # HUGMEID_DEPLOY_ENV is not "local", the app rejects admin requests/access.
+ ADMIN_LOCAL_AUTH_BYPASS_EMAIL=
+ 
++# Local-only FULL auth bypass (development). When "true" with
++# HUGMEID_DEPLOY_ENV=local, no Google OAuth and no admin_users DB lookup is
++# required: the app runs as a built-in owner admin. Refused outside local.
++ADMIN_DEV_AUTH_BYPASS=
++
+ # Google Cloud Storage bucket used for Contents hero image uploads.
+ # Use a separate bucket per environment, e.g. hugmeid-public-assets-staging /
+ # hugmeid-public-assets-prod. GCP-side bucket/IAM provisioning is out of scope
+diff --git a/admin/app/layout.tsx b/admin/app/layout.tsx
+index 80e8c9b..05a3845 100644
+--- a/admin/app/layout.tsx
++++ b/admin/app/layout.tsx
+@@ -2,6 +2,7 @@ import type { Metadata } from "next";
+ import type { ReactNode } from "react";
+ import "./globals.css";
+ import { getAdminIdentityForPage } from "@/lib/auth/page-identity";
++import { isDevAuthBypassEnabled } from "@/lib/auth/dev-bypass";
+ import { recordAdminAccessEventIfNeeded } from "@/lib/audit";
+ import { AdminAccessDenied } from "@/components/AdminAccessDenied";
+ import { AdminShell } from "@/components/AdminShell";
+@@ -26,7 +27,10 @@ export default async function RootLayout({ children }: { children: ReactNode })
+     );
+   }
+ 
+-  await recordAdminAccessEventIfNeeded(identity);
++  // 完全バイパス時は admin_users / audit_logs の DB を必要としない (開発専用)。
++  if (!isDevAuthBypassEnabled()) {
++    await recordAdminAccessEventIfNeeded(identity);
++  }
+ 
+   return (
+     <html lang="ja">
+diff --git a/admin/lib/api-route.ts b/admin/lib/api-route.ts
+index 5905d97..29fc461 100644
+--- a/admin/lib/api-route.ts
++++ b/admin/lib/api-route.ts
+@@ -2,6 +2,7 @@ import "server-only";
+ 
+ import { NextResponse } from "next/server";
+ import { accessSourceFromRequest } from "./auth/access";
++import { isDevAuthBypassEnabled } from "./auth/dev-bypass";
+ import { resolveAdminIdentity } from "./auth/admin-session";
+ import { publicAdminOrigin } from "./auth/google-oauth";
+ import { AdminAuthError, adminAuthErrorStatus, adminAuthPublicMessage } from "./auth/types";
+@@ -47,7 +48,9 @@ export function adminApiRoute<T>(
+     }
+     let identity: AdminIdentity | null;
+     try {
+-      if (MUTATION_METHODS.has(request.method) && request.headers.get("origin") !== publicAdminOrigin()) {
++      // ローカル完全バイパス時は GOOGLE_OAUTH_REDIRECT_URI が未設定でも動作するよう
++      // Origin チェック自体をスキップする (開発環境限定)。
++      if (MUTATION_METHODS.has(request.method) && !isDevAuthBypassEnabled() && request.headers.get("origin") !== publicAdminOrigin()) {
+         return errorResponse("forbidden_origin", "Admin request origin is not allowed", 403, requestId);
+       }
+       identity = await resolveAdminIdentity(accessSourceFromRequest(request));
+diff --git a/admin/lib/auth/admin-session.ts b/admin/lib/auth/admin-session.ts
+index 00a6765..1999566 100644
+--- a/admin/lib/auth/admin-session.ts
++++ b/admin/lib/auth/admin-session.ts
+@@ -2,6 +2,7 @@ import "server-only";
+ 
+ import { dbQuery } from "../db/postgres";
+ import { type AccessSource, localBypassEmail } from "./access";
++import { resolveDevBypassIdentity } from "./dev-bypass";
+ import { resolveAdminGoogleSessionEmail } from "./google-session";
+ import { AdminAuthError, type AdminIdentity, type AdminRole } from "./types";
+ 
+@@ -58,6 +59,9 @@ export async function lookupAdminUserByEmail(email: string): Promise<AdminIdenti
+  * responses to avoid leaking which emails are provisioned.
+  */
+ export async function resolveAdminIdentity(source: AccessSource): Promise<AdminIdentity | null> {
++  const devBypass = resolveDevBypassIdentity();
++  if (devBypass) return devBypass;
++
+   const email = localBypassEmail() ?? resolveAdminGoogleSessionEmail(source);
+   if (!email) return null;
+ 
+diff --git a/admin/lib/auth/dev-bypass.ts b/admin/lib/auth/dev-bypass.ts
+new file mode 100644
+index 0000000..dae8bba
+--- /dev/null
++++ b/admin/lib/auth/dev-bypass.ts
+@@ -0,0 +1,39 @@
++import "server-only";
++
++import { resolveDatabaseRuntimeEnvironment } from "../db/environment";
++import { AdminAuthError, type AdminIdentity } from "./types";
++
++/**
++ * ローカル開発専用の「認証完全バイパス」。
++ *
++ * `ADMIN_DEV_AUTH_BYPASS=true` かつ `HUGMEID_DEPLOY_ENV=local` のときだけ、
++ * Google OAuth セッションも `admin_users` の DB ルックアップも行わず、
++ * 組み込みの owner 管理者として admin アプリ全体を利用できる。
++ * - local 以外の環境で設定された場合は `local_bypass_not_allowed` で拒否する。
++ * - あくまで開発用の踏み台。本番では必ず Google OAuth + admin_users を有効にすること。
++ */
++export const DEV_BYPASS_ADMIN_ID = "00000000-0000-0000-0000-000000000001";
++export const DEV_BYPASS_EMAIL = "dev-admin@local";
++
++export function isDevAuthBypassEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
++  const value = env.ADMIN_DEV_AUTH_BYPASS?.trim();
++  if (!value) return false;
++  const runtime = resolveDatabaseRuntimeEnvironment(env);
++  if (runtime.deployEnv !== "local") {
++    throw new AdminAuthError(
++      "ADMIN_DEV_AUTH_BYPASS must not be set outside local development",
++      "local_bypass_not_allowed",
++    );
++  }
++  return true;
++}
++
++export function resolveDevBypassIdentity(): AdminIdentity | null {
++  if (!isDevAuthBypassEnabled()) return null;
++  return {
++    adminId: DEV_BYPASS_ADMIN_ID,
++    email: DEV_BYPASS_EMAIL,
++    role: "owner",
++    isActive: true,
++  };
++}

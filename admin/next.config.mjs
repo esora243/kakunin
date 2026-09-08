@@ -11,8 +11,7 @@ const imageRemotePatterns = assetBaseUrl
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {
-    // ▼ ここを修正: adminフォルダではなく、親フォルダ（ワークスペースのルート）を指定します
-    root: dirname(__dirname),
+    root: __dirname,
   },
   async headers() {
     // The whole admin app is private back-office tooling: everything must be

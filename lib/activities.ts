@@ -1,5 +1,5 @@
 import type { ActivityActionType, ActivityDetailDto, ActivityListItemDto } from "./activity-dto";
-import { normalizeExternalHttpsUrl, pickBestThumbnailVariant } from "./contents";
+import { normalizeExternalHttpsUrl } from "./security/url";
 
 type RelationRow = { code: string; name: string };
 
@@ -27,7 +27,6 @@ export type ActivityRow = {
   source_last_modified_at: string | null;
   synced_at: string;
   published_at: string | null;
-  thumbnail_image_url: string | null;
   activity_kinds: RelationRow | null;
 };
 
@@ -60,7 +59,6 @@ export function mapActivityListItem(row: ActivityRow, isSaved = false): Activity
     endsAt: row.ends_at,
     deadlineAt: row.deadline_at,
     capacityDisplay: row.capacity_display,
-    thumbnailImageUrl: pickBestThumbnailVariant(row.thumbnail_image_url, 320),
     publishedAt: row.published_at,
     isSaved,
   };
@@ -126,7 +124,6 @@ async function fetchActiveActivityRows() {
       a.source_last_modified_at::text,
       a.synced_at::text,
       a.published_at::text,
-      a.thumbnail_image_url,
       json_build_object('code', ak.code, 'name', ak.name) as activity_kinds
     from activities a
     join activity_kinds ak on ak.code = a.kind
@@ -166,7 +163,6 @@ export async function getActiveActivityRowById(activityId: string) {
         a.source_last_modified_at::text,
         a.synced_at::text,
         a.published_at::text,
-        a.thumbnail_image_url,
         json_build_object('code', ak.code, 'name', ak.name) as activity_kinds
       from activities a
       join activity_kinds ak on ak.code = a.kind

@@ -2,6 +2,7 @@
 
 import { BookOpen } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { AdBanner } from "@/components/AdBanner";
 import { SaveButton } from "@/components/SaveButton";
@@ -99,8 +100,18 @@ export function ContentsPageClient({
           />
         ) : (
           <>
-            {/* 注目記事もカードのトークンを共有する。カード全体が 1 つの導線。 */}
-            <Card interactive className="relative">
+            {/* 注目記事はheroImageURLがあれば表示、なければ既存BookOpenにフォールバック */}
+            <Card interactive className="relative overflow-hidden">
+              {featured.heroImageUrl ? (
+                <Image
+                  src={featured.heroImageUrl}
+                  alt=""
+                  width={1200}
+                  height={630}
+                  sizes="(max-width: 768px) 100vw, 800px"
+                  className="aspect-[16/9] w-full object-cover"
+                />
+              ) : null}
               <Link
                 href={`/contents/${featured.slug}`}
                 prefetch={false}
@@ -120,9 +131,19 @@ export function ContentsPageClient({
 
             {recent.map((item) => (
               <Card key={item.id} interactive className="flex items-start gap-3 p-4">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-control bg-brand-50">
-                  <BookOpen className="text-brand-400" size={20} aria-hidden="true" />
-                </span>
+                {item.heroImageUrl ? (
+                  <Image
+                    src={item.heroImageUrl}
+                    alt=""
+                    width={120}
+                    height={120}
+                    className="h-16 w-16 shrink-0 rounded-control object-cover"
+                  />
+                ) : (
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-control bg-brand-50">
+                    <BookOpen className="text-brand-400" size={20} aria-hidden="true" />
+                  </span>
+                )}
                 <Link
                   href={`/contents/${item.slug}`}
                   prefetch={false}

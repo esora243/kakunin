@@ -51,23 +51,3 @@ Use the checksum-registered Cloud SQL workflow in
 [`docs/cloudsql-rebaseline.md`](docs/cloudsql-rebaseline.md). New databases are
 created with `npm run db:migrate` and checked with `npm run db:verify`; never
 run the pre-release SQL history as a directory.
-
-確認できた運用経路は、GitHub Actions が検証と本番公開アプリのデプロイを担い、Cloud Run の --source デプロイでビルドする形です。管理画面用の自動デプロイ job はこの workflow には見当たらないため、そこは「別 Cloud Run サービスへ別途運用」として整理します。
-
-これは Google Cloud（GCP）上で運用する Next.js アプリです。
-
-公開アプリ: Next.js を Cloud Run にデプロイ
-管理画面: admin を公開アプリとは別の Cloud Run サービスとしてデプロイ
-データベース: Cloud SQL for PostgreSQL
-画像・アセット: 非公開の Cloud Storage バケット
-公開経路: 本番公開アプリは外部 HTTPS Load Balancer 経由で、Cloud Armor も利用
-認証:
-一般ユーザー: LINE LIFF
-管理者: Google OAuth/OIDC + admin_users による権限管理
-秘密情報: Cloud Run の環境変数と Secret Manager で管理
-実行環境: Node.js 22.12.0 以上
-運用環境は staging と production を分離し、それぞれ別の Cloud Run サービス、Cloud SQL の接続情報、LINE LIFF、画像バケットを使います。
-
-デプロイフローは、GitHub Actions がテスト・lint・typecheck・build を実行し、main への push 後に公開アプリを本番 Cloud Run へカナリアデプロイします。GitHub Actions から GCP へはサービスアカウントキーではなく Workload Identity Federation で認証します。
-
-なお、DB マイグレーションはアプリのデプロイとは分離され、運用者が明示的に実行します。詳細は production-deployment-checklist.md と admin-runbooks.md にまとまっています。

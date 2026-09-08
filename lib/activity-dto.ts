@@ -14,7 +14,6 @@ export type ActivityListItemDto = {
   endsAt: string | null;
   deadlineAt: string | null;
   capacityDisplay: string | null;
-  thumbnailImageUrl: string | null;
   publishedAt: string | null;
   isSaved: boolean;
 };

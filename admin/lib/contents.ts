@@ -35,7 +35,6 @@ const CONTENT_COLUMNS = `
   dek,
   body_md,
   hero_image_url,
-  thumbnail_image_url,
   related_activity_id::text,
   related_job_id::text,
   published_at::text,
@@ -46,7 +45,6 @@ const CONTENT_COLUMNS = `
   approved_by_admin_id::text,
   approved_at::text,
   is_active,
-  click_count,
   created_by_admin_id::text,
   updated_by_admin_id::text,
   created_at::text,
@@ -61,7 +59,6 @@ const COLUMN_FOR: Record<keyof ContentInput, string> = {
   bodyMd: "body_md",
   dek: "dek",
   heroImageUrl: "hero_image_url",
-  thumbnailImageUrl: "thumbnail_image_url",
   relatedActivityId: "related_activity_id",
   relatedJobId: "related_job_id",
 };
@@ -74,7 +71,6 @@ const ROW_VALUE_FOR: Record<keyof ContentInput, keyof AdminContentRow> = {
   bodyMd: "body_md",
   dek: "dek",
   heroImageUrl: "hero_image_url",
-  thumbnailImageUrl: "thumbnail_image_url",
   relatedActivityId: "related_activity_id",
   relatedJobId: "related_job_id",
 };
@@ -234,7 +230,6 @@ export async function createContent(
   const slug = String(input.slug).trim();
   assertValidSlug(slug);
   const normalizedHeroImageUrl = normalizeValue("heroImageUrl", input.heroImageUrl) as string | null;
-  const normalizedThumbnailImageUrl = normalizeValue("thumbnailImageUrl", input.thumbnailImageUrl) as string | null;
   await assertContentAssetReferencesAvailable(client, {
     heroImageUrl: normalizedHeroImageUrl,
     bodyMd: input.bodyMd,
@@ -248,7 +243,6 @@ export async function createContent(
     normalizeValue("dek", input.dek),
     input.bodyMd,
     normalizedHeroImageUrl,
-    normalizedThumbnailImageUrl,
     normalizeValue("relatedActivityId", input.relatedActivityId),
     normalizeValue("relatedJobId", input.relatedJobId),
     actorAdminId,
@@ -259,9 +253,9 @@ export async function createContent(
     const result = await client.query(
       `insert into contents
          (slug, content_type, category, title, dek, body_md, hero_image_url,
-          thumbnail_image_url, related_activity_id, related_job_id,
+          related_activity_id, related_job_id,
           created_by_admin_id, updated_by_admin_id)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
        returning ${CONTENT_COLUMNS}`,
       values,
     );
@@ -386,47 +380,6 @@ export async function updateContent(
   return { before, after };
 }
 
-/**
- * Updates only the thumbnail URL on a Content row, without resetting the
- * approval workflow or invalidating the public list cache unless the
- * thumbnail is the version actually visible to readers.
- */
-export async function updateContentThumbnail(
-  client: PoolClient,
-  id: string,
-  thumbnailImageUrl: string | null,
-  actorAdminId: string,
-  options: { expectedUpdatedAt?: string } = {},
-): Promise<{ before: AdminContentRow; after: AdminContentRow }> {
-  const before = await fetchRowForUpdate(client, id);
-  if (!before) throw new NotFoundError("Content not found");
-  if (
-    options.expectedUpdatedAt !== undefined
-    && !(await timestampsMatch(client, before.updated_at, options.expectedUpdatedAt))
-  ) {
-    throw new ConflictError("別の管理者が更新しました。再読み込みしてください", "stale_write");
-  }
-  const { rows } = await client.query<AdminContentRow>(
-    `update contents set
-       thumbnail_image_url = $2,
-       updated_by_admin_id = $3
-     where id = $1
-     returning ${CONTENT_COLUMNS}`,
-    [id, thumbnailImageUrl, actorAdminId],
-  );
-  const after = rows[0];
-  await writeAuditLog(client, {
-    actorAdminId,
-    action: "content.thumbnail_update",
-    resourceType: "contents",
-    resourceId: id,
-    beforeSnapshot: before,
-    afterSnapshot: after,
-    metadata: { field: "thumbnail_image_url" },
-  });
-  return { before, after };
-}
-
 export async function setPublishedAt(
   client: PoolClient,
   id: string,
@@ -540,17 +493,16 @@ export async function restoreContentVersion(
           dek = $6,
           body_md = $7,
           hero_image_url = $8,
-          thumbnail_image_url = $9,
-          related_activity_id = $10,
-          related_job_id = $11,
+          related_activity_id = $9,
+          related_job_id = $10,
           published_at = null,
           approval_status = 'draft',
           approval_requested_by_admin_id = null,
           approval_requested_at = null,
           approved_by_admin_id = null,
           approved_at = null,
-          is_active = $12,
-          updated_by_admin_id = $13
+          is_active = $11,
+          updated_by_admin_id = $12
         where id = $1
         returning ${CONTENT_COLUMNS}
       `,
@@ -563,7 +515,6 @@ export async function restoreContentVersion(
         snapshot.dek,
         snapshot.body_md,
         snapshot.hero_image_url,
-        snapshot.thumbnail_image_url ?? null,
         snapshot.related_activity_id,
         snapshot.related_job_id,
         before.is_active,
