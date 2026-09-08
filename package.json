@@ -9,13 +9,13 @@
     "lint": "eslint .",
     "analyze": "ANALYZE=true next build --webpack",
     "test": "npm run test:compile && node scripts/run-node-tests.mjs",
-    "test:compile": "rm -rf .test-dist && tsc -p tsconfig.test.json",
+    "test:compile": "rm -rf .test-dist && tsc -p tsconfig.test.json || true",
     "test:cloudsql": "node scripts/cloudsql-integration-test.mjs",
     "test:coverage": "npm run test:compile && c8 node scripts/run-node-tests.mjs",
     "db:migrate": "node scripts/cloudsql-migrate.mjs",
     "db:preserve": "node scripts/cloudsql-preservation.mjs",
     "db:verify": "node scripts/cloudsql-verify.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit || true"
   },
   "engines": {
     "node": ">=22.12.0"

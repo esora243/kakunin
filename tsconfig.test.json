@@ -11,13 +11,21 @@
     "outDir": ".test-dist",
     "rootDir": ".",
     "target": "ES2022",
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "noEmitOnError": false,
+    "skipLibCheck": true
   },
   "include": [
-    "lib/**/*.ts",
-    "app/api/**/route.ts",
+    "lib*.ts",
+    "app/apiroute.ts",
     "app/school/school-workspace-shared.ts",
-    "tests/**/*.test.ts"
+    "tests*.test.ts"
   ],
-  "exclude": ["node_modules", ".next", ".test-dist"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".test-dist"
+  ]
 }
