@@ -2,6 +2,7 @@ import "server-only";
 
 import { dbQuery } from "../db/postgres";
 import { type AccessSource, localBypassEmail } from "./access";
+import { resolveDevBypassIdentity } from "./dev-bypass";
 import { resolveAdminGoogleSessionEmail } from "./google-session";
 import { AdminAuthError, type AdminIdentity, type AdminRole } from "./types";
 
@@ -58,6 +59,9 @@ export async function lookupAdminUserByEmail(email: string): Promise<AdminIdenti
  * responses to avoid leaking which emails are provisioned.
  */
 export async function resolveAdminIdentity(source: AccessSource): Promise<AdminIdentity | null> {
+  const devBypass = resolveDevBypassIdentity();
+  if (devBypass) return devBypass;
+
   const email = localBypassEmail() ?? resolveAdminGoogleSessionEmail(source);
   if (!email) return null;
 

@@ -2,6 +2,7 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import { accessSourceFromRequest } from "./auth/access";
+import { isDevAuthBypassEnabled } from "./auth/dev-bypass";
 import { resolveAdminIdentity } from "./auth/admin-session";
 import { publicAdminOrigin } from "./auth/google-oauth";
 import { AdminAuthError, adminAuthErrorStatus, adminAuthPublicMessage } from "./auth/types";
@@ -47,7 +48,9 @@ export function adminApiRoute<T>(
     }
     let identity: AdminIdentity | null;
     try {
-      if (MUTATION_METHODS.has(request.method) && request.headers.get("origin") !== publicAdminOrigin()) {
+      // ローカル完全バイパス時は GOOGLE_OAUTH_REDIRECT_URI が未設定でも動作するよう
+      // Origin チェック自体をスキップする (開発環境限定)。
+      if (MUTATION_METHODS.has(request.method) && !isDevAuthBypassEnabled() && request.headers.get("origin") !== publicAdminOrigin()) {
         return errorResponse("forbidden_origin", "Admin request origin is not allowed", 403, requestId);
       }
       identity = await resolveAdminIdentity(accessSourceFromRequest(request));

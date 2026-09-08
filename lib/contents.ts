@@ -50,10 +50,13 @@ export function mapContentListItem(row: ContentRow, isSaved = false): ContentLis
   };
 }
 
+// 【修正】詳細DTOも一覧と同じ contentListImageUrl で正規化する
+// 旧: normalizeExternalHttpsUrl で実URLをそのまま返していたため、
+// next/image の remotePatterns に含まれないホストだと 400 を返し画像だけ消える
 function mapContentDetail(row: ContentRow, isSaved = false): ContentDetailDto {
   return {
     ...mapContentListItem(row, isSaved),
-    heroImageUrl: normalizeExternalHttpsUrl(row.hero_image_url),
+    heroImageUrl: contentListImageUrl(row.hero_image_url),
     body: row.body_md,
     relatedActivitySlug: row.related_activity_slug ?? null,
     relatedJobSlug: row.related_job_slug ?? null,
