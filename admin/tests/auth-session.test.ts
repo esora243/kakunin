@@ -13,6 +13,11 @@ import {
   createAdminGoogleSessionToken,
   verifyAdminGoogleSessionToken,
 } from "../lib/auth/google-session";
+import {
+  isOpenAccessEnabled,
+  OPEN_ACCESS_ADMIN_ID,
+  OPEN_ACCESS_EMAIL,
+} from "../lib/auth/open-access";
 import { getAdminIdentityForPage } from "../lib/auth/page-identity";
 import { AdminAuthError } from "../lib/auth/types";
 
@@ -55,6 +60,13 @@ function ownerIdentity(email = "owner@example.com") {
   };
 }
 
+const openAccessIdentity = {
+  adminId: OPEN_ACCESS_ADMIN_ID,
+  email: OPEN_ACCESS_EMAIL,
+  role: "owner" as const,
+  isActive: true,
+};
+
 function sessionCookie(payload: { email?: string; emailVerified?: boolean; exp?: number } = {}) {
   const token = createAdminGoogleSessionToken({
     email: payload.email ?? "Owner@Example.COM ",
@@ -82,17 +94,24 @@ async function callAdminRoute(headers: HeadersInit = {}) {
   return { response, body, handlerCalled };
 }
 
-test("adminApiRoute rejects text/plain mutation requests from a different origin", async () => {
+// ---------------------------------------------------------------------------
+// オープンアクセスモード (常時有効): 認証は一切行わず、誰でも owner として利用可。
+// ---------------------------------------------------------------------------
+
+test("open access mode is always enabled and needs no configuration", () => {
+  assert.equal(isOpenAccessEnabled(), true);
+  assert.equal(isOpenAccessEnabled({} as NodeJS.ProcessEnv), true);
+});
+
+test("adminApiRoute accepts mutation requests from any origin without credentials", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
-  setAdminUserLookupForTests(async (email) => ownerIdentity(email));
   const route = adminApiRoute("any", async () => ({ ok: true }));
 
   const response = await route(
     new Request("https://admin.example.test/api/probe", {
       method: "POST",
       headers: {
-        cookie: sessionCookie(),
         origin: "https://example.test",
         "content-type": "text/plain",
       },
@@ -100,8 +119,7 @@ test("adminApiRoute rejects text/plain mutation requests from a different origin
     }),
   );
 
-  assert.equal(response.status, 403);
-  assert.equal(((await response.json()) as { error?: { code: string } }).error?.code, "forbidden_origin");
+  assert.equal(response.status, 200);
 });
 
 test("adminApiRoute accepts mutation requests from the exact admin origin", async () => {
@@ -186,22 +204,22 @@ test("localBypassEmail only works in the local deploy environment", () => {
   );
 });
 
-test("adminApiRoute denies missing app-level admin Google session before handler access", async () => {
+test("adminApiRoute runs the handler without any Google session or admin_users row", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
-  setAdminUserLookupForTests(async () => ownerIdentity());
+  setAdminUserLookupForTests(async () => null);
 
   const result = await callAdminRoute();
 
-  assert.equal(result.response.status, 403);
-  assert.equal(result.body.error?.code, "unauthenticated");
-  assert.equal(result.handlerCalled, false);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.ok, true);
+  assert.equal(result.body.email, OPEN_ACCESS_EMAIL);
+  assert.equal(result.handlerCalled, true);
 });
 
-test("adminApiRoute ignores forged IAP and direct identity headers", async () => {
+test("adminApiRoute does not trust forged IAP or direct identity headers, but still runs open access", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
-  setAdminUserLookupForTests(async () => ownerIdentity());
 
   const result = await callAdminRoute({
     "X-Goog-IAP-JWT-Assertion": "forged",
@@ -209,15 +227,15 @@ test("adminApiRoute ignores forged IAP and direct identity headers", async () =>
     "X-Hugmeid-Admin-Email": "owner@example.com",
   });
 
-  assert.equal(result.response.status, 403);
-  assert.equal(result.body.error?.code, "unauthenticated");
-  assert.equal(result.handlerCalled, false);
+  assert.equal(result.response.status, 200);
+  // ヘッダーのメールではなく組み込みのオープンアクセスIDとして処理される
+  assert.equal(result.body.email, OPEN_ACCESS_EMAIL);
+  assert.equal(result.handlerCalled, true);
 });
 
-test("adminApiRoute ignores query tokens and public app sessions", async () => {
+test("adminApiRoute runs open access regardless of query tokens and public app sessions", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
-  setAdminUserLookupForTests(async () => ownerIdentity());
   const route = adminApiRoute("any", async () => ({ ok: true }));
 
   const response = await route(
@@ -225,21 +243,17 @@ test("adminApiRoute ignores query tokens and public app sessions", async () => {
       headers: { cookie: "hugmeid_session=public-user-session-token" },
     }),
   );
-  const body = (await response.json()) as { error?: { code: string } };
 
-  assert.equal(response.status, 403);
-  assert.equal(body.error?.code, "unauthenticated");
+  assert.equal(response.status, 200);
 });
 
-test("adminApiRoute denies invalid, expired, and unverified admin Google sessions", async () => {
+test("adminApiRoute ignores invalid, expired, and unverified session cookies under open access", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
-  setAdminUserLookupForTests(async () => ownerIdentity());
 
   let result = await callAdminRoute({ cookie: `${ADMIN_GOOGLE_SESSION_COOKIE}=not-a-token` });
-  assert.equal(result.response.status, 403);
-  assert.equal(result.body.error?.code, "session_invalid");
-  assert.equal(result.handlerCalled, false);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.handlerCalled, true);
 
   result = await callAdminRoute({
     cookie: rawSessionCookie({
@@ -248,9 +262,8 @@ test("adminApiRoute denies invalid, expired, and unverified admin Google session
       exp: Math.floor(Date.now() / 1000) - 1,
     }),
   });
-  assert.equal(result.response.status, 403);
-  assert.equal(result.body.error?.code, "session_invalid");
-  assert.equal(result.handlerCalled, false);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.handlerCalled, true);
 
   result = await callAdminRoute({
     cookie: rawSessionCookie({
@@ -259,51 +272,38 @@ test("adminApiRoute denies invalid, expired, and unverified admin Google session
       exp: Math.floor(Date.now() / 1000) + 60,
     }),
   });
-  assert.equal(result.response.status, 403);
-  assert.equal(result.body.error?.code, "email_unverified");
-  assert.equal(result.handlerCalled, false);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.handlerCalled, true);
 });
 
-test("adminApiRoute returns 503 for auth configuration and identity lookup failures", async () => {
+test("adminApiRoute is unaffected by auth configuration or admin_users lookup failures under open access", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
-  const validCookie = sessionCookie();
   process.env.ADMIN_SESSION_SECRET = "short";
-  let result = await callAdminRoute({ cookie: validCookie });
-  assert.equal(result.response.status, 503);
-  assert.equal(result.body.error?.code, "service_unavailable");
+
+  let result = await callAdminRoute();
+  assert.equal(result.response.status, 200);
+  assert.equal(result.handlerCalled, true);
 
   process.env.ADMIN_SESSION_SECRET = STRONG_TEST_ADMIN_SESSION_SECRET;
   setAdminUserLookupForTests(async () => { throw new Error("database unavailable"); });
-  result = await callAdminRoute({ cookie: sessionCookie() });
-  assert.equal(result.response.status, 503);
-  assert.equal(result.body.error?.code, "identity_unavailable");
+  result = await callAdminRoute();
+  assert.equal(result.response.status, 200);
+  assert.equal(result.handlerCalled, true);
 });
 
-test("adminApiRoute requires a valid admin Google session and active admin_users row", async () => {
+test("adminApiRoute always resolves to the built-in owner identity without admin_users", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
 
   setAdminUserLookupForTests(async () => null);
-  let result = await callAdminRoute({ cookie: sessionCookie() });
-  assert.equal(result.response.status, 403);
-  assert.equal(result.body.error?.code, "unauthenticated");
-  assert.equal(result.handlerCalled, false);
-
-  setAdminUserLookupForTests(async () => ({ ...ownerIdentity(), isActive: false }));
-  result = await callAdminRoute({ cookie: sessionCookie() });
-  assert.equal(result.response.status, 403);
-  assert.equal(result.body.error?.code, "unauthenticated");
-  assert.equal(result.handlerCalled, false);
-
-  setAdminUserLookupForTests(async (email) => ownerIdentity(email));
-  result = await callAdminRoute({ cookie: sessionCookie() });
+  const result = await callAdminRoute({ cookie: sessionCookie() });
   assert.equal(result.response.status, 200);
-  assert.equal(result.body.email, "owner@example.com");
+  assert.equal(result.body.email, OPEN_ACCESS_EMAIL);
   assert.equal(result.handlerCalled, true);
 });
 
-test("getAdminIdentityForPage uses the app-level admin Google session identity", async () => {
+test("getAdminIdentityForPage resolves the open-access identity regardless of cookies", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
   setAdminUserLookupForTests(async (email) => ownerIdentity(email));
@@ -314,16 +314,17 @@ test("getAdminIdentityForPage uses the app-level admin Google session identity",
   };
   setNextRequestAccessSourceForTests(source);
 
-  assert.deepEqual(await getAdminIdentityForPage(), ownerIdentity("owner@example.com"));
+  assert.deepEqual(await getAdminIdentityForPage(), openAccessIdentity);
 });
 
-test("adminApiRoute rejects local bypass outside local", async () => {
+test("adminApiRoute works under open access even with a local bypass variable set outside local", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
 
   process.env.ADMIN_LOCAL_AUTH_BYPASS_EMAIL = "owner@example.com";
+  // オープンアクセスが先に解決されるため、devバイパスの設定値は評価されず動作する
   const result = await callAdminRoute();
-  assert.equal(result.response.status, 403);
-  assert.equal(result.body.error?.code, "local_bypass_not_allowed");
-  assert.equal(result.handlerCalled, false);
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.email, OPEN_ACCESS_EMAIL);
+  assert.equal(result.handlerCalled, true);
 });

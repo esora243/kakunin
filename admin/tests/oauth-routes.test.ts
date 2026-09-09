@@ -152,7 +152,7 @@ async function callProtectedAdminRoute(sessionCookieValue: string) {
   };
 }
 
-test("OAuth callback creates a Google session cookie that unlocks protected routes", async () => {
+test("OAuth callback creates a Google session cookie; protected routes run under open access regardless", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
   setAdminUserLookupForTests(async (email) => ownerIdentity(email));
@@ -184,7 +184,9 @@ test("OAuth callback creates a Google session cookie that unlocks protected rout
 
   const result = await callProtectedAdminRoute(sessionSetCookie);
   assert.equal(result.response.status, 200);
-  assert.deepEqual(result.body, { ok: true, email: "owner@example.com" });
+  // オープンアクセスモード (常時有効): セッションCookieの有無に関わらず
+  // 組み込みのオープンアクセスIDとして実行される
+  assert.deepEqual(result.body, { ok: true, email: "open-access@hugmeid.local" });
 });
 
 test("OAuth callback rejects bad state", async () => {
@@ -404,14 +406,16 @@ test("OAuth callback returns a sanitized 503 when admin identity lookup is unava
   assert.doesNotMatch(text, /sensitive database detail/);
 });
 
-test("logout clears session and OAuth flow cookies", async () => {
+test("logout clears session and OAuth flow cookies and redirects to the request origin", async () => {
   process.env.HUGMEID_DEPLOY_ENV = "staging";
   process.env.HUGMEID_DATABASE_ENV = "staging";
 
   const response = await logoutRoute(new Request("http://localhost:8080/logout"));
 
   assert.equal(response.status, 307);
-  assert.equal(response.headers.get("location"), "https://admin.example.test/");
+  // オープンアクセスモードでは GOOGLE_OAUTH_REDIRECT_URI が未設定のため、
+  // 現在のリクエストのオリジンへリダイレクトする
+  assert.equal(response.headers.get("location"), "http://localhost:8080/");
   assert.ok(response.headers.getSetCookie().some((value) => value.startsWith(`${ADMIN_GOOGLE_SESSION_COOKIE}=`) && value.includes("Max-Age=0")));
   assert.ok(response.headers.getSetCookie().some((value) => value.startsWith(`${getGoogleOAuthFlowCookieName()}=`) && value.includes("Max-Age=0")));
 });

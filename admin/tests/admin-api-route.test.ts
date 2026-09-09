@@ -1,20 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { adminApiRoute } from "../lib/api-route";
+import { OPEN_ACCESS_ADMIN_ID, OPEN_ACCESS_EMAIL } from "../lib/auth/open-access";
 
-test("unauthenticated admin API access is rejected with 403 by the route wrapper", async () => {
-  const route = adminApiRoute("owner", async () => {
-    throw new Error("handler should not run without a verified admin identity");
-  });
+test("admin API access is open: the built-in open-access identity reaches the handler without any login", async () => {
+  const route = adminApiRoute("owner", async (identity) => ({ ok: true, identity }));
 
   const response = await route(new Request("https://hugmeid.example/admin/app/api/admin-users"));
 
-  assert.equal(response.status, 403);
-  assert.deepEqual(await response.json(), {
-    error: {
-      code: "unauthenticated",
-      message: "No verified admin identity",
-    },
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ok: boolean; identity: { adminId: string; email: string; role: string } };
+  assert.equal(body.ok, true);
+  assert.deepEqual(body.identity, {
+    adminId: OPEN_ACCESS_ADMIN_ID,
+    email: OPEN_ACCESS_EMAIL,
+    role: "owner",
+    isActive: true,
   });
 });
 

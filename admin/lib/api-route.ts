@@ -49,11 +49,10 @@ export function adminApiRoute<T>(
     }
     let identity: AdminIdentity | null;
     try {
-      // ローカル完全バイパス時・オープンアクセスモード時は GOOGLE_OAUTH_REDIRECT_URI が
-      // 未設定でも動作するよう Origin チェック自体をスキップする。
-      // オープンアクセスモード (ADMIN_OPEN_ACCESS=true) は「URLを知っていれば誰でも使える」
-      // 意図的な仕様であり、Origin 制限をかけない。
-      if (MUTATION_METHODS.has(request.method) && !isDevAuthBypassEnabled() && !isOpenAccessEnabled() && request.headers.get("origin") !== publicAdminOrigin()) {
+      // オープンアクセスモード (常時有効) では「URLを知っていれば誰でも使える」
+      // 意図的な仕様のため Origin 制限をかけない。
+      // オープンアクセスを先に評価し、devバイパス判定の例外で阻害されないようにする。
+      if (MUTATION_METHODS.has(request.method) && !isOpenAccessEnabled() && !isDevAuthBypassEnabled() && request.headers.get("origin") !== publicAdminOrigin()) {
         return errorResponse("forbidden_origin", "Admin request origin is not allowed", 403, requestId);
       }
       identity = await resolveAdminIdentity(accessSourceFromRequest(request));

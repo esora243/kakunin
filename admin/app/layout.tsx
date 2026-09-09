@@ -28,8 +28,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     );
   }
 
-  // 完全バイパス時・オープンアクセスモード時は admin_users / audit_logs の DB を必要としない。
-  if (!isDevAuthBypassEnabled() && !isOpenAccessEnabled()) {
+  // オープンアクセスモード (常時有効) ・完全バイパス時は admin_users / audit_logs の
+  // DB を必要としない。オープンアクセスを先に評価する。
+  if (!isOpenAccessEnabled() && !isDevAuthBypassEnabled()) {
     await recordAdminAccessEventIfNeeded(identity);
   }
 

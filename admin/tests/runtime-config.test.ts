@@ -20,13 +20,22 @@ const valid = {
   CLOUD_SQL_CONNECTION_NAME: "project:region:instance",
 } as NodeJS.ProcessEnv;
 
-test("admin non-local runtime config requires OAuth, session, and database configuration", () => {
+test("admin non-local runtime config requires database and integration configuration (OAuth is optional under open access)", () => {
   assert.doesNotThrow(() => assertAdminRuntimeConfig(valid));
-  for (const name of ["GOOGLE_OAUTH_CLIENT_SECRET", "ADMIN_SESSION_SECRET", "REVALIDATE_ADMIN_SECRET", "GCS_PUBLIC_ASSET_BUCKET", "PGDATABASE"] as const) {
+  // オープンアクセスモード (常時有効) では OAuth 系 (GOOGLE_OAUTH_* / ADMIN_SESSION_SECRET) は不要。
+  // 削除時にエラーになる必須項目は DB 接続と連携系のみ。
+  for (const name of ["REVALIDATE_ADMIN_SECRET", "GCS_PUBLIC_ASSET_BUCKET", "PGDATABASE"] as const) {
     const env = { ...valid };
     delete env[name];
     assert.throws(() => assertAdminRuntimeConfig(env));
   }
+  // OAuth 系が未設定でも例外にならないことを確認する
+  const withoutOauth = { ...valid };
+  delete withoutOauth.GOOGLE_OAUTH_CLIENT_ID;
+  delete withoutOauth.GOOGLE_OAUTH_CLIENT_SECRET;
+  delete withoutOauth.GOOGLE_OAUTH_REDIRECT_URI;
+  delete withoutOauth.ADMIN_SESSION_SECRET;
+  assert.doesNotThrow(() => assertAdminRuntimeConfig(withoutOauth));
 });
 
 test("admin non-local runtime config requires a valid managed asset base URL", () => {
