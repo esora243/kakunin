@@ -13,6 +13,7 @@ function contentRow(overrides: Partial<ContentRow>): ContentRow {
     dek: null,
     body_md: "Answer",
     hero_image_url: null,
+    thumbnail_image_url: null,
     related_activity_id: null,
     related_job_id: null,
     published_at: "2026-08-07T00:00:00.000Z",

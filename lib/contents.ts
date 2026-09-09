@@ -48,16 +48,20 @@ export function pickBestThumbnailVariant(
   if (!normalized) return null;
   const match = normalized.match(/\/api\/assets\/public\/contents\/variants\/[0-9a-f-]{36}\/w(\d+)\.webp$/);
   if (!match) return normalized;
-  const widths = [1280, 640, 320];
+  const widths = [320, 640, 1280];
+  const sourceWidth = Number(match[1]);
+  // Only known managed renditions can be swapped in; an unrecognized source
+  // width means we don't actually know what variants exist for this asset.
+  if (!widths.includes(sourceWidth)) return normalized;
   // thumbnail_image_url already references the largest variant; pick the
-  // smallest variant that still covers the requested pixel budget.
-  const orderedDown = [...widths].reverse();
-  const chosen = orderedDown.find((width) => width >= targetPx) ?? widths[0];
+  // smallest variant that still covers the requested pixel budget, but never
+  // invent a larger rendition than the one that is actually available.
+  const chosen = widths.find((width) => width >= targetPx && width <= sourceWidth) ?? sourceWidth;
   return normalized.replace(/\/w\d+\.webp$/, `/w${chosen}.webp`);
 }
 
 export function contentListImageUrl(value: string | null): string | null {
-  return pickBestThumbnailVariant(value, 320);
+  return pickBestThumbnailVariant(value, 640);
 }
 
 export function mapContentListItem(row: ContentRow, isSaved = false): ContentListItemDto {

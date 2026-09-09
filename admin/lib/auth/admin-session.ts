@@ -4,6 +4,7 @@ import { dbQuery } from "../db/postgres";
 import { type AccessSource, localBypassEmail } from "./access";
 import { resolveDevBypassIdentity } from "./dev-bypass";
 import { resolveAdminGoogleSessionEmail } from "./google-session";
+import { resolveOpenAccessIdentity } from "./open-access";
 import { AdminAuthError, type AdminIdentity, type AdminRole } from "./types";
 
 // Re-check admin_users.is_active on every request, but memoize per email for
@@ -59,6 +60,11 @@ export async function lookupAdminUserByEmail(email: string): Promise<AdminIdenti
  * responses to avoid leaking which emails are provisioned.
  */
 export async function resolveAdminIdentity(source: AccessSource): Promise<AdminIdentity | null> {
+  // オープンアクセスモード (ADMIN_OPEN_ACCESS=true):
+  // URLを知っていれば誰でも利用可能。Google OAuth / admin_users ルックアップ不要。
+  const openAccess = resolveOpenAccessIdentity();
+  if (openAccess) return openAccess;
+
   const devBypass = resolveDevBypassIdentity();
   if (devBypass) return devBypass;
 

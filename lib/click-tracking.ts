@@ -13,7 +13,7 @@ export async function recordContentClick(contentId: string): Promise<boolean> {
     `update contents set click_count = click_count + 1 where id = $1::uuid`,
     [contentId],
   );
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }
 
 export async function recordSponsorClick(placement: string, href: string): Promise<boolean> {
@@ -27,5 +27,5 @@ export async function recordSponsorClick(placement: string, href: string): Promi
        last_clicked_at = now()`,
     [placement, href],
   );
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }

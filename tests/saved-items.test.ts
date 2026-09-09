@@ -38,6 +38,7 @@ test("saved item lookup covers account-backed jobs, activities, and contents", (
         title: "Sample Activity",
         hostName: "Sample Host",
         summary: "Summary",
+        thumbnailImageUrl: null,
         actionType: "signup",
         targetAudience: "医学部生",
         location: "浜松市",

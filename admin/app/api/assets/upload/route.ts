@@ -35,10 +35,11 @@ function inferContentTypeFromFilename(name: string | null | undefined): "image/j
 }
 
 /**
- * Image upload route — both "Articles" (Contents) and "課外活動" (Activities)
- * thumbnail fields share this endpoint. MIME and extension are normalized from
- * whichever header/query the browser sent, so callers no longer see a 415 or
- * silent 500 when the browser produced an unexpected Content-Type.
+ * Image upload route — 記事 (Contents) / 求人 (Jobs) / 課外活動 (Activities) の
+ * サムネイル・ヒーロー画像フィールドはすべてこのエンドポイントを共有する。
+ * MIME と拡張子はブラウザが送ったヘッダー・クエリのどれからでも正規化するため、
+ * ブラウザが予期しない Content-Type (multipart/form-data など) を生成しても
+ * 415 やサイレントな 500 にはならない。
  *
  * Both owners and editors may upload (editors upload for Contents; only
  * owners delete), per docs/admin-management-app-spec.md "Permissions".
@@ -49,14 +50,23 @@ export const POST = adminApiRoute("any", async (identity, request) => {
   try {
     const requestUrl = new URL(request.url);
     const target = requestUrl.searchParams.get("target");
-    if (target && target !== "contents" && target !== "activities") {
+    // バグ修正: "jobs" ターゲットが未対応だったため、求人フォームからの
+    // サムネイルアップロードが 400 で失敗していた。記事・求人・課外活動の
+    // すべてで同じアップロード経路を許可する。
+    if (target && target !== "contents" && target !== "activities" && target !== "jobs") {
       throw new HttpError("Unsupported upload target", 400, "invalid_upload_target");
     }
 
-    const clientHint = normalizeClientMimeType(request.headers.get("content-type")) ??
+    // バグ修正: ブラウザの FormData 送信は Content-Type が
+    // "multipart/form-data; boundary=..." になるため、従来の判定では必ず 415 に
+    // なりサムネイル・記事上部画像を追加できなかった。multipart の場合は実際の
+    // ファイル種別は後段の sharp デコードで検証するため、ここでは受理する。
+    const rawContentType = request.headers.get("content-type");
+    const isMultipart = rawContentType?.toLowerCase().startsWith("multipart/form-data") ?? false;
+    const clientHint = normalizeClientMimeType(rawContentType) ??
       normalizeClientMimeType(requestUrl.searchParams.get("contentType")) ??
       inferContentTypeFromFilename(requestUrl.searchParams.get("filename"));
-    if (clientHint === null) {
+    if (!isMultipart && clientHint === null) {
       throw new HttpError("Unsupported image type. Use JPEG, PNG, or WebP.", 415, "unsupported_media_type");
     }
 

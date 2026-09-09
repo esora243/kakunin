@@ -18,10 +18,10 @@
     "skipLibCheck": true
   },
   "include": [
-    "lib*.ts",
-    "app/apiroute.ts",
+    "lib/**/*.ts",
+    "app/api/**/route.ts",
     "app/school/school-workspace-shared.ts",
-    "tests*.test.ts"
+    "tests/**/*.test.ts"
   ],
   "exclude": [
     "node_modules",

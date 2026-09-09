@@ -1,10 +1,16 @@
 import { resolveDatabaseRuntimeEnvironment } from "./db/environment";
+import { isOpenAccessEnabled } from "./auth/open-access";
 
-const REQUIRED_ADMIN_VALUES = [
+// OAuth 関連の値はオープンアクセスモード (ADMIN_OPEN_ACCESS=true) では不要。
+const OAUTH_ADMIN_VALUES = [
   "GOOGLE_OAUTH_CLIENT_ID",
   "GOOGLE_OAUTH_CLIENT_SECRET",
   "GOOGLE_OAUTH_REDIRECT_URI",
   "ADMIN_SESSION_SECRET",
+] as const;
+
+const REQUIRED_ADMIN_VALUES = [
+  ...OAUTH_ADMIN_VALUES,
   "REVALIDATE_ADMIN_SECRET",
   "GCS_PUBLIC_ASSET_BUCKET",
   "GCS_PUBLIC_ASSET_BASE_URL",
@@ -17,20 +23,25 @@ const REQUIRED_ADMIN_VALUES = [
 export function assertAdminRuntimeConfig(env: NodeJS.ProcessEnv = process.env): void {
   const runtime = resolveDatabaseRuntimeEnvironment(env);
   if (runtime.deployEnv === "local") return;
+  const openAccess = isOpenAccessEnabled(env);
   for (const name of REQUIRED_ADMIN_VALUES) {
+    // オープンアクセスモードでは OAuth 設定を必須としない。
+    if (openAccess && (OAUTH_ADMIN_VALUES as readonly string[]).includes(name)) continue;
     if (!env[name]?.trim()) throw new Error(`${name} is required outside local development`);
   }
   if (!env.PGHOST?.trim() && !env.CLOUD_SQL_CONNECTION_NAME?.trim()) {
     throw new Error("PGHOST or CLOUD_SQL_CONNECTION_NAME is required outside local development");
   }
-  if ((env.ADMIN_SESSION_SECRET?.trim().length ?? 0) < 32) {
+  if (!openAccess && (env.ADMIN_SESSION_SECRET?.trim().length ?? 0) < 32) {
     throw new Error("ADMIN_SESSION_SECRET must be at least 32 characters outside local development");
   }
-  try {
-    const redirect = new URL(env.GOOGLE_OAUTH_REDIRECT_URI!);
-    if (redirect.protocol !== "https:") throw new Error();
-  } catch {
-    throw new Error("GOOGLE_OAUTH_REDIRECT_URI must be an HTTPS URL outside local development");
+  if (!openAccess) {
+    try {
+      const redirect = new URL(env.GOOGLE_OAUTH_REDIRECT_URI!);
+      if (redirect.protocol !== "https:") throw new Error();
+    } catch {
+      throw new Error("GOOGLE_OAUTH_REDIRECT_URI must be an HTTPS URL outside local development");
+    }
   }
   try {
     const assetBase = new URL(env.GCS_PUBLIC_ASSET_BASE_URL!);

@@ -38,6 +38,12 @@ test("Cloud SQL has one collision-free baseline-first artifact sequence", () => 
     "20260825000100_job_apply_readiness.sql",
     "20260825000200_timetable_schedule_integrity.sql",
     "20260825000300_public_cache_invalidation_outbox.sql",
+    "20260902000000_content_activity_thumbnails.sql",
+    "20260903000000_click_tracking.sql",
+    "20260903000001_shared_timetable.sql",
+    "20260906000020_timetable_university_grade_scope.sql",
+    "20260906000030_timetable_user_overrides.sql",
+    "20260908000000_job_thumbnails.sql",
   ]);
 
   const versions = artifacts.map((name) => name.slice(0, 14));

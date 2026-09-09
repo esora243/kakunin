@@ -187,7 +187,7 @@ export async function updateSharedTimetableEntry(session: AuthSessionPayload, id
       user.id,
     ],
   );
-  return result.rowCount > 0 ? ("updated" as const) : ("not_found" as const);
+  return (result.rowCount ?? 0) > 0 ? ("updated" as const) : ("not_found" as const);
 }
 
 export async function removeSharedTimetableEntry(session: AuthSessionPayload, id: string) {
@@ -198,5 +198,5 @@ export async function removeSharedTimetableEntry(session: AuthSessionPayload, id
      where id = $1::uuid and is_active = true`,
     [id, user.id],
   );
-  return result.rowCount > 0 ? ("removed" as const) : ("not_found" as const);
+  return (result.rowCount ?? 0) > 0 ? ("removed" as const) : ("not_found" as const);
 }

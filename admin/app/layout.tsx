@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { getAdminIdentityForPage } from "@/lib/auth/page-identity";
 import { isDevAuthBypassEnabled } from "@/lib/auth/dev-bypass";
+import { isOpenAccessEnabled } from "@/lib/auth/open-access";
 import { recordAdminAccessEventIfNeeded } from "@/lib/audit";
 import { AdminAccessDenied } from "@/components/AdminAccessDenied";
 import { AdminShell } from "@/components/AdminShell";
@@ -27,8 +28,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     );
   }
 
-  // 完全バイパス時は admin_users / audit_logs の DB を必要としない (開発専用)。
-  if (!isDevAuthBypassEnabled()) {
+  // 完全バイパス時・オープンアクセスモード時は admin_users / audit_logs の DB を必要としない。
+  if (!isDevAuthBypassEnabled() && !isOpenAccessEnabled()) {
     await recordAdminAccessEventIfNeeded(identity);
   }
 

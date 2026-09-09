@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Banner } from "@/components/ui/Banner";
 import { Card } from "@/components/ui/Card";
-import { Table, type TableColumn } from "@/components/ui/Table";
+import { TableShell, THead, Th, Tr, Td } from "@/components/ui/Table";
 import { FieldLabel, SelectInput, TextInput } from "@/components/ui/Form";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { ActiveUniversityOption } from "@/lib/school";
@@ -66,24 +66,6 @@ export function SchoolTimetableManager({
   const filteredEntries = useMemo(
     () => (filterUniversityId === "all" ? entries : entries.filter((entry) => entry.universityId === filterUniversityId)),
     [entries, filterUniversityId],
-  );
-
-  const columns: TableColumn<AdminTimetableRow>[] = useMemo(
-    () => [
-      { header: "大学", accessor: (entry) => entry.universityName },
-      { header: "年度", accessor: (entry) => `${entry.academicYear}年` },
-      { header: "学期", accessor: (entry) => `学期 ${entry.termNumber}` },
-      { header: "学科", accessor: (entry) => entry.departmentLabel },
-      { header: "科目", accessor: (entry) => entry.classTitle },
-      { header: "曜限", accessor: (entry) => `${entry.dayOfWeek}${entry.period}限` },
-      { header: "教室", accessor: (entry) => entry.room ?? "-" },
-      { header: "担当", accessor: (entry) => entry.instructor ?? "-" },
-      {
-        header: "状態",
-        accessor: (entry) => <StatusBadge variant={entry.isActive ? "success" : "neutral"}>{entry.isActive ? "有効" : "無効"}</StatusBadge>,
-      },
-    ],
-    [],
   );
 
   async function refresh() {
@@ -232,17 +214,48 @@ export function SchoolTimetableManager({
           </SelectInput>
           <span className="text-meta text-stone-500">{filteredEntries.length}件</span>
         </div>
-        <Table<AdminTimetableRow>
-          rows={filteredEntries}
-          columns={columns}
-          getRowKey={(entry) => entry.id}
-          emptyMessage="登録済みの時間割はまだありません"
-          renderActions={(entry) => (
-            <Button type="button" size="sm" variant="secondary" disabled={!entry.isActive || saving} onClick={() => void handleDeactivate(entry)}>
-              無効化
-            </Button>
-          )}
-        />
+        <TableShell>
+          <THead>
+            <Th>大学</Th>
+            <Th>年度</Th>
+            <Th>学期</Th>
+            <Th>学科</Th>
+            <Th>科目</Th>
+            <Th>曜限</Th>
+            <Th>教室</Th>
+            <Th>担当</Th>
+            <Th>状態</Th>
+            <Th>操作</Th>
+          </THead>
+          <tbody>
+            {filteredEntries.length === 0 ? (
+              <Tr>
+                <Td colSpan={10} className="py-8 text-center text-stone-500">登録済みの時間割はまだありません</Td>
+              </Tr>
+            ) : (
+              filteredEntries.map((entry) => (
+                <Tr key={entry.id}>
+                  <Td>{entry.universityName}</Td>
+                  <Td>{entry.academicYear}年</Td>
+                  <Td>学期 {entry.termNumber}</Td>
+                  <Td>{entry.departmentLabel}</Td>
+                  <Td>{entry.classTitle}</Td>
+                  <Td>{entry.dayOfWeek}{entry.period}限</Td>
+                  <Td>{entry.room ?? "-"}</Td>
+                  <Td>{entry.instructor ?? "-"}</Td>
+                  <Td>
+                    <StatusBadge variant={entry.isActive ? "success" : "neutral"}>{entry.isActive ? "有効" : "無効"}</StatusBadge>
+                  </Td>
+                  <Td>
+                    <Button type="button" size="sm" variant="secondary" disabled={!entry.isActive || saving} onClick={() => void handleDeactivate(entry)}>
+                      無効化
+                    </Button>
+                  </Td>
+                </Tr>
+              ))
+            )}
+          </tbody>
+        </TableShell>
       </Card>
 
       <p className="text-sm text-stone-600">
