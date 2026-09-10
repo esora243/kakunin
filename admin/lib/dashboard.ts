@@ -99,8 +99,9 @@ export async function loadDashboardData(): Promise<DashboardData> {
     };
   } catch (error) {
     if (error instanceof DatabaseConfigError) {
-      return { error: `Database is not reachable (${error.code})` };
+      return { error: `データベース設定エラー [${error.code}]: ${error.message}` };
     }
-    return { error: "Database is not reachable" };
+    const reason = error instanceof Error ? error.message : String(error);
+    return { error: `データベースに接続できません: ${reason}` };
   }
 }
