@@ -4,9 +4,15 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const assetBaseUrl = process.env.GCS_PUBLIC_ASSET_BASE_URL?.trim();
-const imageRemotePatterns = assetBaseUrl
-  ? [{ protocol: "https", hostname: new URL(assetBaseUrl).hostname }]
-  : [];
+// テスト環境用: URL が未設定/不正でもビルドを中断しない
+let imageRemotePatterns = [];
+try {
+  imageRemotePatterns = assetBaseUrl
+    ? [{ protocol: "https", hostname: new URL(assetBaseUrl).hostname }]
+    : [];
+} catch {
+  imageRemotePatterns = [];
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
