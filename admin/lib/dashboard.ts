@@ -1,5 +1,3 @@
-import "server-only";
-
 import { listPendingCacheInvalidationRetries } from "./cache-invalidate";
 import { dbQuery, DatabaseConfigError } from "./db/postgres";
 

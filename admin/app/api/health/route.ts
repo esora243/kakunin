@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import { DatabaseConfigError, dbQuery, getDatabaseRuntimeEnvironment } from "@/lib/db/postgres";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +8,7 @@ export const dynamic = "force-dynamic";
 // - DB への実クエリ (users ではなく管理画面の実体 admin_users を参照)
 // いずれか失敗で 503 を返す。ローカル開発 (DB 未設定) では 200 を返す。
 function healthResponse(ok: boolean, status: number) {
-  return NextResponse.json({ ok }, {
+  return Response.json({ ok }, {
     status,
     headers: { "Cache-Control": "no-store" },
   });
